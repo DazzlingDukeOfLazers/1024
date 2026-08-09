@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+package-lock.json
+
+# Design documents and authored fixtures are the specification — Prettier must
+# not reflow them. See CLAUDE.md for the reading order.
+*.md
+docs/
+fixtures/
