@@ -86,13 +86,36 @@ Discovered while implementing:
 
 ## Binary64
 
-- [ ] Decode `number` bits using `DataView`.
-- [ ] Convert finite binary64 exactly to `Rational`.
-- [ ] Expose sign/exponent/fraction.
-- [ ] Implement predecessor/successor.
-- [ ] Implement predecessor/successor with `gapBelow` and `gapAbove`.
-- [ ] Preserve +0/-0 and finite/Infinity/NaN states.
-- [ ] Add known-pattern and powers-of-two gap tests.
+- [x] Decode `number` bits using `DataView`.
+- [x] Convert finite binary64 exactly to `Rational`.
+- [x] Expose sign/exponent/fraction.
+- [x] Implement predecessor/successor.
+- [x] Implement predecessor/successor with `gapBelow` and `gapAbove`.
+- [x] Preserve +0/-0 and finite/Infinity/NaN states.
+- [x] Add known-pattern and powers-of-two gap tests.
+
+Discovered while implementing:
+
+- [x] `encodeRational` rounds an exact rational to binary64 itself, nearest-even,
+      rather than delegating to `Number(string)`. Values with no decimal literal
+      (1/3) must go through the same path as ones that have one, and the encoder
+      must report overflow to Infinity and underflow to a signed zero as states
+      rather than as silently wrong numbers. Tested against the language's own
+      rounding across a spread of literals.
+- [x] `orderOfMagnitude2` added beside `orderOfMagnitude10` — exact floor(log2)
+      on a rational, which the encoder needs to pick a quantum before it may
+      touch a `number`.
+- [x] `errorInLocalGaps` expresses error as a fraction of a *named* gap
+      (`docs/NUMERICS.md` §10) instead of one ambiguous ULP figure.
+- [x] `addRational` on binary64, so the machine matches the shape of the fixed
+      point ones. Unlike fixed point its operation rounding error is routinely
+      non-zero, which is the whole lesson.
+- [ ] NaN payload bits are read from the pattern but not asserted to survive a
+      round trip through a JS `number`. Engines may canonicalize non-standard NaN
+      payloads; the tests deliberately do not depend on it.
+- [ ] `binary64.ts` uses one module-level 8-byte `DataView` as a conversion
+      scratch. It carries nothing between calls, but if the runner ever moves to
+      a Worker, confirm that assumption still holds.
 
 ## Experiments
 

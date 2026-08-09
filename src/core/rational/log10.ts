@@ -17,6 +17,7 @@ import {
   isZero,
   lt,
   pow10,
+  pow2,
   sign,
 } from './rational';
 
@@ -49,6 +50,30 @@ export function orderOfMagnitude10(value: Rational): number {
     e -= 1;
   }
   while (gte(magnitude, pow10(e + 1))) {
+    e += 1;
+  }
+  return e;
+}
+
+/**
+ * The integer `e` such that `2^e <= |value| < 2^(e+1)`.
+ *
+ * Exact, and the binary counterpart of {@link orderOfMagnitude10}. The binary64
+ * encoder needs this to pick a quantum before it may touch a `number`.
+ */
+export function orderOfMagnitude2(value: Rational): number {
+  if (isZero(value)) {
+    throw new RationalError('Order of magnitude is undefined at zero');
+  }
+  const magnitude = abs(value);
+
+  // bitLength bounds the ratio to within one power of two, so at most one
+  // correction step runs.
+  let e = bitLength(magnitude.numerator) - bitLength(magnitude.denominator) - 1;
+  while (lt(magnitude, pow2(e))) {
+    e -= 1;
+  }
+  while (gte(magnitude, pow2(e + 1))) {
     e += 1;
   }
   return e;

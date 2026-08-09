@@ -11,6 +11,7 @@ import { parseDecimalExact } from '../core/rational/parse';
 import { type Quantity, fromUnit } from '../core/quantities/quantity';
 import { ExactCorePanel } from './ExactCorePanel';
 import { FiniteMachinesPanel } from './FiniteMachinesPanel';
+import { Binary64Panel } from './Binary64Panel';
 
 const UNIT_CHOICES = [
   'pm',
@@ -70,7 +71,10 @@ export function LabView() {
 
       {parsed.quantity !== undefined && <ExactCorePanel quantity={parsed.quantity} />}
       {parsed.quantity !== undefined && isLength(parsed.quantity) && (
-        <FiniteMachinesPanel length={parsed.quantity} />
+        <>
+          <Binary64Panel length={parsed.quantity} />
+          <FiniteMachinesPanel length={parsed.quantity} />
+        </>
       )}
     </>
   );

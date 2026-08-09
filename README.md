@@ -45,10 +45,11 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–2 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
-core and the finite machines (Q128.128 at a configurable base unit, the Q512.512
-error meter, the Planck grid, and the per-representation ErrorLedger) are
-implemented and tested. Milestone 3 is the binary64 inspector.
+Current state: Milestones 0–3 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
+error meter, the Planck grid, and the per-representation ErrorLedger) and the
+binary64 inspector are implemented and tested. Milestone 4 is the experiment
+runner, which is where the representations start disagreeing in public.
 
 The five lenses are placeholders except for the Representation Lab, which holds
 deliberately ugly debug panels that exercise the core in a browser. The lab UI

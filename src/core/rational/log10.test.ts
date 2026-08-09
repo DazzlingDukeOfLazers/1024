@@ -3,9 +3,10 @@ import {
   decomposeDecimal,
   log10RationalForDisplay,
   orderOfMagnitude10,
+  orderOfMagnitude2,
   toNumberForDisplay,
 } from './log10';
-import { RationalError, ZERO, gte, lt, ONE, pow10, rational } from './rational';
+import { ONE, RationalError, ZERO, gte, lt, pow10, pow2, rational, sub } from './rational';
 import { parseDecimalExact } from './parse';
 
 const r = rational;
@@ -43,6 +44,36 @@ describe('orderOfMagnitude10', () => {
 
   it('is undefined at zero', () => {
     expect(() => orderOfMagnitude10(ZERO)).toThrow(RationalError);
+  });
+});
+
+describe('orderOfMagnitude2', () => {
+  it('brackets the value between adjacent powers of two', () => {
+    expect(orderOfMagnitude2(ONE)).toBe(0);
+    expect(orderOfMagnitude2(r(2n))).toBe(1);
+    expect(orderOfMagnitude2(r(3n))).toBe(1);
+    expect(orderOfMagnitude2(r(1n, 2n))).toBe(-1);
+    expect(orderOfMagnitude2(r(3n, 4n))).toBe(-1);
+    expect(orderOfMagnitude2(r(-5n))).toBe(2);
+  });
+
+  it('is exact at every power-of-two boundary', () => {
+    for (let e = -1100; e <= 1100; e += 1) {
+      expect(orderOfMagnitude2(pow2(e))).toBe(e);
+      // Just below the boundary belongs to the previous binade.
+      expect(orderOfMagnitude2(sub(pow2(e), pow2(e - 60)))).toBe(e - 1);
+    }
+  });
+
+  it('covers the whole binary64 exponent range and well past it', () => {
+    // The binary64 encoder relies on this for subnormals and for overflow.
+    expect(orderOfMagnitude2(pow2(-1074))).toBe(-1074);
+    expect(orderOfMagnitude2(pow2(1023))).toBe(1023);
+    expect(orderOfMagnitude2(pow2(5000))).toBe(5000);
+  });
+
+  it('is undefined at zero', () => {
+    expect(() => orderOfMagnitude2(ZERO)).toThrow(RationalError);
   });
 });
 

@@ -82,6 +82,42 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+test('binary64 shows the exact value it actually stored for 0.1', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+
+  // The whole point of the milestone: what the machine holds is not 0.1.
+  await expect(
+    panel
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Stored value (exact)' }) }),
+  ).toContainText('0.1000000000000000055511151231257827021181583404541015625');
+
+  // Two gaps, and at 0.1 they are equal because 0.1 is not near a power of two.
+  await expect(panel.getByRole('rowheader', { name: 'Gap below' })).toBeVisible();
+  await expect(panel.getByRole('rowheader', { name: 'Gap above' })).toBeVisible();
+});
+
+test('binary64 gaps are asymmetric at a power of two', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+  const row = (name: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  await page.getByLabel('Value').fill('1');
+
+  // 2^-53 below, 2^-52 above — the reason a single ULP figure is refused.
+  await expect(row('Gap below')).toContainText('1.11 × 10^-16');
+  await expect(row('Gap above')).toContainText('2.22 × 10^-16');
+  await expect(row('Error vs intent')).toContainText('exact');
+});
+
 test('the Planck grid states that it is a thought experiment', async ({ page }) => {
   await page.goto('/');
 
