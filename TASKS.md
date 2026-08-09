@@ -205,15 +205,41 @@ Discovered while implementing:
 
 ## Ruler
 
-- [ ] Implement camera model.
-- [ ] Implement physical-to-screen transform using exact origin subtraction before Number conversion.
-- [ ] Add `1e20 m` origin + `1 mm` separation rendering regression.
-- [ ] Implement 1/2/5 grid-step chooser.
-- [ ] Engineering-prefix grid labels.
-- [ ] Pan.
-- [ ] Wheel/pinch zoom.
-- [ ] LOD thresholds.
-- [ ] RBC end-to-end demo.
+- [x] Implement camera model.
+- [x] Implement physical-to-screen transform using exact origin subtraction before Number conversion.
+- [x] Add `1e20 m` origin + `1 mm` separation rendering regression.
+- [x] Implement 1/2/5 grid-step chooser.
+- [x] Engineering-prefix grid labels.
+- [x] Pan.
+- [x] Wheel zoom.
+- [x] LOD thresholds.
+- [x] RBC end-to-end demo.
+
+Discovered while implementing:
+
+- [x] The zoom exponent is a double, per `docs/UI_SPEC.md`, but the geometry must
+      still be exact with respect to it. `metersPerPixel` splits the exponent
+      into a decade and a bounded mantissa and takes the mantissa's *exact*
+      binary64 value, so nothing is approximated twice.
+- [x] Panning and zooming are exactly reversible. Five hundred pans out and back
+      return to the identical centre, and two hundred wheel events leave the
+      anchor exactly where it started — asserted by tests, and true because the
+      centre is a rational rather than a float.
+- [x] Two real browser bugs the Playwright tests caught, neither visible to the
+      unit tests: `currentTarget` was read lazily inside a `setCamera` updater
+      (React has nulled it by then, so zooming crashed the lens), and React 19
+      attaches wheel listeners passively, so `preventDefault` in an `onWheel`
+      prop silently did nothing. The wheel handler is now a non-passive listener
+      attached by effect.
+- [x] Manual `useMemo`/`useCallback` removed from the ruler: the React Compiler
+      lint could not preserve it, and the computations are cheap.
+- [ ] Pinch zoom is not implemented — only wheel. It needs pointer-event
+      bookkeeping for two touches.
+- [ ] The viewport is a fixed 960×260 SVG viewBox scaled by CSS rather than a
+      measured element. Fine for now; the atlas will want a real resize
+      observer.
+- [ ] The ruler is one-dimensional. A vertical axis needs the same camera
+      applied twice, not a second camera model.
 
 ## Atlas
 

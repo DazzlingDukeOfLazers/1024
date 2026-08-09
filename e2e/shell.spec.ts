@@ -82,6 +82,111 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+const openRuler = async (page: Page) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Metric Ruler' })
+    .click();
+};
+
+test('the ruler grid re-steps through the engineering prefixes as it zooms', async ({ page }) => {
+  await openRuler(page);
+
+  const grid = readoutRow(page, 'Grid step');
+  const scale = readoutRow(page, 'Scale');
+
+  // The red blood cell preset frames a millimetre, so the grid is in µm.
+  await expect(grid).toContainText('labelled in µm');
+
+  const ruler = page.locator('svg.ruler');
+  const box = await ruler.boundingBox();
+  if (box === null) throw new Error('ruler has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  // Each wheel notch is 0.2 decades, so fifteen of them is exactly one SI
+  // prefix step. The grid should re-step once per band, in order.
+  const zoomOutOneBand = async () => {
+    for (let i = 0; i < 15; i += 1) await page.mouse.wheel(0, 100);
+  };
+
+  await zoomOutOneBand();
+  await expect(grid).toContainText('labelled in mm');
+  await zoomOutOneBand();
+  await expect(grid).toContainText('labelled in m');
+  await zoomOutOneBand();
+  await expect(grid).toContainText('labelled in km');
+
+  await expect(scale).toContainText('per pixel');
+});
+
+test('the ruler resolves a millimetre beside a 1e20 m origin', async ({ page }) => {
+  await openRuler(page);
+  await page.getByLabel('Preset').selectOption('far-origin');
+
+  // The camera centre really is out at 1e20 m...
+  await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
+  // ...and the view across it is only centimetres wide.
+  await expect(readoutRow(page, 'Across the view')).toContainText('9.6 mm');
+  await expect(readoutRow(page, 'Grid step')).toContainText('labelled in mm');
+
+  // The grid still has labelled ticks out there, which is the whole point:
+  // every one is an exact multiple, positioned after an exact subtraction.
+  const ticks = page.locator('svg.ruler g.ruler-grid text');
+  expect(await ticks.count()).toBeGreaterThan(3);
+});
+
+test('the red blood cell row collapses to a strip as it zooms out', async ({ page }) => {
+  await openRuler(page);
+
+  const detail = readoutRow(page, 'Level of detail');
+
+  // Framing a whole millimetre puts a cell at under six pixels: too small to
+  // draw properly, big enough to draw individually.
+  await expect(detail).toContainText('glyph');
+  await expect(detail).toContainText('the count is the same at every level of detail');
+  await expect(page.locator('svg.ruler ellipse')).toHaveCount(0);
+
+  const ruler = page.locator('svg.ruler');
+  const box = await ruler.boundingBox();
+  if (box === null) throw new Error('ruler has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  // Zoom in and the cells become worth drawing as shapes.
+  for (let i = 0; i < 6; i += 1) await page.mouse.wheel(0, -100);
+  await expect(detail).toContainText('detailed');
+  await expect(page.locator('svg.ruler ellipse').first()).toBeVisible();
+
+  // Zoom back out past a pixel and they become a density strip — while the
+  // count of how many would span the view keeps rising.
+  for (let i = 0; i < 15; i += 1) await page.mouse.wheel(0, 100);
+  await expect(detail).toContainText('aggregate');
+  await expect(page.locator('svg.ruler')).toContainText('drawn as density');
+  await expect(page.locator('svg.ruler ellipse')).toHaveCount(0);
+});
+
+test('panning the ruler out and back returns exactly where it started', async ({ page }) => {
+  await openRuler(page);
+  await page.getByLabel('Preset').selectOption('human-scale');
+
+  const centre = readoutRow(page, 'Centre');
+  const before = await centre.textContent();
+
+  const ruler = page.locator('svg.ruler');
+  const box = await ruler.boundingBox();
+  if (box === null) throw new Error('ruler has no box');
+  const y = box.y + box.height / 2;
+
+  await page.mouse.move(box.x + 200, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 500, y, { steps: 12 });
+  await page.mouse.move(box.x + 200, y, { steps: 12 });
+  await page.mouse.up();
+
+  // An exact rational centre does not accumulate drift over a drag.
+  await expect(centre).toHaveText(before ?? '');
+});
+
 test('how many red blood cells span a millimetre', async ({ page }) => {
   await page.goto('/');
   await page

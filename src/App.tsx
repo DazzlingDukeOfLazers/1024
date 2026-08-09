@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { LENSES, type LensId } from './ui/lenses';
 import { LabView } from './ui/LabView';
 import { ComparatorView } from './features/comparator/ComparatorView';
+import { RulerView } from './features/ruler/RulerView';
 
 /**
  * Milestone 0–2 app shell.
@@ -41,6 +42,8 @@ export function App() {
           <LabView />
         ) : lens === 'comparator' ? (
           <ComparatorView />
+        ) : lens === 'ruler' ? (
+          <RulerView />
         ) : (
           <p className="placeholder">
             Not built yet — see docs/IMPLEMENTATION_PLAN.md for the milestone that delivers this

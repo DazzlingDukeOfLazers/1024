@@ -176,6 +176,19 @@ svg text {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
+svg.ruler {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+svg.ruler:active {
+  cursor: grabbing;
+}
+
 .mono {
   font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
   overflow-wrap: anywhere;
