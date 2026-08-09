@@ -23,6 +23,7 @@ import {
 } from '../../camera/logCamera';
 import { CATALOG } from '../../catalog/catalog';
 import { type AtlasState } from '../../share/appState';
+import { SemanticPanel } from './SemanticPanel';
 import {
   ATLAS_ENTRIES,
   ATLAS_VIEWPORT,
@@ -69,6 +70,12 @@ export function AtlasView({
   const dragState = useRef<{ x: number; moved: boolean } | undefined>(undefined);
 
   const ticks = decadeTicks(camera, VIEWPORT);
+  // The band the camera is showing, which is what makes the suggestions below
+  // change as you zoom rather than being a fixed list.
+  const band = {
+    minLog10: log10FromAtlasX(camera, 0, VIEWPORT),
+    maxLog10: log10FromAtlasX(camera, VIEWPORT.widthPx, VIEWPORT),
+  };
   const clusters = declutter(ENTRIES, camera, VIEWPORT);
   const selected = selectedId === undefined ? undefined : CATALOG.get(selectedId);
   const selectedEntry = ENTRIES.find((entry) => entry.object.id === selectedId);
@@ -100,6 +107,24 @@ export function AtlasView({
     <>
       <section className="panel">
         <div className="field">
+          {/* A marker is a pointer-only target, and at low zoom it may be a
+              cluster standing in for several objects. The picker makes every
+              object reachable by name and by keyboard. */}
+          <label htmlFor="atlas-selection">Object</label>
+          <select
+            id="atlas-selection"
+            value={selectedId ?? ''}
+            onChange={(event) =>
+              onSelect(event.target.value === '' ? undefined : event.target.value)
+            }
+          >
+            <option value="">nothing selected</option>
+            {ENTRIES.map((entry) => (
+              <option key={entry.object.id} value={entry.object.id}>
+                {entry.object.name}
+              </option>
+            ))}
+          </select>
           <button type="button" onClick={() => setCamera(FULL_RANGE)}>
             Whole range
           </button>
@@ -290,6 +315,8 @@ export function AtlasView({
           position 10^400 just as happily.
         </p>
       </section>
+
+      <SemanticPanel selectedId={selectedId} band={band} onSelect={onSelect} />
     </>
   );
 }

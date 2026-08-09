@@ -362,8 +362,115 @@ test('the atlas spans the catalog on one logarithmic axis', async ({ page }) => 
   }
 
   // Everything is accounted for, whether merged into a cluster or not.
-  await expect(page.getByText(/24 of 24 objects in view/)).toBeVisible();
+  await expect(page.getByText(/28 of 28 objects in view/)).toBeVisible();
   await expect(page.getByText(/crowded ones merge rather than being dropped/)).toBeVisible();
+});
+
+test('the atlas walks the object graph from the selection', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Related at this scale' }) });
+
+  // Nothing selected: the panel says what it needs rather than showing nothing.
+  await expect(panel).toContainText('Select an object to walk the graph');
+
+  await page.getByLabel('Object', { exact: true }).selectOption('human');
+  await page.getByRole('button', { name: 'Centre on selection' }).click();
+
+  // Relations, both authored and derived, with their direction named.
+  await expect(panel).toContainText('Hand');
+  await expect(panel).toContainText('has part');
+  await expect(panel).toContainText('Red blood cell');
+
+  // The chain from PROJECT_SPEC section 14, found by search rather than listed.
+  await expect(panel).toContainText('Ontology navigation');
+  await expect(panel).toContainText(
+    'Human \u2192 Hand \u2192 Finger \u2192 Skin cell \u2192 DNA double helix',
+  );
+
+  // Clicking a related object walks to it. Scoped to the relations table: the
+  // "also at this size" table below can name the same object.
+  await panel.locator('table.readout').first().getByRole('button', { name: 'Hand' }).click();
+  await expect(page.locator('p.selection-banner')).toContainText('Hand');
+  await expect(panel).toContainText('part of');
+});
+
+test('what is within reach changes as the atlas zooms', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Related at this scale' }) });
+  // The relations table, not the "also at this size" one below it.
+  const row = (name: string) =>
+    panel
+      .locator('table.readout')
+      .first()
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  await page.getByLabel('Object', { exact: true }).selectOption('human');
+  await page.getByRole('button', { name: 'Centre on selection' }).click();
+
+  // A hand is here; a red blood cell is several decades of zoom away.
+  await expect(row('Hand')).toContainText('in view');
+  await expect(row('Red blood cell')).toContainText('zoom in');
+
+  // Centre on the cell instead and the reachability inverts.
+  await page.getByLabel('Object', { exact: true }).selectOption('red-blood-cell');
+  await page.getByRole('button', { name: 'Centre on selection' }).click();
+  await expect(row('Human')).toContainText('zoom out');
+});
+
+test('objects with no relations say so instead of inventing them', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Object', { exact: true }).selectOption('coconut');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Related at this scale' }) });
+  await expect(panel).toContainText('Nothing in the catalog is related to Coconut');
+  await expect(panel).toContainText('an empty list is more honest than an invented one');
+});
+
+test('the atlas reveals what else lives at a size, related or not', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByLabel('Object', { exact: true }).selectOption('red-blood-cell');
+  await page.getByRole('button', { name: 'Centre on selection' }).click();
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Related at this scale' }) });
+
+  // Metric navigation: neighbours by size alone, with no relation between them.
+  await expect(panel).toContainText('Also at this size');
+  await expect(panel).toContainText('Skin cell');
+  await expect(panel).toContainText('Bacterium');
+  await expect(panel).toContainText('Zooming is both metric and ontology navigation');
+});
+
+test('clicking a marker selects what it stands for', async ({ page }) => {
+  await page.goto('/');
+
+  const atlas = page.locator('svg.atlas');
+  const box = await atlas.boundingBox();
+  if (box === null) throw new Error('atlas has no box');
+
+  // At full range most markers are clusters; clicking one selects the object it
+  // is named after, whatever that turns out to be.
+  const label = atlas
+    .locator('text')
+    .filter({ hasText: /^Planck length/ })
+    .first();
+  const labelBox = await label.boundingBox();
+  if (labelBox === null) throw new Error('no planck label');
+  await page.mouse.click(labelBox.x + 2, box.y + box.height * (150 / 240));
+
+  await expect(page.locator('p.selection-banner')).toContainText('Planck length');
+  await expect(readoutRow(page, 'Object')).toContainText('Planck length');
 });
 
 test('selecting in the atlas carries the object into the other lenses', async ({ page }) => {
@@ -372,25 +479,10 @@ test('selecting in the atlas carries the object into the other lenses', async ({
   // Nothing is selected to begin with.
   await expect(page.locator('p.selection-banner')).toHaveCount(0);
 
-  const atlas = page.locator('svg.atlas');
-  const box = await atlas.boundingBox();
-  if (box === null) throw new Error('atlas has no box');
-
-  // Zoom in around human scale so a single object is unambiguous to click.
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  for (let i = 0; i < 12; i += 1) await page.mouse.wheel(0, -100);
-
-  const label = atlas.getByText('Coconut', { exact: true });
-  await expect(label).toBeVisible();
-  const labelBox = await label.boundingBox();
-  if (labelBox === null) throw new Error('no coconut label');
-
-  // Click the marker under the label.
-  await page.mouse.click(labelBox.x + 2, box.y + box.height * (150 / 240));
+  await page.getByLabel('Object', { exact: true }).selectOption('coconut');
 
   const banner = page.locator('p.selection-banner');
   await expect(banner).toContainText('Coconut');
-  await expect(readoutRow(page, 'Object')).toContainText('Coconut');
   await expect(readoutRow(page, 'Size')).toContainText('200 mm');
 
   // It survives the jump to every other lens.
@@ -408,18 +500,7 @@ test('selecting in the atlas carries the object into the other lenses', async ({
 
 test('the atlas can hand an object to the ruler', async ({ page }) => {
   await page.goto('/');
-
-  const atlas = page.locator('svg.atlas');
-  const box = await atlas.boundingBox();
-  if (box === null) throw new Error('atlas has no box');
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  for (let i = 0; i < 12; i += 1) await page.mouse.wheel(0, -100);
-
-  const label = atlas.getByText('Coconut', { exact: true });
-  const labelBox = await label.boundingBox();
-  if (labelBox === null) throw new Error('no coconut label');
-  await page.mouse.click(labelBox.x + 2, box.y + box.height * (150 / 240));
-
+  await page.getByLabel('Object', { exact: true }).selectOption('coconut');
   await page.getByRole('button', { name: 'Open in Ruler' }).click();
 
   // The ruler is now showing, framed on the selection.

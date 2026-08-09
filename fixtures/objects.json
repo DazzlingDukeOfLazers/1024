@@ -2,13 +2,20 @@
   {
     "id": "planck-length",
     "name": "Planck length",
-    "categories": ["physics", "reference", "subatomic"],
+    "categories": [
+      "physics",
+      "reference",
+      "subatomic"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
         "unit": "m",
         "representative": "1.616255e-35",
-        "range": { "min": "1.616237e-35", "max": "1.616273e-35" },
+        "range": {
+          "min": "1.616237e-35",
+          "max": "1.616273e-35"
+        },
         "approximation": "measured",
         "source": "CODATA 2018",
         "note": "Range is the published standard uncertainty. The Planck machine's grid is conditioned on this declaration; see docs/NUMERICS.md section 3."
@@ -18,40 +25,70 @@
   {
     "id": "proton",
     "name": "Proton",
-    "categories": ["physics", "subatomic"],
+    "categories": [
+      "physics",
+      "subatomic"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "fm",
         "representative": "1.68",
-        "range": { "min": "1.6", "max": "1.76" },
+        "range": {
+          "min": "1.6",
+          "max": "1.76"
+        },
         "approximation": "measured",
         "source": "demonstration value",
         "note": "Twice the charge radius. A proton has no sharp edge; this is a scattering-derived figure."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "hydrogen-atom"
+      }
+    ]
   },
   {
     "id": "hydrogen-atom",
     "name": "Hydrogen atom",
-    "categories": ["physics", "chemistry", "atomic"],
+    "categories": [
+      "physics",
+      "chemistry",
+      "atomic"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "pm",
         "representative": "106",
-        "range": { "min": "106", "max": "240" },
+        "range": {
+          "min": "106",
+          "max": "240"
+        },
         "approximation": "representative",
         "source": "demonstration value",
         "note": "Twice the Bohr radius. The upper bound is the van der Waals diameter — an atom's size depends on what you mean by size."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "water-molecule"
+      }
+    ]
   },
   {
     "id": "dna-helix",
     "name": "DNA double helix",
-    "aliases": ["DNA"],
-    "categories": ["biology", "molecular"],
+    "aliases": [
+      "DNA"
+    ],
+    "categories": [
+      "biology",
+      "molecular"
+    ],
     "quantities": {
       "width": {
         "dimension": "length",
@@ -61,18 +98,30 @@
         "source": "demonstration value",
         "note": "Width of the B-form helix."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "contained-by",
+        "targetId": "skin-cell"
+      }
+    ]
   },
   {
     "id": "virus",
     "name": "Virus (representative)",
-    "categories": ["biology", "microscopic"],
+    "categories": [
+      "biology",
+      "microscopic"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "nm",
         "representative": "100",
-        "range": { "min": "20", "max": "300" },
+        "range": {
+          "min": "20",
+          "max": "300"
+        },
         "approximation": "representative",
         "source": "demonstration value",
         "note": "Viruses vary enormously; this stands in for the common range, not for any particular one."
@@ -82,14 +131,22 @@
   {
     "id": "bacterium",
     "name": "Bacterium",
-    "aliases": ["E. coli"],
-    "categories": ["biology", "microscopic"],
+    "aliases": [
+      "E. coli"
+    ],
+    "categories": [
+      "biology",
+      "microscopic"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
         "unit": "µm",
         "representative": "2",
-        "range": { "min": "0.5", "max": "5" },
+        "range": {
+          "min": "0.5",
+          "max": "5"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
@@ -98,45 +155,85 @@
   {
     "id": "red-blood-cell",
     "name": "Red blood cell",
-    "aliases": ["RBC", "erythrocyte"],
-    "categories": ["biology", "cell", "microscopic"],
+    "aliases": [
+      "RBC",
+      "erythrocyte"
+    ],
+    "categories": [
+      "biology",
+      "cell",
+      "microscopic"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "µm",
         "representative": "7.5",
-        "range": { "min": "6.2", "max": "8.2" },
+        "range": {
+          "min": "6.2",
+          "max": "8.2"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
     },
-    "visuals": [{ "provider": "bundled", "path": "fallback/red-blood-cell.svg" }]
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/red-blood-cell.svg"
+      }
+    ],
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "human"
+      }
+    ]
   },
   {
     "id": "human-hair",
     "name": "Human hair",
-    "categories": ["biology", "human-scale", "microscopic"],
+    "categories": [
+      "biology",
+      "human-scale",
+      "microscopic"
+    ],
     "quantities": {
       "width": {
         "dimension": "length",
         "unit": "µm",
         "representative": "70",
-        "range": { "min": "17", "max": "180" },
+        "range": {
+          "min": "17",
+          "max": "180"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "human"
+      }
+    ]
   },
   {
     "id": "grain-of-sand",
     "name": "Grain of sand",
-    "categories": ["geology", "everyday"],
+    "categories": [
+      "geology",
+      "everyday"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "mm",
         "representative": "0.5",
-        "range": { "min": "0.0625", "max": "2" },
+        "range": {
+          "min": "0.0625",
+          "max": "2"
+        },
         "approximation": "representative",
         "source": "demonstration value",
         "note": "The range is the Wentworth grade for sand; below it is silt, above it is gravel."
@@ -146,13 +243,19 @@
   {
     "id": "ant",
     "name": "Ant",
-    "categories": ["biology", "everyday"],
+    "categories": [
+      "biology",
+      "everyday"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
         "unit": "mm",
         "representative": "5",
-        "range": { "min": "1", "max": "25" },
+        "range": {
+          "min": "1",
+          "max": "25"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
@@ -161,91 +264,157 @@
   {
     "id": "coconut",
     "name": "Coconut",
-    "categories": ["botany", "fruit", "food", "everyday"],
+    "categories": [
+      "botany",
+      "fruit",
+      "food",
+      "everyday"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
         "unit": "m",
         "representative": "0.20",
-        "range": { "min": "0.15", "max": "0.30" },
+        "range": {
+          "min": "0.15",
+          "max": "0.30"
+        },
         "approximation": "representative",
         "source": "PROJECT_SPEC.md section 16"
       }
     },
-    "visuals": [{ "provider": "bundled", "path": "fallback/coconut.svg" }]
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/coconut.svg"
+      }
+    ]
   },
   {
     "id": "human",
     "name": "Human",
-    "categories": ["biology", "human-scale"],
+    "categories": [
+      "biology",
+      "human-scale"
+    ],
     "quantities": {
       "height": {
         "dimension": "length",
         "unit": "m",
         "representative": "1.7",
-        "range": { "min": "1.4", "max": "2.0" },
+        "range": {
+          "min": "1.4",
+          "max": "2.0"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
     },
-    "visuals": [{ "provider": "bundled", "path": "fallback/human.svg" }]
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/human.svg"
+      }
+    ]
   },
   {
     "id": "door",
     "name": "Door",
-    "categories": ["architecture", "everyday", "human-scale"],
+    "categories": [
+      "architecture",
+      "everyday",
+      "human-scale"
+    ],
     "quantities": {
       "height": {
         "dimension": "length",
         "unit": "m",
         "representative": "2.0",
-        "range": { "min": "1.98", "max": "2.1" },
+        "range": {
+          "min": "1.98",
+          "max": "2.1"
+        },
         "approximation": "representative",
         "source": "demonstration value"
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "house"
+      }
+    ]
   },
   {
     "id": "house",
     "name": "House",
-    "categories": ["architecture", "human-scale"],
+    "categories": [
+      "architecture",
+      "human-scale"
+    ],
     "quantities": {
       "width": {
         "dimension": "length",
         "unit": "m",
         "representative": "10",
-        "range": { "min": "6", "max": "20" },
+        "range": {
+          "min": "6",
+          "max": "20"
+        },
         "approximation": "estimated",
         "source": "demonstration value"
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "within",
+        "targetId": "city"
+      }
+    ]
   },
   {
     "id": "skyscraper",
     "name": "Skyscraper",
-    "categories": ["architecture"],
+    "categories": [
+      "architecture"
+    ],
     "quantities": {
       "height": {
         "dimension": "length",
         "unit": "m",
         "representative": "300",
-        "range": { "min": "150", "max": "830" },
+        "range": {
+          "min": "150",
+          "max": "830"
+        },
         "approximation": "estimated",
         "source": "demonstration value",
         "note": "The upper bound is roughly the tallest built."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "within",
+        "targetId": "city"
+      }
+    ]
   },
   {
     "id": "city",
     "name": "City (Chicago-scale extent)",
-    "categories": ["geography", "human-scale"],
+    "categories": [
+      "geography",
+      "human-scale"
+    ],
     "quantities": {
       "width": {
         "dimension": "length",
         "unit": "km",
         "representative": "40",
-        "range": { "min": "20", "max": "60" },
+        "range": {
+          "min": "20",
+          "max": "60"
+        },
         "approximation": "estimated",
         "source": "demonstration value"
       }
@@ -254,7 +423,10 @@
   {
     "id": "moon",
     "name": "Moon",
-    "categories": ["astronomy", "planetary"],
+    "categories": [
+      "astronomy",
+      "planetary"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
@@ -263,28 +435,53 @@
         "approximation": "measured",
         "source": "demonstration value"
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "orbits",
+        "targetId": "earth"
+      }
+    ]
   },
   {
     "id": "earth",
     "name": "Earth",
-    "categories": ["astronomy", "planetary"],
+    "categories": [
+      "astronomy",
+      "planetary"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "km",
         "representative": "12742",
-        "range": { "min": "12714", "max": "12756" },
+        "range": {
+          "min": "12714",
+          "max": "12756"
+        },
         "approximation": "measured",
         "source": "demonstration value",
         "note": "Mean diameter; the range spans polar to equatorial."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "orbits",
+        "targetId": "sun"
+      },
+      {
+        "type": "within",
+        "targetId": "solar-system"
+      }
+    ]
   },
   {
     "id": "sun",
     "name": "Sun",
-    "categories": ["astronomy", "stellar"],
+    "categories": [
+      "astronomy",
+      "stellar"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
@@ -294,13 +491,25 @@
         "source": "demonstration value",
         "note": "Twice the IAU nominal solar radius. A star has no surface in the way a planet does."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "within",
+        "targetId": "milky-way"
+      }
+    ]
   },
   {
     "id": "astronomical-unit",
     "name": "Astronomical unit",
-    "aliases": ["AU", "Earth-Sun distance"],
-    "categories": ["astronomy", "reference"],
+    "aliases": [
+      "AU",
+      "Earth-Sun distance"
+    ],
+    "categories": [
+      "astronomy",
+      "reference"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
@@ -315,7 +524,9 @@
   {
     "id": "solar-system",
     "name": "Solar System (Neptune's orbit)",
-    "categories": ["astronomy"],
+    "categories": [
+      "astronomy"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
@@ -325,12 +536,21 @@
         "source": "demonstration value",
         "note": "Where the Solar System ends depends on what you count; this uses Neptune's orbit."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "within",
+        "targetId": "milky-way"
+      }
+    ]
   },
   {
     "id": "light-year",
     "name": "Light-year",
-    "categories": ["astronomy", "reference"],
+    "categories": [
+      "astronomy",
+      "reference"
+    ],
     "quantities": {
       "length": {
         "dimension": "length",
@@ -345,33 +565,168 @@
   {
     "id": "milky-way",
     "name": "Milky Way",
-    "categories": ["astronomy", "galactic"],
+    "categories": [
+      "astronomy",
+      "galactic"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "ly",
         "representative": "100000",
-        "range": { "min": "87000", "max": "200000" },
+        "range": {
+          "min": "87000",
+          "max": "200000"
+        },
         "approximation": "estimated",
         "source": "demonstration value",
         "note": "A galaxy has no edge; estimates depend on which population you trace."
       }
-    }
+    },
+    "relations": [
+      {
+        "type": "within",
+        "targetId": "observable-universe"
+      }
+    ]
   },
   {
     "id": "observable-universe",
     "name": "Observable universe",
-    "categories": ["astronomy", "cosmological", "reference"],
+    "categories": [
+      "astronomy",
+      "cosmological",
+      "reference"
+    ],
     "quantities": {
       "diameter": {
         "dimension": "length",
         "unit": "ly",
         "representative": "93e9",
-        "range": { "min": "91e9", "max": "95e9" },
+        "range": {
+          "min": "91e9",
+          "max": "95e9"
+        },
         "approximation": "estimated",
         "source": "demonstration value",
         "note": "Comoving diameter — much larger than light travel time alone would suggest, because space expanded while the light was in transit."
       }
     }
+  },
+  {
+    "id": "water-molecule",
+    "name": "Water molecule",
+    "categories": [
+      "chemistry",
+      "molecular"
+    ],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "nm",
+        "representative": "0.28",
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "Van der Waals diameter. A molecule has no sharp edge either."
+      }
+    },
+    "relations": [
+      {
+        "type": "made-of",
+        "targetId": "hydrogen-atom"
+      },
+      {
+        "type": "part-of",
+        "targetId": "skin-cell"
+      }
+    ]
+  },
+  {
+    "id": "skin-cell",
+    "name": "Skin cell",
+    "categories": [
+      "biology",
+      "cell",
+      "microscopic"
+    ],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "µm",
+        "representative": "30",
+        "range": {
+          "min": "20",
+          "max": "40"
+        },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "finger"
+      },
+      {
+        "type": "contains",
+        "targetId": "dna-helix"
+      }
+    ]
+  },
+  {
+    "id": "finger",
+    "name": "Finger",
+    "categories": [
+      "biology",
+      "anatomy",
+      "human-scale"
+    ],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "0.08",
+        "range": {
+          "min": "0.06",
+          "max": "0.10"
+        },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "hand"
+      }
+    ]
+  },
+  {
+    "id": "hand",
+    "name": "Hand",
+    "categories": [
+      "biology",
+      "anatomy",
+      "human-scale"
+    ],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "0.19",
+        "range": {
+          "min": "0.16",
+          "max": "0.22"
+        },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    },
+    "relations": [
+      {
+        "type": "part-of",
+        "targetId": "human"
+      }
+    ]
   }
 ]

@@ -45,13 +45,19 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–10 of `docs/IMPLEMENTATION_PLAN.md`. All five lenses
-are live, on top of the exact quantity core, the finite machines (Q128.128 at a
-configurable base unit, the Q512.512 error meter, the Planck grid, and the
-per-representation ErrorLedger), the binary64 inspector, the experiment runner,
-the catalog and shareable state. The built-in experiments run — including a
-million real millimetre additions per machine, in about a second and a half,
-with a trace of twenty-odd samples. Milestone 11 is progressive semantic detail.
+Current state: Milestones 0–11 of `docs/IMPLEMENTATION_PLAN.md` — the whole v0
+plan. All five lenses are live, on top of the exact quantity core, the finite
+machines (Q128.128 at a configurable base unit, the Q512.512 error meter, the
+Planck grid, and the per-representation ErrorLedger), the binary64 inspector, the
+experiment runner, the catalog and shareable state. The built-in experiments run
+— including a million real millimetre additions per machine, in about a second
+and a half, with a trace of twenty-odd samples. What remains is the Hardening
+list in `TASKS.md`.
+
+**Zooming is both metric and ontology navigation.** The Atlas walks the object
+graph from the selection — `human → hand → finger → skin cell → DNA` is found by
+search, not written down anywhere — and says how many decades of zoom away each
+related object is. Objects with no relations say so rather than inventing any.
 
 **What numbers can this computer see here?** The Microscope draws each
 representation's local lattice at its own scale, walking real binary64

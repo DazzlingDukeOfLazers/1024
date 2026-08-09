@@ -341,6 +341,39 @@ Discovered while implementing:
 - [ ] Subnormals are reachable but not called out. Below ~10^-308 binary64's
       spacing stops growing and goes constant, which is worth a note in the lens.
 
+## Progressive semantic graph
+
+- [x] Author relations in the catalog fixture.
+- [x] Derive inverse relations rather than authoring both directions.
+- [x] Relation path search (graph traversal, not a hard-coded tree).
+- [x] Scale-sensitive related-object suggestions.
+- [x] Reveal unrelated neighbours by size alone.
+- [x] Graph navigation in the Atlas.
+
+Discovered while implementing:
+
+- [x] Four objects added (hand, finger, skin cell, water molecule) so
+      PROJECT_SPEC §14's `human → hand → finger → cell → DNA` is a real chain the
+      search *finds* rather than a list someone wrote down. 28 objects, still
+      inside the 20–30 the docs ask for.
+- [x] The chemical and biological chains were disconnected until a cell was
+      related to water, which is where they genuinely meet. A test caught it.
+- [x] Suggestions out of view are kept and labelled with how many decades of
+      zoom away they are. Hiding them would defeat the point of "zoom in and
+      there is more".
+- [x] Most objects have no relations, and the panel says so rather than
+      inventing any. A grain of sand is not part of anything in this catalog.
+- [x] Adding four objects re-clustered the Atlas — Hand (0.19 m) now absorbs
+      Coconut (0.20 m), so Coconut's label no longer appears at low zoom. That is
+      correct decluttering, and it prompted a proper object picker, which also
+      closes the "markers are pointer-only" gap from milestone 7.
+- [ ] `semanticDetail` is read by `bandFor` but no fixture sets it; the derived
+      ±2 decades is doing the work everywhere.
+- [ ] Relations are length-only in effect. A `mass scale` projection (DATA_MODEL
+      §15) needs the mass dimension first.
+- [ ] The Ruler does not use the graph yet — it still picks nearby objects by
+      size alone.
+
 ## Share state
 
 - [x] Define versioned backend-free share URL schema.
