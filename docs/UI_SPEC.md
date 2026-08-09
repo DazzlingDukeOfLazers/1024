@@ -281,6 +281,18 @@ v0 includes a visible **Share this view** action. It produces a versioned URL th
 
 A discovered numerical failure should be sendable as a link, not as reproduction instructions.
 
+The address bar is displayed state, and is held to the same standard as any
+number on screen: it must describe what is on it, or describe nothing.
+
+- The app follows the fragment whenever it changes, not only at load. Back and
+  forward between two shared views are same-document navigations, and a screen
+  that does not follow them is showing one view under the URL of another.
+- An unreadable fragment reports itself and changes nothing, on a cold load and
+  on a later one alike. Never half-load a link.
+- The fragment is cleared as soon as the view moves on from what it describes.
+  A stale fragment claims a reload would bring you back here, and it would not.
+  The link survives in the share field, labelled as the view it is of.
+
 # Tone
 
 Precise, playful, not childish.

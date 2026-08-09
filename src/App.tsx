@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { LENSES, type LensId } from './ui/lenses';
 import { ShareBar } from './ui/ShareBar';
 import { ErrorBoundary } from './ui/ErrorBoundary';
@@ -27,13 +27,16 @@ import { stateFromFragment } from './share/url';
  * A malformed link reports itself rather than quietly loading a different view
  * than the link described.
  */
-const INITIAL: { state: AppState; error?: string } = (() => {
+const INITIAL: { state: AppState; fromFragment: boolean; error?: string } = (() => {
   try {
     const restored = stateFromFragment(window.location.hash);
-    return restored === undefined ? { state: defaultAppState() } : { state: restored };
+    return restored === undefined
+      ? { state: defaultAppState(), fromFragment: false }
+      : { state: restored, fromFragment: true };
   } catch (error) {
     return {
       state: defaultAppState(),
+      fromFragment: false,
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -48,6 +51,47 @@ const INITIAL: { state: AppState; error?: string } = (() => {
  */
 export function App() {
   const [state, setState] = useState<AppState>(INITIAL.state);
+  const [restoreError, setRestoreError] = useState<string | undefined>(INITIAL.error);
+  /**
+   * The state the address bar currently describes, or `undefined` when it
+   * describes nothing. Set by restoring a fragment and by sharing a view — the
+   * two ways the URL and the screen come to agree — so the share bar can tell
+   * whether the URL has since gone stale.
+   */
+  const [urlState, setUrlState] = useState<AppState | undefined>(
+    INITIAL.fromFragment ? INITIAL.state : undefined,
+  );
+
+  /**
+   * The address bar is displayed state. If it says one view and the screen shows
+   * another, the app is misreporting itself, which here is the same class of
+   * fault as misreporting a number.
+   *
+   * Reading the fragment once at load was enough for opening a link and nothing
+   * else: the browser's back and forward buttons move between two shared views
+   * without reloading the document, and before this the screen simply did not
+   * follow. Nothing in the app writes the hash except `replaceState` in the
+   * share button, and `replaceState` fires no `hashchange`, so this cannot loop.
+   */
+  useEffect(() => {
+    const onHashChange = (): void => {
+      try {
+        const restored = stateFromFragment(window.location.hash);
+        // An empty fragment is what a bare URL means, so it restores the view a
+        // bare URL opens rather than leaving the last one on screen under a URL
+        // that no longer describes it.
+        setState(restored ?? defaultAppState());
+        setUrlState(restored);
+        setRestoreError(undefined);
+      } catch (error) {
+        // A link that cannot be read reports itself and changes nothing,
+        // exactly as on a cold load.
+        setRestoreError(error instanceof Error ? error.message : String(error));
+      }
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const active = LENSES.find((entry) => entry.id === state.lens) ?? LENSES[0];
   const selected =
     state.selectedObjectId === undefined ? undefined : CATALOG.get(state.selectedObjectId);
@@ -143,7 +187,12 @@ export function App() {
         <h2 className="app-title">{active?.title}</h2>
         <p className="lens-question">{active?.question}</p>
 
-        <ShareBar state={state} restoreError={INITIAL.error} />
+        <ShareBar
+          state={state}
+          describedByUrl={urlState}
+          onShare={setUrlState}
+          restoreError={restoreError}
+        />
 
         {selected !== undefined && (
           <p className="selection-banner">

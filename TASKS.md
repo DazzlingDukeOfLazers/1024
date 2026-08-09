@@ -429,8 +429,29 @@ Discovered while implementing:
 - [ ] The share payload is uncompressed. `docs/NUMERICS.md` §14 permits
       compression; at ~500 characters it is not needed yet, and it would be a
       dependency for no present gain.
-- [ ] Restoring reads the fragment once at module load. Back/forward between two
-      shared links will not re-restore without a `hashchange` listener.
+- [x] **Restoring read the fragment once at module load**, so the app never
+      noticed the address bar changing. Back and forward between two shared views
+      are same-document navigations: the URL moved and the screen did not. The
+      URL is displayed state, so that is the same class of fault as misreporting
+      a number. There is now a `hashchange` listener; an unreadable fragment
+      reports itself and changes nothing, exactly as on a cold load, and an empty
+      one restores what a bare URL opens rather than leaving the last view
+      sitting under a URL that no longer describes it.
+- [x] **The address bar went stale the moment you touched anything.** Sharing
+      wrote the fragment and said a reload would restore the same view; one pan
+      later that was false, and the URL still looked current. It is now cleared
+      as soon as the state moves on from what the URL describes, and the link
+      itself survives in the share field, relabelled "the view you shared, not
+      the one on screen". `App` owns which state the URL describes, because the
+      two things that make them agree — restoring a link and sharing a view —
+      both live there. Getting this wrong once made restoring a link look like
+      leaving it, which wiped the fragment mid-restore; the Playwright forward
+      button caught it.
+- [ ] Sharing uses `replaceState`, so it adds no history entry. Back from a
+      shared view leaves the app rather than returning to the pre-share view.
+      Deliberate for now — pushing an entry per share is defensible, pushing one
+      per pan is not, and the line between them is a UX decision rather than a
+      correctness one.
 - [ ] Experiments are shared by id only. A user-authored experiment definition
       would need the full serializable form (which `steps.ts` already has) in the
       payload.

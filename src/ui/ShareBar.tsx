@@ -6,17 +6,23 @@
  * involved and none can be.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type AppState } from '../share/appState';
 import { shareUrl } from '../share/url';
 
 export interface ShareBarProps {
   state: AppState;
-  /** Reported when a link could not be restored on load. */
+  /**
+   * The state the address bar currently describes, from whichever of the two
+   * things last made them agree: restoring a link, or sharing this view.
+   */
+  describedByUrl?: AppState | undefined;
+  onShare: (state: AppState) => void;
+  /** Reported when a link could not be restored. */
   restoreError?: string | undefined;
 }
 
-export function ShareBar({ state, restoreError }: ShareBarProps) {
+export function ShareBar({ state, describedByUrl, onShare, restoreError }: ShareBarProps) {
   const [url, setUrl] = useState<string | undefined>(undefined);
   const [copied, setCopied] = useState(false);
 
@@ -24,6 +30,7 @@ export function ShareBar({ state, restoreError }: ShareBarProps) {
     const next = shareUrl(window.location.href, state);
     setUrl(next);
     setCopied(false);
+    onShare(state);
 
     // Put it in the address bar too, so the browser's own copy works and a
     // reload restores the same view. replaceState keeps the back button sane.
@@ -35,6 +42,24 @@ export function ShareBar({ state, restoreError }: ShareBarProps) {
       .catch(() => setCopied(false));
   };
 
+  /**
+   * The address bar claims to describe the screen. The moment the view moves on
+   * from what was shared, the fragment sitting in it describes something that is
+   * no longer here — and a reload would silently restore that instead of this.
+   * So it is removed rather than left looking current.
+   *
+   * The link itself survives, in the clipboard and in the field below, relabelled
+   * so it is clear which view it is of. Every state update produces a new object,
+   * so identity is the comparison.
+   */
+  const stale = describedByUrl !== undefined && describedByUrl !== state;
+  useEffect(() => {
+    // Only the address bar is touched here — no React state — so this runs once
+    // on the transition rather than on every pan that follows it.
+    if (!stale) return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, [stale]);
+
   return (
     <div className="share-bar">
       <button type="button" onClick={share}>
@@ -43,7 +68,13 @@ export function ShareBar({ state, restoreError }: ShareBarProps) {
       {url !== undefined && (
         <>
           <input readOnly value={url} aria-label="Share URL" onFocus={(e) => e.target.select()} />
-          <span className="share-hint">{copied ? 'copied' : 'select to copy'}</span>
+          <span className="share-hint">
+            {stale
+              ? 'the view you shared, not the one on screen'
+              : copied
+                ? 'copied'
+                : 'select to copy'}
+          </span>
         </>
       )}
       {restoreError !== undefined && (
