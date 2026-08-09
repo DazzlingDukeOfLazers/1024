@@ -1,0 +1,197 @@
+[
+  {
+    "id": "decimal-0-1-plus-0-2",
+    "name": "0.1 + 0.2",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "1",
+          "denominator": "10"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "1",
+          "denominator": "5"
+        }
+      }
+    ],
+    "kind": "arithmetic"
+  },
+  {
+    "id": "million-millimeters",
+    "name": "Add 1 mm one million times",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      },
+      {
+        "op": "repeat",
+        "count": 1000000,
+        "step": {
+          "op": "add",
+          "value": {
+            "numerator": "1",
+            "denominator": "1000"
+          }
+        },
+        "trace": {
+          "first": 5,
+          "last": 5,
+          "checkpoints": [
+            10,
+            100,
+            1000,
+            10000,
+            100000,
+            500000,
+            1000000
+          ]
+        }
+      }
+    ],
+    "kind": "arithmetic",
+    "note": "Execute all 1,000,000 additions; retain only configured checkpoints plus final statistics by default."
+  },
+  {
+    "id": "large-offset",
+    "name": "Large offset eats the millimeter",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "100000000000000000000",
+          "denominator": "1"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "1",
+          "denominator": "1000"
+        }
+      },
+      {
+        "op": "sub",
+        "value": {
+          "numerator": "100000000000000000000",
+          "denominator": "1"
+        }
+      }
+    ],
+    "kind": "arithmetic"
+  },
+  {
+    "id": "thirds",
+    "name": "Three thirds",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "0",
+          "denominator": "1"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "1",
+          "denominator": "3"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "1",
+          "denominator": "3"
+        }
+      },
+      {
+        "op": "add",
+        "value": {
+          "numerator": "1",
+          "denominator": "3"
+        }
+      }
+    ],
+    "kind": "arithmetic"
+  },
+  {
+    "id": "q128-base-unit-comparison",
+    "kind": "representation-comparison",
+    "name": "Same 256 bits: pick your ruler",
+    "unit": "m",
+    "value": {
+      "numerator": "1",
+      "denominator": "1000"
+    },
+    "representations": [
+      {
+        "kind": "q128.128",
+        "baseUnit": {
+          "numerator": "1",
+          "denominator": "1000"
+        },
+        "label": "mm"
+      },
+      {
+        "kind": "q128.128",
+        "baseUnit": {
+          "numerator": "1",
+          "denominator": "1"
+        },
+        "label": "m"
+      },
+      {
+        "kind": "q128.128",
+        "baseUnit": {
+          "numerator": "1000",
+          "denominator": "1"
+        },
+        "label": "km"
+      }
+    ],
+    "show": [
+      "physicalLsb",
+      "physicalRange",
+      "encodedValue",
+      "quantizationError"
+    ]
+  },
+  {
+    "id": "floating-origin",
+    "kind": "coordinate-strategy",
+    "name": "Floating origin rescues the millimeter",
+    "unit": "m",
+    "origin": {
+      "numerator": "100000000000000000000",
+      "denominator": "1"
+    },
+    "localOffset": {
+      "numerator": "1",
+      "denominator": "1000"
+    },
+    "strategies": [
+      "absolute-binary64",
+      "exact-origin-plus-local-binary64"
+    ],
+    "note": "Demonstrate the failure of absolute binary64 coordinates and the recovery of useful local precision by subtracting the origin before conversion to binary64/render space."
+  }
+]

@@ -1,0 +1,3 @@
+# Normalize to LF in the repository and in the working tree. Prettier's default
+# endOfLine is "lf", so a CRLF checkout on Windows would fail `format:check`.
+* text=auto eol=lf

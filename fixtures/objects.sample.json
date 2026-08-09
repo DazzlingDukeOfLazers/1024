@@ -1,0 +1,133 @@
+[
+  {
+    "id": "planck-length",
+    "name": "Planck length",
+    "categories": [
+      "physics",
+      "reference",
+      "microscopic"
+    ],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": {
+          "numerator": "1616255",
+          "denominator": "100000000000000000000000000000000000000000"
+        },
+        "approximation": "estimated",
+        "note": "Placeholder project fixture. Replace with provenance-backed constant metadata."
+      }
+    },
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/reference.svg"
+      }
+    ]
+  },
+  {
+    "id": "red-blood-cell",
+    "name": "Red blood cell",
+    "aliases": [
+      "RBC",
+      "erythrocyte"
+    ],
+    "categories": [
+      "biology",
+      "cell",
+      "microscopic"
+    ],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": {
+          "numerator": "75",
+          "denominator": "10000000"
+        },
+        "range": {
+          "min": {
+            "numerator": "6",
+            "denominator": "1000000"
+          },
+          "max": {
+            "numerator": "8",
+            "denominator": "1000000"
+          }
+        },
+        "approximation": "representative",
+        "note": "Illustrative fixture; replace with sourced catalog data."
+      }
+    },
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/red-blood-cell.svg"
+      }
+    ]
+  },
+  {
+    "id": "coconut",
+    "name": "Coconut",
+    "categories": [
+      "botany",
+      "fruit",
+      "human-scale"
+    ],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": {
+          "numerator": "1",
+          "denominator": "5"
+        },
+        "range": {
+          "min": {
+            "numerator": "3",
+            "denominator": "20"
+          },
+          "max": {
+            "numerator": "3",
+            "denominator": "10"
+          }
+        },
+        "approximation": "representative",
+        "note": "Illustrative fixture; replace with sourced catalog data."
+      }
+    },
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/coconut.svg"
+      }
+    ]
+  },
+  {
+    "id": "human",
+    "name": "Human",
+    "categories": [
+      "biology",
+      "human-scale"
+    ],
+    "quantities": {
+      "height": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": {
+          "numerator": "17",
+          "denominator": "10"
+        },
+        "approximation": "representative",
+        "note": "Illustrative fixture only."
+      }
+    },
+    "visuals": [
+      {
+        "provider": "bundled",
+        "path": "fallback/human.svg"
+      }
+    ]
+  }
+]
