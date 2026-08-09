@@ -63,16 +63,14 @@ test('no label is drawn too small to read on a phone', async ({ page }) => {
     await openLens(page, lens);
     // The rendered height of an SVG text node, after the viewBox scaling that a
     // fixed viewBox applies to everything inside it.
-    const tiny = await page
-      .locator('svg text')
-      .evaluateAll((nodes) =>
-        nodes
-          .map((node) => ({
-            text: node.textContent ?? '',
-            height: node.getBoundingClientRect().height,
-          }))
-          .filter((entry) => entry.text.trim() !== '' && entry.height > 0 && entry.height < 7),
-      );
+    const tiny = await page.locator('svg text').evaluateAll((nodes) =>
+      nodes
+        .map((node) => ({
+          text: node.textContent ?? '',
+          height: node.getBoundingClientRect().height,
+        }))
+        .filter((entry) => entry.text.trim() !== '' && entry.height > 0 && entry.height < 7),
+    );
     expect(tiny, `${lens} draws text below 7px`).toEqual([]);
   }
 });
