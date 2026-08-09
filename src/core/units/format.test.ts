@@ -64,6 +64,46 @@ describe('engineering notation', () => {
   });
 });
 
+describe('beyond the SI prefixes, engineering notation stops being notation', () => {
+  const m = (exponent: number) => quantity('length', pow10(exponent));
+
+  it('still uses a prefix while one exists', () => {
+    expect(formatEngineering(m(-30)).text).toBe('1 qm');
+    expect(formatEngineering(m(30)).text).toBe('1 Qm');
+  });
+
+  it('lets the mantissa leave [1, 1000) while it stays legible', () => {
+    // This is the documented intent, and `100000 Qm` is what it is for.
+    expect(formatEngineering(m(35)).text).toBe('100000 Qm');
+    expect(formatEngineering(m(-33)).text).toBe('0.001 qm');
+  });
+
+  it('does not print three hundred digits when the prefixes run out', () => {
+    // At 10^-310 the same clamping produced 285 characters of "0.000…001 qm" —
+    // correct, and not a rendering of anything. The Microscope set that in a
+    // sentence and the panel scrolled to 2200 px.
+    for (const exponent of [-100, -310, 100, 400]) {
+      const text = formatEngineering(m(exponent)).text;
+      expect(text.length, `10^${exponent} rendered as ${text.slice(0, 40)}…`).toBeLessThan(24);
+    }
+  });
+
+  it('falls back to a power of ten in the canonical unit', () => {
+    expect(formatEngineering(m(-310)).text).toBe('1 × 10^-310 m');
+    expect(formatEngineering(m(400)).text).toBe('1 × 10^400 m');
+    expect(formatEngineering(m(-310)).unit).toBe('m');
+  });
+
+  it('keeps the value exact across the fallback', () => {
+    expect(formatEngineering(m(-310)).exact).toBe(true);
+  });
+
+  it('leaves an explicitly requested unit alone', () => {
+    // Asking for a unit is asking for that unit, however the digits come out.
+    expect(formatEngineering(m(-310), { unit: 'm' }).unit).toBe('m');
+  });
+});
+
 describe('scientific notation', () => {
   it('renders mantissa × 10^exponent in canonical SI units', () => {
     expect(formatScientific(metres('0.0000075')).text).toBe('7.5 × 10^-6 m');

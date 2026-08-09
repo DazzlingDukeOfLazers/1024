@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { type Page, expect, test } from '@playwright/test';
+import { STATES } from './states';
 
 const LENSES = [
   'Scale Atlas',
@@ -43,6 +44,43 @@ for (const lens of LENSES) {
     ).toBeGreaterThan(20);
   });
 }
+
+/**
+ * The five tests above scan each lens as it first loads. That is the state
+ * someone thought of, and states nobody thought of are where every recent defect
+ * has been — an operation that adds an input, an experiment that adds a Cancel
+ * button, a magnitude that adds a row. A violation in any of those is as real as
+ * one on the landing page and would never have been seen.
+ */
+test('no state of the app has an accessibility violation', async ({ page }) => {
+  test.slow();
+  await page.setViewportSize({ width: 1280, height: 900 });
+
+  const problems: string[] = [];
+  let rulesRun = 0;
+  let nodesChecked = 0;
+
+  for (const state of STATES) {
+    await page.goto('/');
+    await state.reach(page);
+    const results = await scan(page);
+
+    rulesRun += results.passes.length;
+    nodesChecked += results.passes.reduce((total, rule) => total + rule.nodes.length, 0);
+    for (const violation of results.violations) {
+      problems.push(
+        `${state.name}: ${violation.id} (${violation.impact}) on ${violation.nodes.length} node(s)`,
+      );
+    }
+  }
+
+  expect(problems, problems.join('\n')).toEqual([]);
+
+  // A scan of an empty page reports no violations too.
+  expect(STATES.length, 'states enumerated').toBeGreaterThan(20);
+  expect(rulesRun, 'rules run across all states').toBeGreaterThan(200);
+  expect(nodesChecked, 'nodes checked across all states').toBeGreaterThan(1000);
+});
 
 test('every lens is reachable and operable from the keyboard alone', async ({ page }) => {
   await page.goto('/');

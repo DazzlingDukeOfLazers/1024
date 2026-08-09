@@ -38,6 +38,13 @@ export interface FormattedQuantity {
 
 const DEFAULT_SIGNIFICANT_DIGITS = 4;
 
+/**
+ * How far the engineering mantissa may leave [1, 1000) once the SI prefixes run
+ * out, before a power of ten is the more honest rendering. Six decades keeps
+ * `100000 Qm` and rejects three hundred digits of `0.000…001 qm`.
+ */
+const MAX_CLAMPED_MANTISSA_DECADES = 6;
+
 function render(mantissa: DecimalText, unit: string): FormattedQuantity {
   return {
     text: unit.length > 0 ? `${mantissa.text} ${unit}` : mantissa.text,
@@ -65,7 +72,23 @@ export function formatEngineering(q: Quantity, options: FormatOptions = {}): For
     return render(formatDecimal(ZERO, { significantDigits }), baseSymbol);
   }
 
-  const exponent = engineeringExponentFor(orderOfMagnitude10(q.value));
+  const order = orderOfMagnitude10(q.value);
+  const exponent = engineeringExponentFor(order);
+
+  // Outside the range SI names, `engineeringExponentFor` clamps and lets the
+  // mantissa leave [1, 1000) rather than invent a prefix. `100000 Qm` is the
+  // point of that and stays. Far enough out it stops being a rendering at all:
+  // 10^-310 came back as 285 characters of "0.000…001 qm", which the Microscope
+  // then set in a sentence and which scrolled its panel to 2200 px.
+  //
+  // So the mantissa may leave [1, 1000), by up to a factor of a million —
+  // two more engineering steps, still legible in units people know — and past
+  // that there is no readable prefix rendering and the power of ten is the
+  // honest one.
+  if (Math.abs(order - exponent) > MAX_CLAMPED_MANTISSA_DECADES) {
+    return formatScientific(q, options);
+  }
+
   const prefix = prefixByExponent(exponent);
   const symbol = prefix ? `${prefix.symbol}${baseSymbol}` : baseSymbol;
   const magnitude = mul(q.value, pow10(-exponent));

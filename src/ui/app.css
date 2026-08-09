@@ -154,6 +154,13 @@ table.readout {
   border-collapse: collapse;
   font-size: 0.85rem;
   width: 100%;
+  /* Auto layout sizes a column to its widest content, so `overflow-wrap` never
+     gets a chance: the exact decimal expansion of a subnormal is about 320
+     digits and the column simply grew to fit it, scrolling the panel. Fixed
+     layout makes the column respect the table instead, and the long value
+     wraps — which is also easier to read than scrolling sideways along a
+     number. */
+  table-layout: fixed;
 }
 
 table.readout th,
