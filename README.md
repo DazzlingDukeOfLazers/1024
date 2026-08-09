@@ -45,11 +45,13 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–3 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+Current state: Milestones 0–4 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
 core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
-error meter, the Planck grid, and the per-representation ErrorLedger) and the
-binary64 inspector are implemented and tested. Milestone 4 is the experiment
-runner, which is where the representations start disagreeing in public.
+error meter, the Planck grid, and the per-representation ErrorLedger), the
+binary64 inspector and the experiment runner are implemented and tested. The
+built-in experiments run — including a million real millimetre additions per
+machine, in about a second and a half, with a trace of twenty-odd samples.
+Milestone 5 is the catalog and comparator.
 
 The five lenses are placeholders except for the Representation Lab, which holds
 deliberately ugly debug panels that exercise the core in a browser. The lab UI

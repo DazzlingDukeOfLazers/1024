@@ -12,6 +12,7 @@ import { type Quantity, fromUnit } from '../core/quantities/quantity';
 import { ExactCorePanel } from './ExactCorePanel';
 import { FiniteMachinesPanel } from './FiniteMachinesPanel';
 import { Binary64Panel } from './Binary64Panel';
+import { ExperimentsPanel } from './ExperimentsPanel';
 
 const UNIT_CHOICES = [
   'pm',
@@ -48,6 +49,8 @@ export function LabView() {
 
   return (
     <>
+      <ExperimentsPanel />
+
       <section className="panel">
         <div className="field">
           <label htmlFor="literal">Value</label>

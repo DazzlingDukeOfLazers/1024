@@ -376,6 +376,27 @@ The runner should:
 - support streaming/chunked progress callbacks so long runs do not freeze the UI architecture;
 - remain easy to move into a Web Worker without rewriting the numerical core.
 
+## Accounting granularity for long repeats
+
+Executing every iteration and *decomposing* every iteration are different costs. Decomposition is exact-rational work and dominates a long run.
+
+A repeat may therefore be accounted per **checkpoint interval** rather than per iteration. For `add` and `sub` with a constant operand this is not an approximation. Over an interval of `n` iterations, with `R` the represented state and `E` the exact reference:
+
+```text
+E_end     = E_start + n·O
+baseline  = R_start + n·O          inherited  = R_start - E_start
+ideal     = R_start + n·O_r        operand    = n·(O_r - O)
+                                   rounding   = R_end - R_start - n·O_r
+```
+
+and those three sum to `R_end - E_end` exactly, so the §7 identity holds and `decompositionResidual` is still zero.
+
+Interval accounting is **only** permitted for `add`/`sub`, where the operand is constant and the operation does not scale existing error. Every other operation always accounts per iteration.
+
+One figure is not recoverable this way. The cumulative *absolute* operation-rounding total is `Σ|ρᵢ|`, and endpoints only reveal `|Σρᵢ|`. Where a machine's operations are exact — fixed-point and integer addition — every `ρᵢ` is zero and the two agree. Where they are not, the reported absolute total is a lower bound and must be disclosed as one.
+
+The operand-encoding contribution is constant per iteration and keeps the same sign, so `n·|O_r - O|` remains exact.
+
 ---
 
 # 12. Exact-to-render conversion

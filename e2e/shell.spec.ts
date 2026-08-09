@@ -82,6 +82,48 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+test('the runner shows the representations disagreeing', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Representation drift' }) });
+  const row = (name: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  // 0.1 + 0.2 is the default experiment.
+  await expect(row('Exact reference')).toContainText('3 × 10^-1 m');
+  await expect(row('binary64')).toContainText('operations');
+  await expect(row('Q128.128 @ m')).toContainText('operations');
+
+  // The exact reference is truth, not a machine with error.
+  await expect(row('Exact reference')).toContainText('truth');
+
+  await page.getByLabel('Experiment').selectOption({ label: 'Large offset eats the millimeter' });
+  await expect(row('Exact reference')).toContainText('1 × 10^-3 m');
+  // binary64 loses the millimetre entirely; fixed point does not.
+  await expect(row('binary64')).toContainText('0 m');
+});
+
+test('the floating-origin demonstration recovers the millimetre', async ({ page }) => {
+  await page.goto('/');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Floating origin rescues the millimetre' }) });
+
+  await expect(
+    panel
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Absolute coordinates' }) }),
+  ).toContainText('lost entirely');
+  await expect(
+    panel
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Origin subtracted first' }) }),
+  ).toContainText('1 × 10^-3 m');
+});
+
 test('binary64 shows the exact value it actually stored for 0.1', async ({ page }) => {
   await page.goto('/');
 

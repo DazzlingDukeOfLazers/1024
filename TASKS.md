@@ -119,17 +119,43 @@ Discovered while implementing:
 
 ## Experiments
 
-- [ ] Define immutable `ExperimentStep`.
-- [ ] Define per-representation machine interface.
-- [ ] Build experiment runner.
-- [ ] Track operand encoding vs operation rounding/quantization error per representation.
-- [ ] Track current divergence and cumulative absolute diagnostics by category.
-- [ ] Feed per-representation error events into its Q512.512 accumulator.
-- [ ] Implement first-class compact `repeat` with checkpoint trace policy.
-- [ ] Add chunk/progress callback API; keep runner worker-ready.
-- [ ] Serialize/restore compact experiment traces.
-- [ ] Add built-in experiment fixtures.
-- [ ] Add floating-origin/rebasing experiment.
+- [x] Define immutable `ExperimentStep`.
+- [x] Define per-representation machine interface.
+- [x] Build experiment runner.
+- [x] Track operand encoding vs operation rounding/quantization error per representation.
+- [x] Track current divergence and cumulative absolute diagnostics by category.
+- [x] Feed per-representation error events into its Q512.512 accumulator.
+- [x] Implement first-class compact `repeat` with checkpoint trace policy.
+- [x] Add chunk/progress callback API; keep runner worker-ready.
+- [x] Serialize/restore compact experiment traces.
+- [x] Add built-in experiment fixtures.
+- [x] Add floating-origin/rebasing experiment.
+
+Discovered while implementing:
+
+- [x] Measured before designing. A naive million-step run costs ~76 s, of which
+      ~20 s per machine is ledger updates and ~7 s is re-quantizing a constant
+      operand. Two changes bring it to ~1.5 s without weakening any guarantee:
+      `RepeatPlan` hoists operand encoding so each iteration is one integer add,
+      and long repeats account per checkpoint interval.
+- [x] Interval accounting is *exactly equal* to per-iteration accounting for
+      `add`/`sub` — proven by the identity in the runner and asserted by a test
+      that runs both modes and compares ledgers. It is refused for every other
+      op. The one figure it cannot reproduce is the cumulative *absolute*
+      rounding total on machines whose operations round, since errors that
+      cancelled inside an interval are not recoverable from its endpoints; that
+      case sets `absoluteRoundingIsLowerBound` and the UI says so.
+- [x] `decompositionResidual` is asserted on every accounted step; the runner
+      throws rather than recording a decomposition that does not balance.
+- [ ] Only `set`/`add`/`sub`/`mul`/`div` exist. Repeated rotations, velocity
+      integration and subtraction of nearly equal numbers (PROJECT_SPEC §7) need
+      more ops and probably a vector state.
+- [ ] The runner is Worker-ready — pure, chunked, with a plain `{aborted}` signal
+      — but still runs on the main thread. Move it when the Lab UI lands.
+- [ ] `mul`/`div` on the fixed-point machines apply an exact scalar and
+      requantize, so all their error is operation rounding. If a future
+      experiment needs the scalar itself held in a register, that becomes
+      operand encoding and the adapter must change.
 
 ## Catalog
 
