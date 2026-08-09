@@ -283,6 +283,30 @@ def fixed_point(value, base_unit, fraction_bits, width_bits):
     return entry
 
 
+def wide_cases(rng):
+    """Operands for MUL_WIDE, chosen from the list in the architecture doc §19.
+
+    All-zero, all-one, single-bit sparse, leading-zero-heavy, dense random, and
+    the long carry chains that come of multiplying all-ones by all-ones.
+    """
+    cases = [
+        0,
+        1,
+        2,
+        (1 << 64) - 1,
+        1 << 64,
+        (1 << 128) - 1,
+        (1 << 512) - 1,
+        (1 << 1024) - 1,  # all ones: the longest carry chain available
+        (1 << 700) + (1 << 12),  # sparse
+        (1 << 1023),  # leading-zero-heavy the other way
+        (1 << 1023) + 1,
+    ]
+    for _ in range(24):
+        cases.append(rng.getrandbits(rng.randint(1, 1024)))
+    return cases
+
+
 def main():
     rng = random.Random(SEED)
     values = curated() + ties(60, rng) + random_rationals(240, rng)
@@ -364,6 +388,25 @@ def main():
         for value in machine_values
     ]
 
+    # §19: every experimental implementation must be checked against a CPU
+    # oracle, bit for bit. Python's integers are the oracle for MUL_WIDE, which
+    # is the one place unbounded precision is exactly what is wanted.
+    operands = wide_cases(rng)
+    wide_multiply = []
+    for _ in range(160):
+        a = rng.choice(operands)
+        b = rng.choice(operands)
+        sign_a = -1 if rng.random() < 0.25 else 1
+        sign_b = -1 if rng.random() < 0.25 else 1
+        wide_multiply.append(
+            {
+                'a': str(sign_a * a),
+                'b': str(sign_b * b),
+                'product': str(sign_a * a * sign_b * b),
+                'productBits': (a * b).bit_length(),
+            }
+        )
+
     generator = io.open(os.path.abspath(__file__), 'rb').read()
     document = {
         'note': (
@@ -380,6 +423,7 @@ def main():
         'q128': q128,
         'planck': planck,
         'errorMeter': meter,
+        'wideMultiply': wide_multiply,
     }
 
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(
@@ -387,7 +431,7 @@ def main():
     )
     print(
         'wrote %s: %d arithmetic, %d magnitudes, %d decimals, %d encodings, '
-        '%d neighbourhoods, %d q128, %d planck, %d error meter'
+        '%d neighbourhoods, %d q128, %d planck, %d error meter, %d wide multiply'
         % (
             os.path.relpath(OUT, HERE),
             len(arithmetic),
@@ -398,6 +442,7 @@ def main():
             len(q128),
             len(planck),
             len(meter),
+            len(wide_multiply),
         )
     )
 

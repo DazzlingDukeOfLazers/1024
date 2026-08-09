@@ -53,6 +53,8 @@ import {
 import { Q128_128_PRESETS, encodeMeters as encodeQ128 } from './representations/q128_128';
 import { encodeMeters as encodePlanck } from './representations/planck';
 import { Q512_512, encode as encodeFixedPoint } from './representations/fixedPoint';
+import { DIGIT_WIDTHS } from './wide/digits';
+import { mulWide } from './wide/multiply';
 
 const r = ([numerator, denominator]: string[]): Rational =>
   rational(BigInt(numerator!), BigInt(denominator!));
@@ -254,6 +256,42 @@ describe('the finite machines quantize where Python says they do', () => {
       (entry) => entry.fits && entry.quantizationError !== undefined,
     );
     expect(halfLsb.length).toBeGreaterThan(FLOOR);
+  });
+});
+
+describe('MUL_WIDE agrees with the CPU oracle, as §19 requires', () => {
+  it('was given cases to check, including the ones §19 names', () => {
+    expect(oracle.wideMultiply.length).toBeGreaterThan(100);
+    // All-ones against all-ones is the longest carry chain available.
+    const allOnes = ((1n << 1024n) - 1n).toString();
+    expect(oracle.wideMultiply.some((entry) => entry.a === allOnes || entry.b === allOnes)).toBe(
+      true,
+    );
+    expect(oracle.wideMultiply.some((entry) => entry.a.startsWith('-'))).toBe(true);
+    expect(oracle.wideMultiply.some((entry) => entry.product === '0')).toBe(true);
+  });
+
+  it('produces the same product at every digit width', () => {
+    // The simulator accumulates digit by digit and never multiplies the whole
+    // values; Python does the opposite. Agreement across five slice widths is
+    // the check §19 asks for, and the slice width must not change the answer.
+    for (const entry of oracle.wideMultiply) {
+      const a = BigInt(entry.a);
+      const b = BigInt(entry.b);
+      const expected = BigInt(entry.product);
+      for (const digitBits of DIGIT_WIDTHS) {
+        expect(
+          mulWide(a, b, { digitBits, registerBits: 1024 }).value,
+          `${entry.a} × ${entry.b} at ${digitBits}-bit digits`,
+        ).toBe(expected);
+      }
+    }
+  });
+
+  it('needs no more than double width, whatever the operands', () => {
+    for (const entry of oracle.wideMultiply) {
+      expect(entry.productBits, `${entry.a} × ${entry.b}`).toBeLessThanOrEqual(2048);
+    }
   });
 });
 
