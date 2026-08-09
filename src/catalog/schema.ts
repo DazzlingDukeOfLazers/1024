@@ -285,9 +285,14 @@ export function isExactQuantity(quantity: CatalogQuantity): boolean {
  * The schema comment above promises the UI can never present an exact value and
  * a plausible one with the same certainty. That promise is only kept if every
  * view actually says which it is, so the sentence lives here rather than being
- * written out again per lens.
+ * written out again per lens. It takes the two fields it needs rather than a
+ * `CatalogQuantity`, so a comparator subject built from a unit literal gets the
+ * same sentence from the same code.
  */
-export function provenanceSummary(quantity: CatalogQuantity): string {
+export function provenanceSummary(quantity: {
+  readonly approximation: ApproximationKind;
+  readonly source?: string | undefined;
+}): string {
   const kind = {
     exact: 'Exactly defined.',
     measured: 'Measured.',
@@ -296,6 +301,9 @@ export function provenanceSummary(quantity: CatalogQuantity): string {
   }[quantity.approximation];
 
   if (quantity.source !== undefined) return `${kind} ${quantity.source}.`;
+  // A definition needs no citation beyond being one — "1 mm" is not a plausible
+  // round number someone chose. Everything else without a source is.
+  if (quantity.approximation === 'exact') return kind;
   return (
     `${kind} No source recorded — a plausible figure chosen to make the scale legible, ` +
     `not traceable to a citation.`

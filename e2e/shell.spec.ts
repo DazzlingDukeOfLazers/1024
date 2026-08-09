@@ -554,6 +554,34 @@ test('the atlas says what backs every number it shows', async ({ page }) => {
   await expect(readoutRow(page, 'Size')).toContainText('ranges');
 });
 
+test('every lens that shows a curated number says what backs it', async ({ page }) => {
+  // The same red blood cell, in three lenses. It is a plausible round number in
+  // all three, so all three have to say so — a lens that stays quiet about it is
+  // showing it with the same certainty as a defined constant.
+  const uncited = /A representative figure\. No source recorded/;
+
+  await page.goto('/');
+  await page.getByLabel('Object', { exact: true }).selectOption('red-blood-cell');
+  await expect(readoutRow(page, 'Where it comes from')).toContainText(uncited);
+
+  await openRuler(page);
+  await expect(readoutRow(page, 'Red blood cell size')).toContainText(uncited);
+
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+  await page.getByLabel('A', { exact: true }).selectOption('object:red-blood-cell');
+  await page.getByLabel('B', { exact: true }).selectOption('unit:mm');
+  await expect(readoutRow(page, 'Red blood cell (diameter)')).toContainText(uncited);
+
+  // And a unit literal is a definition, not a plausible round number, so the
+  // caveat must not appear against it.
+  const millimetre = readoutRow(page, '1 mm');
+  await expect(millimetre).toContainText('Exactly defined.');
+  await expect(millimetre).not.toContainText('No source recorded');
+});
+
 test('selecting in the atlas carries the object into the other lenses', async ({ page }) => {
   await page.goto('/');
 

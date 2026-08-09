@@ -11,6 +11,7 @@ import { parseRationalExact } from '../../core/rational/parse';
 import { fromUnit } from '../../core/quantities/quantity';
 import { formatCount, formatEngineering } from '../../core/units/format';
 import { CATALOG } from '../../catalog/catalog';
+import { provenanceSummary } from '../../catalog/schema';
 import {
   type ComparisonOperation,
   type ComparisonResult,
@@ -163,12 +164,11 @@ function Answer({ result }: { result: ComparisonResult }) {
                       </small>
                     </>
                   )}
-                  {subject.source !== undefined && (
-                    <>
-                      <br />
-                      <small>{subject.source}</small>
-                    </>
-                  )}
+                  {/* Every subject, not only the cited ones. Showing the source
+                      when there is one and nothing when there is not is how a
+                      plausible round number ends up looking like a fact. */}
+                  <br />
+                  <small>{provenanceSummary(subject)}</small>
                 </td>
               </tr>
             ))}

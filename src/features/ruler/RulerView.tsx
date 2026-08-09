@@ -27,6 +27,7 @@ import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camer
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
+import { provenanceSummary } from '../../catalog/schema';
 import { type RulerState } from '../../share/appState';
 import { RULER_VIEWPORT, rulerPresets } from './presets';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
@@ -91,6 +92,11 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
   /* ---------------------------------------------------------------------- */
   /* Objects laid out end to end                                            */
   /* ---------------------------------------------------------------------- */
+
+  const repeatedLength =
+    preset.repeatObjectId === undefined
+      ? undefined
+      : requireLength(CATALOG.require(preset.repeatObjectId));
 
   const repeated = ((): RepeatedRow | undefined => {
     const repeatObjectId = preset.repeatObjectId;
@@ -361,6 +367,28 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
                     {repeated.totalAcross.toLocaleString()} would span the view; the count is the
                     same at every level of detail.
                   </small>
+                </td>
+              </tr>
+            )}
+            {/* The ruler draws these to scale, which is a strong claim about a
+                number the reader did not choose. It has to say where it came
+                from, in the same words the other lenses use. */}
+            {repeated !== undefined && repeatedLength !== undefined && (
+              <tr>
+                <th scope="row">{repeated.object.name} size</th>
+                <td>
+                  {formatEngineering(repeatedLength.value).text}
+                  {repeatedLength.range !== undefined && (
+                    <>
+                      {' '}
+                      <small>
+                        ({formatEngineering(repeatedLength.range.min).text} to{' '}
+                        {formatEngineering(repeatedLength.range.max).text})
+                      </small>
+                    </>
+                  )}
+                  <br />
+                  <small>{provenanceSummary(repeatedLength)}</small>
                 </td>
               </tr>
             )}

@@ -187,7 +187,18 @@ Discovered while implementing:
       A red blood cell read `7.5 µm`, in the same type as an exactly defined
       astronomical unit, which is precisely what the `approximation` field exists
       to prevent. The selection panel now carries the range and a "Where it comes
-      from" row, from a single `provenanceSummary` so the lenses cannot drift.
+      from" row.
+- [x] **All three lenses that show a curated number, not just the Atlas.** The
+      Comparator had the same defect in a subtler form — it rendered the source
+      when there was one and nothing when there was not, so the 21 uncited
+      objects passed silently. The Ruler draws objects to scale, a strong claim
+      about a number the reader did not choose, and named no source at all. Both
+      now render `provenanceSummary`, and an end-to-end test walks the same red
+      blood cell through all three so they cannot drift apart.
+      `provenanceSummary` takes the two fields it needs rather than a
+      `CatalogQuantity`, so a comparator subject built from a unit literal gets
+      the same sentence from the same code — and says "Exactly defined." with no
+      caveat, because a millimetre is a definition, not a plausible round number.
 - [ ] Source the remaining 21 objects. A data task; the schema, ranges and
       wording all work. Until then the app says they are unsourced, which is
       true, but "true and unsourced" is a weaker position than "sourced".

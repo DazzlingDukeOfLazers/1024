@@ -123,6 +123,15 @@ describe('exact definitions are marked as exact', () => {
     }
   });
 
+  it('does not call an exact definition a plausible round number', () => {
+    // A comparator subject built from a unit literal is exact and carries no
+    // source, because a millimetre is a definition rather than a citation. The
+    // uncited caveat would be false about it.
+    expect(provenanceSummary({ approximation: 'exact' })).toBe('Exactly defined.');
+    expect(provenanceSummary({ approximation: 'representative' })).toContain('No source recorded');
+    expect(provenanceSummary({ approximation: 'estimated' })).toContain('No source recorded');
+  });
+
   it('says what backs a number whether or not it is cited', () => {
     // Both branches have to produce a sentence, or a view that renders it will
     // silently say nothing for exactly the values that need the caveat most.
