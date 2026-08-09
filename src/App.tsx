@@ -5,6 +5,7 @@ import { LabView } from './ui/LabView';
 import { ComparatorView } from './features/comparator/ComparatorView';
 import { RulerView } from './features/ruler/RulerView';
 import { AtlasView } from './features/atlas/AtlasView';
+import { MicroscopeView } from './features/microscope/MicroscopeView';
 import { rulerPresets } from './features/ruler/presets';
 import { CATALOG } from './catalog/catalog';
 import {
@@ -12,6 +13,7 @@ import {
   type AtlasState,
   type ComparatorState,
   type LabState,
+  type MicroscopeState,
   type RepresentationState,
   type RulerState,
   defaultAppState,
@@ -89,6 +91,11 @@ export function App() {
       setState((current) => ({ ...current, lab: update(current.lab) })),
     [],
   );
+  const setMicroscope = useCallback(
+    (update: (current: MicroscopeState) => MicroscopeState) =>
+      setState((current) => ({ ...current, microscope: update(current.microscope) })),
+    [],
+  );
   const setRepresentations = useCallback(
     (update: (current: RepresentationState) => RepresentationState) =>
       setState((current) => ({ ...current, representations: update(current.representations) })),
@@ -162,6 +169,13 @@ export function App() {
           />
         ) : state.lens === 'comparator' ? (
           <ComparatorView state={state.comparator} onChange={setComparator} />
+        ) : state.lens === 'microscope' ? (
+          <MicroscopeView
+            state={state.microscope}
+            onChange={setMicroscope}
+            representations={state.representations}
+            onRepresentationsChange={setRepresentations}
+          />
         ) : state.lens === 'lab' ? (
           <LabView
             state={state.lab}

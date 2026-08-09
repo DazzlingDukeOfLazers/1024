@@ -7,46 +7,20 @@
  */
 
 import { type Quantity, quantity } from '../core/quantities/quantity';
-import { formatCount, formatScientific } from '../core/units/format';
-import { type Rational, isZero } from '../core/rational/rational';
+import { formatScientific } from '../core/units/format';
+import { type Rational } from '../core/rational/rational';
 import {
   Q128_128_PRESETS,
-  type Q128_128Config,
   type Q128_128PresetName,
   encodeMeters as encodeQ128,
-  isExactlyRepresentable,
-  physicalLsbMeters,
-  physicalRangeMeters,
 } from '../core/representations/q128_128';
-import {
-  encodeMeters as encodePlanck,
-  metersToPlanckLengths,
-  summarizeLength,
-} from '../core/representations/planck';
+import { encodeMeters as encodePlanck, summarizeLength } from '../core/representations/planck';
 import { PLANCK_LENGTH } from '../core/representations/constants';
 import { accumulate, createAccumulator, readAccumulator } from '../core/representations/q512_512';
-
-const PRESET_ORDER: readonly Q128_128Config[] = [
-  Q128_128_PRESETS.mm,
-  Q128_128_PRESETS.m,
-  Q128_128_PRESETS.km,
-  Q128_128_PRESETS.Mm,
-];
+import { PickYourRuler } from '../features/microscope/PickYourRuler';
 
 function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
-}
-
-function inPlanckLengths(value: Rational): string {
-  return isZero(value) ? '0' : `${formatCount(metersToPlanckLengths(value)).text} lP`;
-}
-
-function ExactnessTag({ exact }: { exact: boolean }) {
-  return (
-    <span className={exact ? 'tag tag-exact' : 'tag tag-rounded'}>
-      {exact ? 'exact' : 'quantized'}
-    </span>
-  );
 }
 
 export interface FiniteMachinesPanelProps {
@@ -77,52 +51,7 @@ export function FiniteMachinesPanel({ length, preset, onPresetChange }: FiniteMa
     <>
       <section className="panel">
         <h3>Same 256 bits. Pick your ruler.</h3>
-        <table className="readout">
-          <thead>
-            <tr>
-              <th scope="col">Machine</th>
-              <th scope="col">LSB</th>
-              <th scope="col">Max reach</th>
-              <th scope="col">This value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {PRESET_ORDER.map((config) => {
-              const write = encodeQ128(config, length.value);
-              const exact = isExactlyRepresentable(config, length.value);
-              const lsbMeters = physicalLsbMeters(config);
-              return (
-                <tr
-                  key={config.baseUnitLabel}
-                  className={config.baseUnitLabel === preset ? 'selected' : undefined}
-                >
-                  <th scope="row">Q128.128 @ {config.baseUnitLabel}</th>
-                  <td className="mono">
-                    {meters(lsbMeters)}
-                    <br />
-                    <small>{inPlanckLengths(lsbMeters)}</small>
-                  </td>
-                  <td className="mono">{meters(physicalRangeMeters(config).max)}</td>
-                  <td className="mono">
-                    {write.status === 'rejected' ? (
-                      <span className="error">out of range</span>
-                    ) : (
-                      <>
-                        <ExactnessTag exact={exact} />
-                        {!exact && write.quantizationErrorMeters !== undefined && (
-                          <>
-                            <br />
-                            <small>error {meters(write.quantizationErrorMeters)}</small>
-                          </>
-                        )}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <PickYourRuler meters={length.value} preset={preset} onPresetChange={onPresetChange} />
         <p className="lens-question">
           Every row is the same 256-bit register. Only the machine base unit differs — and the
           machine base unit is not the display unit.

@@ -147,6 +147,7 @@ describe('everything else in the view', () => {
       displayUnit: 'nm',
       zoomToDisagreement: true,
     },
+    microscope: { literal: '2.5', unit: 'nm' },
     representations: { q128Preset: 'mm' },
   };
 
@@ -157,6 +158,10 @@ describe('everything else in the view', () => {
   it('carries the selection', () => {
     expect(roundTrip(state).selectedObjectId).toBe('coconut');
     expect(roundTrip({ ...state, selectedObjectId: undefined }).selectedObjectId).toBeUndefined();
+  });
+
+  it('carries the microscope reference magnitude', () => {
+    expect(roundTrip(state).microscope).toEqual({ literal: '2.5', unit: 'nm' });
   });
 
   it('carries the Q128.128 machine base unit, which is not a display setting', () => {

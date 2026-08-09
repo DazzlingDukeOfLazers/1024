@@ -45,14 +45,20 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–9 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
-core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
-error meter, the Planck grid, and the per-representation ErrorLedger), the
-binary64 inspector, the experiment runner, the catalog and comparator, the linear
-SVG ruler, the logarithmic Atlas, shareable state and the Representation Lab are
-implemented and tested. The built-in experiments run — including a million real
-millimetre additions per machine, in about a second and a half, with a trace of
-twenty-odd samples. Milestone 10 is the Numerical Microscope.
+Current state: Milestones 0–10 of `docs/IMPLEMENTATION_PLAN.md`. All five lenses
+are live, on top of the exact quantity core, the finite machines (Q128.128 at a
+configurable base unit, the Q512.512 error meter, the Planck grid, and the
+per-representation ErrorLedger), the binary64 inspector, the experiment runner,
+the catalog and shareable state. The built-in experiments run — including a
+million real millimetre additions per machine, in about a second and a half,
+with a trace of twenty-odd samples. Milestone 11 is progressive semantic detail.
+
+**What numbers can this computer see here?** The Microscope draws each
+representation's local lattice at its own scale, walking real binary64
+neighbours so the asymmetric gap at a power of two shows up as an asymmetric
+gap. Its resolution chart shows binary64's spacing climbing a decade per decade
+of magnitude while a fixed-point grid stays flat — and the two lines crossing,
+because far below a zeptometre the float is the finer of the pair.
 
 **Zoom to disagreement** draws every representation at true scale first, where
 they genuinely occupy the same pixel, then magnifies until they separate — and
@@ -65,10 +71,6 @@ both cameras. Exact values cross as strings, so a camera parked at
 `10^20 m + 1 mm` comes back as the identical rational. The payload lives in the
 URL fragment, which browsers never send to a server — "no backend required" is
 structural rather than a promise.
-
-Four of the five lenses are live: the Scale Atlas, the Metric Ruler, the
-Comparator and the Representation Lab. The Numerical Microscope is still a
-placeholder.
 
 The ruler's camera centre is an exact rational, so panning out and back returns
 to exactly where it started, and a millimetre stays resolvable with the camera

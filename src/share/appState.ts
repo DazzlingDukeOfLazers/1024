@@ -52,6 +52,13 @@ export interface LabState {
   readonly zoomToDisagreement: boolean;
 }
 
+export interface MicroscopeState {
+  /** The magnitude being inspected, as typed. */
+  readonly literal: string;
+  /** Unit the literal is in — part of what the value means. */
+  readonly unit: string;
+}
+
 export interface RepresentationState {
   /**
    * Which Q128.128 machine the lab emphasises. Changing this changes the
@@ -67,6 +74,7 @@ export interface AppState {
   readonly ruler: RulerState;
   readonly comparator: ComparatorState;
   readonly lab: LabState;
+  readonly microscope: MicroscopeState;
   readonly representations: RepresentationState;
 }
 
@@ -88,6 +96,7 @@ export function defaultAppState(): AppState {
       displayUnit: 'mm',
       zoomToDisagreement: false,
     },
+    microscope: { literal: '1', unit: 'm' },
     representations: { q128Preset: 'm' },
   };
 }

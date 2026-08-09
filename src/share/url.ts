@@ -62,6 +62,7 @@ interface ShareStateJSON {
     displayUnit: string;
     zoomToDisagreement: boolean;
   };
+  microscope: { literal: string; unit: string };
   representations: { q128Preset: string };
 }
 
@@ -106,6 +107,7 @@ export function stateToJSON(state: AppState): ShareStateJSON {
       countText: state.comparator.countText,
     },
     lab: { ...state.lab },
+    microscope: { ...state.microscope },
     representations: { ...state.representations },
   };
   return state.selectedObjectId === undefined
@@ -223,6 +225,10 @@ export function stateFromJSON(json: unknown): AppState {
         typeof record.lab?.zoomToDisagreement === 'boolean'
           ? record.lab.zoomToDisagreement
           : defaults.lab.zoomToDisagreement,
+    },
+    microscope: {
+      literal: requireString(record.microscope?.literal, defaults.microscope.literal),
+      unit: requireString(record.microscope?.unit, defaults.microscope.unit),
     },
     representations: {
       q128Preset:

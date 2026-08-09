@@ -308,12 +308,38 @@ Discovered while implementing:
 
 ## Numerical Microscope
 
-- [ ] Q128.128 adjacent-value lattice at selectable machine base units.
-- [ ] Add "Same 256 bits. Pick your ruler." range/LSB panel.
-- [ ] binary64 adjacent-value lattice with asymmetric gaps.
-- [ ] magnitude slider/input.
-- [ ] visual local resolution comparison.
-- [ ] exact stored-value inspector.
+- [x] Q128.128 adjacent-value lattice at selectable machine base units.
+- [x] Add "Same 256 bits. Pick your ruler." range/LSB panel.
+- [x] binary64 adjacent-value lattice with asymmetric gaps.
+- [x] magnitude input.
+- [x] visual local resolution comparison.
+- [x] exact stored-value inspector.
+
+Discovered while implementing:
+
+- [x] Each lattice is drawn at *its own* scale, and each row says what that
+      scale is. A shared scale would be dishonest — Q128.128 @ m is twenty-three
+      decades finer than binary64 near 1 m, so one of the two would always be an
+      invisible smear.
+- [x] The binary64 lattice walks real `successor`/`predecessor` neighbours rather
+      than stepping by a nominal gap, so the uneven spacing at a power of two
+      shows up as uneven spacing on screen. A constant-LSB approximation would
+      have hidden exactly the thing the lens exists to show.
+- [x] The resolution-against-magnitude chart makes the acceptance criterion one
+      picture, and shows the lines *crossing*: below about 10^-23 m, binary64 is
+      the finer of the two. Fixed point is not uniformly better, and the lens
+      should not imply it is.
+- [x] "Same 256 bits. Pick your ruler." is now one component used by both the
+      Microscope and the Lab, rather than two tables that could disagree about
+      what a machine can hold.
+- [ ] There is no zoom control on a lattice — the radius is fixed at four
+      neighbours either side. UI_SPEC mentions "zoom to adjacent representable
+      values", which this satisfies statically but not interactively.
+- [ ] The chart samples one point per decade. Near a power of two the binary64
+      line is really a staircase, and at this resolution it reads as a straight
+      line.
+- [ ] Subnormals are reachable but not called out. Below ~10^-308 binary64's
+      spacing stops growing and goes constant, which is worth a note in the lens.
 
 ## Share state
 

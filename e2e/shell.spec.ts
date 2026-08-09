@@ -91,6 +91,113 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+const openMicroscope = async (page: Page) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Numerical Microscope' })
+    .click();
+};
+
+test('the microscope shows what each representation can see here', async ({ page }) => {
+  await openMicroscope(page);
+
+  // One metre: binary64 sits on a power-of-two boundary, so its two neighbours
+  // are different distances away.
+  const binary64 = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+  await expect(binary64.getByText('asymmetric')).toBeVisible();
+  await expect(binary64).toContainText('power-of-two boundary');
+  await expect(
+    binary64.locator('tr').filter({ has: page.getByRole('rowheader', { name: 'Gap below' }) }),
+  ).toContainText('1.11 × 10^-16 m');
+  await expect(
+    binary64.locator('tr').filter({ has: page.getByRole('rowheader', { name: 'Gap above' }) }),
+  ).toContainText('2.22 × 10^-16 m');
+
+  // The fixed-point machine has one spacing, both ways.
+  const q128 = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Q128.128 @ m', exact: true }) });
+  await expect(q128).toContainText('Constant spacing everywhere in range');
+  await expect(q128.getByText('asymmetric')).toHaveCount(0);
+  await expect(q128.locator('svg')).toBeVisible();
+});
+
+test('binary64 spacing grows with magnitude while fixed point does not', async ({ page }) => {
+  await openMicroscope(page);
+
+  const gapAbove = (heading: string) =>
+    page
+      .locator('section.panel')
+      .filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Gap above' }) });
+
+  // The acceptance criterion, read straight off the screen.
+  await expect(gapAbove('binary64')).toContainText('2.22 × 10^-16 m');
+  await expect(gapAbove('Q128.128 @ m')).toContainText('2.939 × 10^-39 m');
+
+  // `exact` because the lattice SVGs are labelled "... representable values",
+  // which getByLabel would otherwise match as a substring.
+  await page.getByLabel('Value', { exact: true }).fill('1');
+  await page.getByLabel('Unit', { exact: true }).selectOption('Gm');
+
+  // binary64's spacing climbed sixteen decades; the fixed-point grid did not
+  // move at all. 1 Gm sits in [2^29, 2^30), so the local gap is 2^-23 m.
+  await expect(gapAbove('binary64')).toContainText('1.192 × 10^-7 m');
+  await expect(gapAbove('Q128.128 @ m')).toContainText('2.939 × 10^-39 m');
+});
+
+test('switching the Q128.128 base unit trades range against resolution', async ({ page }) => {
+  await openMicroscope(page);
+
+  const gapAbove = (heading: string) =>
+    page
+      .locator('section.panel')
+      .filter({ has: page.getByRole('heading', { name: heading, exact: true }) })
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Gap above' }) });
+
+  await expect(gapAbove('Q128.128 @ m')).toContainText('2.939 × 10^-39 m');
+
+  await page.getByLabel('Q128.128 base unit').selectOption('km');
+
+  // A thousand times coarser, and a thousand times further reaching.
+  await expect(gapAbove('Q128.128 @ km')).toContainText('2.939 × 10^-36 m');
+
+  const table = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Same 256 bits. Pick your ruler.' }) });
+  await expect(
+    table
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Q128.128 @ mm', exact: true }) }),
+  ).toContainText('10^-42');
+  await expect(
+    table
+      .locator('tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Q128.128 @ km', exact: true }) }),
+  ).toContainText('10^-36');
+});
+
+test('the microscope charts resolution against magnitude', async ({ page }) => {
+  await openMicroscope(page);
+
+  const chart = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Local resolution against magnitude' }) });
+
+  await expect(
+    chart.getByRole('img', { name: 'Local resolution against magnitude' }),
+  ).toBeVisible();
+  await expect(chart).toContainText('binary64 (grows)');
+  await expect(chart).toContainText('Q128.128 @ m (constant)');
+  await expect(chart).toContainText('Planck grid (constant)');
+  await expect(chart).toContainText('Neither representation is simply better');
+});
+
 test('the lab runs an experiment and shows every machine disagreeing', async ({ page }) => {
   await openLab(page);
   await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
