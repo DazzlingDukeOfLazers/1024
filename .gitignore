@@ -22,3 +22,6 @@ pnpm-debug.log*
 
 # Throwaway screenshots from looking at the app
 shots/
+
+# Python bytecode from tools/
+__pycache__/
