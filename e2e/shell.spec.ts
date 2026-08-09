@@ -5,6 +5,15 @@ const readoutRow = (page: Page, header: string) =>
     .locator('table.readout tr')
     .filter({ has: page.getByRole('rowheader', { name: header, exact: true }) });
 
+/** The app lands on the Atlas, so lab tests navigate there first. */
+const openLab = async (page: Page) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Representation Lab' })
+    .click();
+};
+
 test('the app shell navigates between lenses', async ({ page }) => {
   await page.goto('/');
 
@@ -23,7 +32,7 @@ test('the app shell navigates between lenses', async ({ page }) => {
 });
 
 test('0.1 m stays exactly one tenth however it is displayed', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   await expect(readoutRow(page, 'Exact rational')).toContainText('1/10');
   await expect(readoutRow(page, 'Engineering')).toContainText('100 mm');
@@ -37,7 +46,7 @@ test('0.1 m stays exactly one tenth however it is displayed', async ({ page }) =
 });
 
 test('rounded renderings are labelled as rounded', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   await expect(readoutRow(page, 'Engineering')).toContainText('exact');
 
@@ -48,7 +57,7 @@ test('rounded renderings are labelled as rounded', async ({ page }) => {
 });
 
 test('magnitudes far outside binary64 range still resolve', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   await page.getByLabel('Value').fill('1e400');
   await expect(readoutRow(page, 'Order of magnitude')).toContainText('10^400');
@@ -56,7 +65,7 @@ test('magnitudes far outside binary64 range still resolve', async ({ page }) => 
 });
 
 test('the finite machines trade range against resolution', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const table = page
     .locator('section.panel')
@@ -80,6 +89,86 @@ test('the finite machines trade range against resolution', async ({ page }) => {
     .filter({ has: page.getByRole('rowheader', { name: 'Q128.128 @ m', exact: true }) });
   await expect(atMm).toContainText('exact');
   await expect(atM).toContainText('quantized');
+});
+
+test('the atlas spans the catalog on one logarithmic axis', async ({ page }) => {
+  await page.goto('/');
+
+  // The Atlas is the landing lens.
+  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible();
+
+  // Engineering boundaries are labelled with prefixes, across the whole range.
+  const axis = page.locator('svg.atlas');
+  for (const label of ['nm', 'µm', 'mm', 'm', 'km', 'Mm', 'Gm']) {
+    await expect(axis.getByText(label, { exact: true }).first()).toBeVisible();
+  }
+
+  // Everything is accounted for, whether merged into a cluster or not.
+  await expect(page.getByText(/24 of 24 objects in view/)).toBeVisible();
+  await expect(page.getByText(/crowded ones merge rather than being dropped/)).toBeVisible();
+});
+
+test('selecting in the atlas carries the object into the other lenses', async ({ page }) => {
+  await page.goto('/');
+
+  // Nothing is selected to begin with.
+  await expect(page.locator('p.selection-banner')).toHaveCount(0);
+
+  const atlas = page.locator('svg.atlas');
+  const box = await atlas.boundingBox();
+  if (box === null) throw new Error('atlas has no box');
+
+  // Zoom in around human scale so a single object is unambiguous to click.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 12; i += 1) await page.mouse.wheel(0, -100);
+
+  const label = atlas.getByText('Coconut', { exact: true });
+  await expect(label).toBeVisible();
+  const labelBox = await label.boundingBox();
+  if (labelBox === null) throw new Error('no coconut label');
+
+  // Click the marker under the label.
+  await page.mouse.click(labelBox.x + 2, box.y + box.height * (150 / 240));
+
+  const banner = page.locator('p.selection-banner');
+  await expect(banner).toContainText('Coconut');
+  await expect(readoutRow(page, 'Object')).toContainText('Coconut');
+  await expect(readoutRow(page, 'Size')).toContainText('200 mm');
+
+  // It survives the jump to every other lens.
+  const nav = page.getByRole('navigation', { name: 'Lenses' });
+  await nav.getByRole('button', { name: 'Comparator' }).click();
+  await expect(banner).toContainText('Coconut');
+  await expect(page.getByLabel('A', { exact: true })).toHaveValue('object:coconut');
+
+  await nav.getByRole('button', { name: 'Representation Lab' }).click();
+  await expect(banner).toContainText('Coconut');
+
+  await nav.getByRole('button', { name: 'Scale Atlas' }).click();
+  await expect(banner).toContainText('Coconut');
+});
+
+test('the atlas can hand an object to the ruler', async ({ page }) => {
+  await page.goto('/');
+
+  const atlas = page.locator('svg.atlas');
+  const box = await atlas.boundingBox();
+  if (box === null) throw new Error('atlas has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 12; i += 1) await page.mouse.wheel(0, -100);
+
+  const label = atlas.getByText('Coconut', { exact: true });
+  const labelBox = await label.boundingBox();
+  if (labelBox === null) throw new Error('no coconut label');
+  await page.mouse.click(labelBox.x + 2, box.y + box.height * (150 / 240));
+
+  await page.getByRole('button', { name: 'Open in Ruler' }).click();
+
+  // The ruler is now showing, framed on the selection.
+  await expect(page.locator('svg.ruler')).toBeVisible();
+  await expect(page.getByLabel('Preset')).toHaveValue('selection');
+  await expect(page.getByText('Framed on the selection from the Atlas')).toBeVisible();
+  await expect(readoutRow(page, 'Across the view')).toContainText('333');
 });
 
 const openRuler = async (page: Page) => {
@@ -277,7 +366,7 @@ test('the comparison strip collapses when items fall below a pixel', async ({ pa
 });
 
 test('the runner shows the representations disagreeing', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const panel = page
     .locator('section.panel')
@@ -300,7 +389,7 @@ test('the runner shows the representations disagreeing', async ({ page }) => {
 });
 
 test('the floating-origin demonstration recovers the millimetre', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const panel = page
     .locator('section.panel')
@@ -319,7 +408,7 @@ test('the floating-origin demonstration recovers the millimetre', async ({ page 
 });
 
 test('binary64 shows the exact value it actually stored for 0.1', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const panel = page
     .locator('section.panel')
@@ -338,7 +427,7 @@ test('binary64 shows the exact value it actually stored for 0.1', async ({ page 
 });
 
 test('binary64 gaps are asymmetric at a power of two', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const panel = page
     .locator('section.panel')
@@ -355,7 +444,7 @@ test('binary64 gaps are asymmetric at a power of two', async ({ page }) => {
 });
 
 test('the Planck grid states that it is a thought experiment', async ({ page }) => {
-  await page.goto('/');
+  await openLab(page);
 
   const planck = page
     .locator('section.panel')

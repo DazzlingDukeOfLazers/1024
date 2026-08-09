@@ -178,8 +178,16 @@ function Answer({ result }: { result: ComparisonResult }) {
   );
 }
 
-export function ComparatorView() {
-  const [a, setA] = useState<SubjectChoice>({ kind: 'object', id: 'red-blood-cell' });
+export interface ComparatorViewProps {
+  /** An object selected in another lens; becomes subject A on arrival. */
+  initialObjectId?: string | undefined;
+}
+
+export function ComparatorView({ initialObjectId }: ComparatorViewProps = {}) {
+  const [a, setA] = useState<SubjectChoice>({
+    kind: 'object',
+    id: initialObjectId ?? 'red-blood-cell',
+  });
   const [b, setB] = useState<SubjectChoice>({ kind: 'unit', symbol: 'mm' });
   const [operation, setOperation] = useState<ComparisonOperation>('how-many-fit');
   const [countText, setCountText] = useState('123');

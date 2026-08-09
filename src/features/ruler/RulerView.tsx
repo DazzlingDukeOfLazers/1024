@@ -44,11 +44,29 @@ interface Preset {
   repeatObjectId?: string;
 }
 
-function presets(): Preset[] {
+function presets(focusObjectId?: string): Preset[] {
   const coconut = requireLength(CATALOG.require('coconut')).value.value;
   const millimetre = fromUnit(rational(1n), 'mm').value;
 
+  // A selection made in the Atlas arrives here as a preset of its own, framed
+  // on the object, so the jump between lenses lands somewhere useful.
+  const focused: Preset[] = [];
+  const focusObject = focusObjectId === undefined ? undefined : CATALOG.get(focusObjectId);
+  if (focusObject !== undefined) {
+    const size = requireLength(focusObject).value.value;
+    focused.push({
+      id: 'selection',
+      label: `Selected: ${focusObject.name}`,
+      description: `Framed on the selection from the Atlas. ${
+        formatEngineering(quantity('length', size)).text
+      } across.`,
+      camera: frameLength(ZERO, size, VIEWPORT, 0.6),
+      repeatObjectId: focusObject.id,
+    });
+  }
+
   return [
+    ...focused,
     {
       id: 'rbc-across-mm',
       label: 'Red blood cells across a millimetre',
@@ -103,8 +121,13 @@ interface RepeatedRow {
   items: PlacedObject[];
 }
 
-export function RulerView() {
-  const allPresets = presets();
+export interface RulerViewProps {
+  /** An object selected in another lens, framed on arrival. */
+  focusObjectId?: string | undefined;
+}
+
+export function RulerView({ focusObjectId }: RulerViewProps = {}) {
+  const allPresets = presets(focusObjectId);
   const [presetId, setPresetId] = useState(allPresets[0]!.id);
   const preset = allPresets.find((entry) => entry.id === presetId) ?? allPresets[0]!;
 

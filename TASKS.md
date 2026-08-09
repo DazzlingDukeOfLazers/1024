@@ -243,12 +243,32 @@ Discovered while implementing:
 
 ## Atlas
 
-- [ ] Implement exact-safe Rational log10 positioning (no full Rational → Number coercion).
-- [ ] Add decade/prefix axis.
-- [ ] Render object markers.
-- [ ] Declutter overlapping labels.
-- [ ] Selection.
-- [ ] Jump Atlas → Ruler.
+- [x] Implement exact-safe Rational log10 positioning (no full Rational → Number coercion).
+- [x] Add decade/prefix axis.
+- [x] Render object markers.
+- [x] Declutter overlapping labels.
+- [x] Selection.
+- [x] Jump Atlas → Ruler.
+
+Discovered while implementing:
+
+- [x] Markers and labels declutter separately. Markers merge into clusters that
+      report every member — nothing is dropped, and the object count is
+      displayed. Labels collide far sooner because text is wide, so they stagger
+      across three rows and are only withheld when even staggering fails. A
+      withheld label is not a hidden object.
+- [x] Selection lives in the app shell rather than in a lens, which is what makes
+      it survive the Atlas → Ruler jump. The Ruler is keyed on the selection so
+      choosing an object re-frames the camera without an effect chasing a prop,
+      and the Comparator takes it as subject A.
+- [x] The landing lens is now the Atlas. Nine e2e tests that assumed the Lab was
+      on screen navigate there explicitly.
+- [ ] Cluster membership is anchored at the first member, so which object
+      represents a cluster can change as you pan. Fine at 24 objects; a stable
+      representative (largest? nearest the centroid?) would be better at 500.
+- [ ] Progressive semantic detail (milestone 11) is the missing half of the
+      Atlas: zooming should reveal *related* objects, not just closer ones.
+- [ ] No keyboard navigation for selection yet — the markers are pointer-only.
 
 ## Representation Lab
 

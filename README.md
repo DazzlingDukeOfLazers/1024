@@ -45,21 +45,25 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–6 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+Current state: Milestones 0–7 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
 core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
 error meter, the Planck grid, and the per-representation ErrorLedger), the
-binary64 inspector, the experiment runner, the catalog and comparator, and the
-linear SVG ruler are implemented and tested. The built-in experiments run —
-including a million real millimetre additions per machine, in about a second and
-a half, with a trace of twenty-odd samples. Milestone 7 is the logarithmic Atlas.
+binary64 inspector, the experiment runner, the catalog and comparator, the linear
+SVG ruler and the logarithmic Atlas are implemented and tested. The built-in
+experiments run — including a million real millimetre additions per machine, in
+about a second and a half, with a trace of twenty-odd samples. Milestone 8 is
+shareable state.
 
-Three of the five lenses are live: the Metric Ruler, the Comparator, and the
-Representation Lab, which holds deliberately ugly debug panels that exercise the
-numeric core in a browser. The Atlas and Microscope are still placeholders.
+Four of the five lenses are live: the Scale Atlas, the Metric Ruler, the
+Comparator, and the Representation Lab, which holds deliberately ugly debug
+panels that exercise the numeric core in a browser. The Numerical Microscope is
+still a placeholder.
 
 The ruler's camera centre is an exact rational, so panning out and back returns
 to exactly where it started, and a millimetre stays resolvable with the camera
-sitting 10^20 m from zero.
+sitting 10^20 m from zero. The atlas positions magnitudes through an exact-safe
+log10, so it places 10^-35 and 10^27 on one axis — and would place 10^400, which
+has no `double` at all.
 
 The 24 catalog objects span about 10^-35 m to 10^27 m. Two are exact
 definitions; the rest are marked `demonstration value` and are not yet sourced —
