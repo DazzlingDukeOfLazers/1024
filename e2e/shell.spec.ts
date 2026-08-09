@@ -54,3 +54,42 @@ test('magnitudes far outside binary64 range still resolve', async ({ page }) => 
   await expect(readoutRow(page, 'Order of magnitude')).toContainText('10^400');
   await expect(readoutRow(page, 'log10 (atlas position)')).toContainText('400.000000');
 });
+
+test('the finite machines trade range against resolution', async ({ page }) => {
+  await page.goto('/');
+
+  const table = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Same 256 bits. Pick your ruler.' }) });
+
+  await expect(table.getByRole('rowheader', { name: 'Q128.128 @ mm', exact: true })).toBeVisible();
+  await expect(table.getByRole('rowheader', { name: 'Q128.128 @ km', exact: true })).toBeVisible();
+
+  // 0.1 m is quantized on every binary grid.
+  await expect(table.getByText('quantized').first()).toBeVisible();
+
+  // 1 mm is exact at @mm and quantized at @m — same 256 bits, different ruler.
+  await page.getByLabel('Value').fill('1');
+  await page.getByLabel('Unit', { exact: true }).selectOption('mm');
+
+  const atMm = table
+    .locator('tr')
+    .filter({ has: page.getByRole('rowheader', { name: 'Q128.128 @ mm', exact: true }) });
+  const atM = table
+    .locator('tr')
+    .filter({ has: page.getByRole('rowheader', { name: 'Q128.128 @ m', exact: true }) });
+  await expect(atMm).toContainText('exact');
+  await expect(atM).toContainText('quantized');
+});
+
+test('the Planck grid states that it is a thought experiment', async ({ page }) => {
+  await page.goto('/');
+
+  const planck = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Planck grid (256-bit integer)' }) });
+
+  await expect(planck).toContainText('not a claim that spacetime is discrete');
+  await expect(planck).toContainText('CODATA 2018');
+  await expect(planck.getByRole('rowheader', { name: 'This value' })).toBeVisible();
+});

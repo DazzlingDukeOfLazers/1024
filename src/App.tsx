@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { LENSES, type LensId } from './ui/lenses';
-import { ExactCorePanel } from './ui/ExactCorePanel';
+import { LabView } from './ui/LabView';
 
 /**
- * Milestone 0/1 app shell.
+ * Milestone 0–2 app shell.
  *
  * Four lenses are placeholders on purpose — docs/IMPLEMENTATION_PLAN.md builds
  * them after the numerical core is trustworthy. Navigation state will move into
@@ -37,7 +37,7 @@ export function App() {
         <p className="lens-question">{active?.question}</p>
 
         {lens === 'lab' ? (
-          <ExactCorePanel />
+          <LabView />
         ) : (
           <p className="placeholder">
             Not built yet — see docs/IMPLEMENTATION_PLAN.md for the milestone that delivers this

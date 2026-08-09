@@ -45,23 +45,44 @@ Discovered while implementing:
 
 ## Finite registers
 
-- [ ] Implement signed width limits.
-- [ ] Implement two's-complement wrapping.
-- [ ] Implement checked overflow event type.
-- [ ] Implement generic binary fixed-point helper.
-- [ ] Implement configurable-base-unit Q128.128 (`@mm`, `@m`, `@km` presets).
-- [ ] Keep machine base unit separate from display unit.
-- [ ] Implement Q512.512 finite error accumulator.
-- [ ] Define per-representation ErrorLedger.
-- [ ] Add exact/inexact/base-unit/overflow tests.
+- [x] Implement signed width limits.
+- [x] Implement two's-complement wrapping.
+- [x] Implement checked overflow event type.
+- [x] Implement generic binary fixed-point helper.
+- [x] Implement configurable-base-unit Q128.128 (`@mm`, `@m`, `@km` presets).
+- [x] Keep machine base unit separate from display unit.
+- [x] Implement Q512.512 finite error accumulator.
+- [x] Define per-representation ErrorLedger.
+- [x] Add exact/inexact/base-unit/overflow tests.
+
+Discovered while implementing:
+
+- [x] `storeSigned` is the only way a value enters a simulated register, and a
+      refused checked write carries no value at all — a caller cannot use one by
+      accident.
+- [x] The error meters saturate by default rather than refusing. A refused write
+      silently drops a contribution; a pinned reading plus an event is honest.
+      `docs/NUMERICS.md` §6 updated.
+- [x] `cumulativeSignedIntroducedError` added to the ErrorLedger: the exact
+      counterpart of the signed Q512.512 meter, so the meter's own quantization is
+      measurable rather than assumed. `docs/NUMERICS.md` §6 updated.
+- [x] Four-register spacetime frames (`spacetime.ts`) with exact `ct` conversion.
+- [ ] `ErrorContribution` is currently produced by hand. The experiment runner
+      (milestone 4) must compute the §7 decomposition and assert
+      `decompositionResidual` is zero on every step.
+- [ ] Only addition is implemented on the finite machines. Subtraction, multiply
+      and divide arrive with the experiment step types in milestone 4.
 
 ## Planck representation
 
-- [ ] Add declared Planck nominal constant metadata/provenance/uncertainty structure.
-- [ ] Keep physical constant uncertainty separate from numerical error.
-- [ ] Implement 256-bit Planck tick register.
-- [ ] Implement SI ↔ Planck quantization.
-- [ ] Keep physical-model disclaimer in UI.
+- [x] Add declared Planck nominal constant metadata/provenance/uncertainty structure.
+- [x] Keep physical constant uncertainty separate from numerical error.
+- [x] Implement 256-bit Planck tick register.
+- [x] Implement SI ↔ Planck quantization.
+- [x] Keep physical-model disclaimer in UI.
+- [ ] Constants are frozen as `CODATA_2018`. Adding a second set (a later CODATA,
+      or a deliberately different nominal) would demonstrate that quantization is
+      conditioned on the declaration — worth doing once experiments are versioned.
 
 ## Binary64
 

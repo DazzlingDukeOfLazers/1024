@@ -197,13 +197,21 @@ interface ErrorLedger {
 
   cumulativeAbsoluteOperandEncodingContribution: Rational;
   cumulativeAbsoluteOperationRoundingError: Rational;
+  cumulativeSignedIntroducedError: Rational;
 
   q512_512SignedAccumulator: FixedPointState;
   q512_512AbsoluteAccumulator: FixedPointState;
+
+  meterEvents: readonly OverflowEvent[];
+  steps: number;
 }
 ```
 
 The exact cumulative event totals are diagnostics. They are not expected to equal current divergence because errors can cancel or be amplified by later operations.
+
+`cumulativeSignedIntroducedError` is the exact counterpart of the signed Q512.512 meter: the same running sum, computed without a finite register. Keeping both makes the meter's own quantization and saturation measurable rather than assumed. `meterEvents` records overflow raised by the meters themselves, which is a property of the meter and not of the representation being measured.
+
+The error meters **saturate** by default rather than refusing a write. A refused write would silently drop a contribution; a visibly pinned reading plus an overflow event is the more honest failure. Checked mode remains selectable.
 
 ---
 

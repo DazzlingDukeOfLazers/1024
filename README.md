@@ -45,9 +45,14 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0 and 1 of `docs/IMPLEMENTATION_PLAN.md`. The exact
-quantity core is implemented and tested; the five lenses are placeholders except
-for a deliberately ugly debug panel that exercises the exact core in the browser.
+Current state: Milestones 0–2 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+core and the finite machines (Q128.128 at a configurable base unit, the Q512.512
+error meter, the Planck grid, and the per-representation ErrorLedger) are
+implemented and tested. Milestone 3 is the binary64 inspector.
+
+The five lenses are placeholders except for the Representation Lab, which holds
+deliberately ugly debug panels that exercise the core in a browser. The lab UI
+from `docs/UI_SPEC.md` arrives with the experiment runner.
 
 ## Start here
 
