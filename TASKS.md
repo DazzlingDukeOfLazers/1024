@@ -1025,7 +1025,13 @@ What it asks for, roughly in dependency order:
 - [ ] The other division algorithms §10 lists, and a benchmark that compares
       them. The point of naming the algorithm in the metrics is to make that
       comparison possible; nothing compares yet.
-- [ ] Scenario settings (§14) so one workload runs under several policies.
+- [x] Scenario settings (§14) so one workload runs under several policies. The
+      four §14 names as values in `scenario.ts`, threaded through rather than
+      ambient, and a workload runner that carries an exact rational reference so
+      divergence is a fact rather than a comparison between two guesses.
+      "Preserve everything" needed a decision: it cannot mean "never narrow" in a
+      fixed-width machine, so it means narrow and carry the leftovers, which is
+      what `ACCUMULATE_RESIDUE` supports and what the conservation test asserts.
 - [ ] The metrics in §20 — significant width, partial products executed against
       skipped, modeled cycles — because the point is measurement, not intuition.
 - [ ] WebGPU compute track (§18), after the CPU simulation works.
