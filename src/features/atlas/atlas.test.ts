@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { atlasEntries, clusterLabel, clusterNearest, clusteredCount, declutter } from './atlas';
 import { type Viewport } from '../../camera/camera';
 import { createLogCamera, frameDecades } from '../../camera/logCamera';
+import { estimateTextWidth } from '../../camera/labels';
 import { CATALOG } from '../../catalog/catalog';
 
 const viewport: Viewport = { widthPx: 1000, heightPx: 300 };
@@ -94,11 +95,19 @@ describe('label staggering', () => {
     const rows = new Set(clusters.map((cluster) => cluster.labelRow));
     expect(rows.size).toBeGreaterThan(1);
 
-    // Within a row, labels keep their minimum spacing.
+    // Within a row, no label runs into the one before it. The test used to
+    // assert a fixed 96 px gap, which is what the code assumed and what let
+    // "Virus (representative)" overlap "Human" on screen: the allowance was met
+    // and the words still collided. What matters is the width of the text that
+    // is actually drawn.
     for (let row = 0; row < 3; row += 1) {
       const inRow = clusters.filter((cluster) => cluster.labelRow === row);
       for (let i = 1; i < inRow.length; i += 1) {
-        expect(inRow[i]!.x - inRow[i - 1]!.x).toBeGreaterThanOrEqual(96);
+        const previous = inRow[i - 1]!;
+        const gap = inRow[i]!.x - previous.x;
+        expect(gap, `row ${row}, after ${clusterLabel(previous)}`).toBeGreaterThanOrEqual(
+          estimateTextWidth(clusterLabel(previous), 11),
+        );
       }
     }
   });

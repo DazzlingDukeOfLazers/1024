@@ -16,6 +16,7 @@ import { type Rational } from '../../core/rational/rational';
 import { log10RationalForDisplay } from '../../core/rational/log10';
 import { type Viewport } from '../../camera/camera';
 import { type LogCamera, atlasXFromLog10, frameDecades } from '../../camera/logCamera';
+import { estimateTextWidth, placeInRows } from '../../camera/labels';
 import { type ScaleObject } from '../../catalog/schema';
 import { CATALOG, requireLength } from '../../catalog/catalog';
 
@@ -55,19 +56,19 @@ export interface AtlasCluster {
 export interface DeclutterOptions {
   /** Markers closer than this merge into one cluster. */
   readonly minMarkerSpacingPx?: number;
-  /** Labels closer than this on the same row are pushed to the next row. */
-  readonly minLabelSpacingPx?: number;
   /** How many rows labels may be staggered across. */
   readonly labelRows?: number;
   /** Pixels of slack outside the viewport before an entry is culled. */
   readonly cullMarginPx?: number;
+  /** Font size the labels are drawn at, which is what sets how wide they are. */
+  readonly labelFontSizePx?: number;
 }
 
 const DEFAULTS = {
   minMarkerSpacingPx: 10,
-  minLabelSpacingPx: 96,
   labelRows: 3,
   cullMarginPx: 120,
+  labelFontSizePx: 11,
 } as const;
 
 /**
@@ -82,9 +83,9 @@ export function declutter(
   options: DeclutterOptions = {},
 ): AtlasCluster[] {
   const minMarkerSpacing = options.minMarkerSpacingPx ?? DEFAULTS.minMarkerSpacingPx;
-  const minLabelSpacing = options.minLabelSpacingPx ?? DEFAULTS.minLabelSpacingPx;
   const labelRows = options.labelRows ?? DEFAULTS.labelRows;
   const cullMargin = options.cullMarginPx ?? DEFAULTS.cullMarginPx;
+  const labelFontSize = options.labelFontSizePx ?? DEFAULTS.labelFontSizePx;
 
   const visible = entries
     .map((entry) => ({ entry, x: atlasXFromLog10(camera, entry.log10, viewport) }))
@@ -104,35 +105,44 @@ export function declutter(
     clusters.push({ x, log10: entry.log10, members: [entry] });
   }
 
-  // Stagger labels. Each row remembers where its last label ended, so a long
-  // name on row 0 pushes the next one to row 1 rather than overlapping it.
-  const rowEnds = new Array<number>(labelRows).fill(Number.NEGATIVE_INFINITY);
-  return clusters.map((cluster) => {
-    const representative = cluster.members[0]!;
-    let labelRow = -1;
-    for (let row = 0; row < labelRows; row += 1) {
-      if (cluster.x - rowEnds[row]! >= minLabelSpacing) {
-        rowEnds[row] = cluster.x;
-        labelRow = row;
-        break;
-      }
-    }
-    return {
+  // Stagger labels by how wide each one actually is. A fixed allowance was what
+  // let "Virus (representative)" run straight through "Human": the allowance
+  // said they fitted, and the words did not.
+  const placed = placeInRows(
+    clusters.map((cluster) => ({
+      ...cluster,
+      representative: cluster.members[0]!,
+    })),
+    (cluster) => ({
       x: cluster.x,
-      log10: cluster.log10,
-      members: cluster.members,
-      representative,
-      labelRow,
-    };
-  });
+      width: estimateTextWidth(
+        labelTextFor(cluster.members[0]!, cluster.members.length),
+        labelFontSize,
+      ),
+      anchor: 'start' as const,
+    }),
+    labelRows,
+    // A name that starts near the right edge is cut in half rather than read.
+    { bounds: { min: 0, max: viewport.widthPx } },
+  );
+
+  return placed.map(({ item, row }) => ({
+    x: item.x,
+    log10: item.log10,
+    members: item.members,
+    representative: item.representative,
+    labelRow: row,
+  }));
+}
+
+/** The text a cluster of `size` members anchored at `representative` will draw. */
+function labelTextFor(representative: AtlasEntry, size: number): string {
+  return size === 1 ? representative.object.name : `${representative.object.name} +${size - 1}`;
 }
 
 /** Text for a cluster: the representative's name, plus how many it stands for. */
 export function clusterLabel(cluster: AtlasCluster): string {
-  const extra = cluster.members.length - 1;
-  return extra === 0
-    ? cluster.representative.object.name
-    : `${cluster.representative.object.name} +${extra}`;
+  return labelTextFor(cluster.representative, cluster.members.length);
 }
 
 /** Total objects placed, however they were grouped. Nothing is ever dropped silently. */

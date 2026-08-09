@@ -109,6 +109,9 @@ body {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
+  /* Without this the Atlas's four controls pushed "Open in Ruler" off the right
+     edge of a 420 px screen, where it could not be reached at all. */
+  flex-wrap: wrap;
 }
 
 .field label {

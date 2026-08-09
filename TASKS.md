@@ -683,6 +683,38 @@ found nothing today, which is the point of adding it before a rename rather than
 after. It cannot tell a done item from an open one — that stays a reading job,
 and this section is the record that it needs doing.
 
+## I had never looked at the app
+
+Eleven commits of verifying claims through tests, and I had never opened the
+thing. Every check had gone through the DOM, which is exactly the wrong tool for
+"is this readable". Five minutes of screenshots at 1280 px and 420 px found four
+defects that 66 passing tests did not:
+
+- The Atlas drew `Virus (representative)Human +1` as one run of characters.
+  Labels were staggered using a fixed 96 px allowance whatever the label said,
+  so a long name and a short one "fitted" and collided. It now measures the text
+  that is actually drawn.
+- Its decade axis read `10^-45 m10^-42 m10^-39 m` when zoomed out. The ticks all
+  stay; only labels that would collide are dropped.
+- The Ruler drew its unit symbol through the last tick label, so a 420 px screen
+  read `µ200`.
+- The Atlas's four controls did not wrap, so `Open in Ruler` sat off the right
+  edge of a 420 px screen where it could not be reached at all.
+
+Adding the edge-culling check then found a fifth: cluster labels near the right
+edge were cut down the middle rather than dropped.
+
+`labels.ts` holds the placement arithmetic, shared and pure. Width has to be
+*estimated* there — those modules are DOM-free by design and
+`getComputedTextLength` needs a live SVG — so the estimate errs wide, and
+`e2e/labels.spec.ts` measures the real rendered boxes at four widths and asserts
+nothing overlaps or runs off the edge. A bad estimate now fails loudly.
+
+- [ ] Look at the app after any change to layout. A test suite that checks
+      geometry through `getBoundingClientRect` cannot tell you the words are on
+      top of each other; it will happily confirm that two unreadable labels are
+      each exactly where the code put them.
+
 ## Hardening
 
 - [x] Playwright critical path.

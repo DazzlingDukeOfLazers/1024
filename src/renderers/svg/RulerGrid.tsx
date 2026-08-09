@@ -8,6 +8,7 @@
  */
 
 import { type GridTick } from '../../camera/grid';
+import { estimateTextWidth, keepNonOverlapping } from '../../camera/labels';
 
 export interface RulerGridProps {
   ticks: readonly GridTick[];
@@ -20,8 +21,36 @@ export interface RulerGridProps {
 
 const MAJOR_TICK = 14;
 const MINOR_TICK = 6;
+const LABEL_FONT_SIZE = 10;
+const UNIT_FONT_SIZE = 11;
 
 export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerGridProps) {
+  /**
+   * Which major ticks get to keep their label. The unit symbol sits in the top
+   * right corner on the same line, and the last tick label was drawn straight
+   * through it — at 420 px the ruler read "µ200". The ticks themselves all stay;
+   * only a label that cannot be read is dropped.
+   */
+  const labelled = new Set(
+    keepNonOverlapping(
+      ticks.filter((tick) => tick.major),
+      (tick) => ({
+        x: tick.x + 3,
+        width: estimateTextWidth(tick.label ?? '', LABEL_FONT_SIZE),
+        anchor: 'start' as const,
+      }),
+      {
+        reserved: [
+          {
+            x: width - 4,
+            width: estimateTextWidth(unitSymbol, UNIT_FONT_SIZE),
+            anchor: 'end' as const,
+          },
+        ],
+      },
+    ).map((tick) => tick.x),
+  );
+
   return (
     <g className="ruler-grid">
       {ticks.map((tick) =>
@@ -45,15 +74,17 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
               stroke="currentColor"
               strokeOpacity={0.7}
             />
-            <text
-              x={tick.x + 3}
-              y={baseline - MAJOR_TICK - 4}
-              fontSize={10}
-              fill="currentColor"
-              fillOpacity={0.75}
-            >
-              {tick.label}
-            </text>
+            {labelled.has(tick.x) && (
+              <text
+                x={tick.x + 3}
+                y={baseline - MAJOR_TICK - 4}
+                fontSize={LABEL_FONT_SIZE}
+                fill="currentColor"
+                fillOpacity={0.75}
+              >
+                {tick.label}
+              </text>
+            )}
           </g>
         ) : (
           <line
@@ -80,7 +111,7 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
       <text
         x={width - 4}
         y={baseline - MAJOR_TICK - 4}
-        fontSize={11}
+        fontSize={UNIT_FONT_SIZE}
         fill="currentColor"
         textAnchor="end"
       >

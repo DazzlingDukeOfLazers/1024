@@ -26,6 +26,7 @@ import { primaryLength, provenanceSummary } from '../../catalog/schema';
 import { type AtlasState } from '../../share/appState';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { type Pinch, pinchOf, pinchScale } from '../../camera/pinch';
+import { estimateTextWidth, keepNonOverlapping } from '../../camera/labels';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 import { SemanticPanel } from './SemanticPanel';
 import {
@@ -43,6 +44,8 @@ const AXIS_Y = 186;
 const MARKER_Y = 150;
 const LABEL_TOP = 34;
 const LABEL_ROW_HEIGHT = 17;
+/** Must match the `fontSize` the decade labels are drawn at, or the width estimate is of the wrong text. */
+const TICK_FONT_SIZE = 11;
 
 const ENTRIES = ATLAS_ENTRIES;
 
@@ -91,6 +94,21 @@ export function AtlasView({
   };
 
   const ticks = decadeTicks(camera, VIEWPORT);
+  // Zoomed far out the decade labels ran into each other — "10^-45 m10^-42 m".
+  // The ticks all stay; only the labels that would collide are dropped.
+  const labelledTicks = new Set(
+    keepNonOverlapping(
+      ticks.filter((tick) => tick.engineering),
+      (tick) => ({
+        x: tick.x,
+        width: estimateTextWidth(tick.label, TICK_FONT_SIZE),
+        anchor: 'middle' as const,
+      }),
+      // A label centred on the last tick falls half outside the view, where it
+      // is cut down the middle rather than read.
+      { bounds: { min: 0, max: VIEWPORT.widthPx } },
+    ).map((tick) => tick.exponent),
+  );
   // The band the camera is showing, which is what makes the suggestions below
   // change as you zoom rather than being a fixed list.
   const band = {
@@ -276,11 +294,11 @@ export function AtlasView({
                 stroke="currentColor"
                 strokeOpacity={tick.engineering ? 0.8 : 0.4}
               />
-              {tick.engineering && (
+              {labelledTicks.has(tick.exponent) && (
                 <text
                   x={tick.x}
                   y={AXIS_Y + 24}
-                  fontSize={11}
+                  fontSize={TICK_FONT_SIZE}
                   textAnchor="middle"
                   fill="currentColor"
                   fillOpacity={0.85}
