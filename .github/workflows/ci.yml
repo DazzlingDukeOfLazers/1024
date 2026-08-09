@@ -47,6 +47,9 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
+      # Playwright serves the production bundle, not the dev server, so these
+      # verify what ships. It rebuilds first; the build above is here to fail
+      # fast and on its own terms.
       - name: End-to-end tests
         run: npm run test:e2e
 

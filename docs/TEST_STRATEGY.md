@@ -178,6 +178,16 @@ Playwright flows:
 
 Prefer semantic selectors/roles.
 
+Playwright serves the **production bundle** (`npm run build && npm run preview`),
+not the dev server. React's development build is a different program: StrictMode
+double-invokes effects, prop validation and jsx dev warnings dominate the render
+path, and errors surface differently. Testing `npm run dev` verifies something
+other than what ships. The build costs about a second.
+
+Figures stated in pixels are held against measured DOM geometry rather than
+against the code that produced them (`e2e/pixels.spec.ts`). A readout that agrees
+with itself in viewBox units can be wrong on every screen at once.
+
 ---
 
 # Visual regression

@@ -521,11 +521,54 @@ properly means distinguishing a camera that was framed from one that was
 restored from a link, because reframing a shared link would break the promise
 that a link reproduces the sender's view exactly.
 
+## The tests were verifying the dev server
+
+Playwright's `webServer` ran `npm run dev`, so all 55 flows exercised React's
+development build — a different program from the one that ships. StrictMode
+double-invokes effects there, prop validation and jsx dev warnings dominate the
+render path, and errors surface differently. It now builds and serves the
+production bundle on port 4173. All 55 pass against it, and faster.
+
+This surfaced while profiling: the first profile was three-quarters React
+development machinery — `jsxDEV`, `validateProperty`,
+`defineKeyPropWarningGetter` — which is to say it was a profile of the wrong
+program.
+
+## Performance profiling — measured, nothing to fix
+
+Main-thread cost per pointer-move during a drag, production bundle, CDP
+`Performance.getMetrics`, this machine:
+
+| view                       | script    | layout    |
+| -------------------------- | --------- | --------- |
+| Atlas drag                 | 1.43 ms   | 1.19 ms   |
+| Ruler drag                 | 2.70 ms   | 0.50 ms   |
+| Ruler drag, 80 notches in  | 2.03 ms   | 0.14 ms   |
+| Ruler drag at a 1e20 m origin | 2.56 ms | 0.18 ms  |
+| Ruler resize               | 0.28 ms   | 0.68 ms   |
+
+Roughly five times inside a 16 ms frame, so the render path is left alone. Two
+things worth recording:
+
+- Zooming deep and moving the origin out to 1e20 m do **not** cost more. The
+  exact rational math stays bounded, which is the claim the camera design makes,
+  and it is now measured rather than argued.
+- Resizing is cheap, so the per-render `rulerPresets` / `fullRangeCamera` /
+  `declutter` recomputation the measured-width change introduced costs nothing
+  worth memoising away.
+
+No perf assertion is checked in: a timing threshold in CI is a flaky test, and
+these numbers describe one machine.
+
+- [ ] Re-measure on a phone-class device before claiming the drag is smooth
+      there. 2.7 ms here could be 15 ms on a low-end Android.
+
 ## Hardening
 
 - [x] Playwright critical path.
 - [x] Accessibility pass.
 - [x] Pixel claims measured against the DOM.
-- [ ] performance profiling.
+- [x] End-to-end tests run against the production bundle.
+- [x] performance profiling.
 - [ ] visual regression after layout stabilizes.
 - [ ] documentation refresh.
