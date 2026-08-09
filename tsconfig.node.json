@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["ES2023"],
+    // DOM, because Playwright's `evaluate` callbacks run in the page. It does
+    // not loosen anything for `src`: that is compiled by tsconfig.app.json, and
+    // the eslint config is what keeps the DOM out of the numeric core.
+    "lib": ["ES2023", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "types": ["node"],

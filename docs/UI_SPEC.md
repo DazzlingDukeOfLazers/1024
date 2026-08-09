@@ -179,6 +179,12 @@ Use pleasant spacings:
 
 Target roughly 80–140 px between major divisions.
 
+Both pannable views set `touch-action: none`, which takes the browser's own
+pinch away. That is the right call — the camera is the app's, not the page's —
+but it makes implementing the gesture mandatory rather than optional. A
+touchscreen has no wheel and no keyboard, so a view that suppresses pinch and
+does not replace it cannot be zoomed at all.
+
 A pixel means a CSS pixel on the screen in front of the reader, not a unit of
 some nominal design width. Every view that states a figure in pixels — grid
 spacing, level of detail, "below a pixel here", the Atlas's minimum marker

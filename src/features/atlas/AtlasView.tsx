@@ -25,6 +25,7 @@ import { CATALOG } from '../../catalog/catalog';
 import { primaryLength, provenanceSummary } from '../../catalog/schema';
 import { type AtlasState } from '../../share/appState';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
+import { type Pinch, pinchOf, pinchScale } from '../../camera/pinch';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 import { SemanticPanel } from './SemanticPanel';
 import {
@@ -76,6 +77,18 @@ export function AtlasView({
   };
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ x: number; moved: boolean } | undefined>(undefined);
+  /** Every pointer currently down, by id, at its position in view pixels. */
+  const pointers = useRef(new Map<number, number>());
+  const pinchState = useRef<Pinch | undefined>(undefined);
+
+  const endPointer = (event: React.PointerEvent<SVGSVGElement>): void => {
+    pointers.current.delete(event.pointerId);
+    pinchState.current = undefined;
+    // Lifting one of two fingers hands the drag to the one still down, so the
+    // view continues from where it is rather than jumping.
+    const remaining = [...pointers.current.values()];
+    dragState.current = remaining.length === 1 ? { x: remaining[0]!, moved: true } : undefined;
+  };
 
   const ticks = decadeTicks(camera, VIEWPORT);
   // The band the camera is showing, which is what makes the suggestions below
@@ -190,12 +203,43 @@ export function AtlasView({
           aria-label={`Scale atlas. ${KEYBOARD_HINT}`}
           onKeyDown={onKeyDown}
           onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            dragState.current = { x: localX(event.currentTarget, event.clientX), moved: false };
+            // Capture is a convenience, not a requirement: a pointer the browser
+            // does not know about cannot be captured, and that must not take the
+            // gesture down with it.
+            try {
+              event.currentTarget.setPointerCapture(event.pointerId);
+            } catch {
+              /* not capturable; the gesture works without it */
+            }
+            const x = localX(event.currentTarget, event.clientX);
+            pointers.current.set(event.pointerId, x);
+            const pinch = pinchOf([...pointers.current.values()]);
+            pinchState.current = pinch;
+            // A second finger ends the drag and starts a pinch. `moved` stays
+            // true so lifting out of a pinch never reads as a tap.
+            dragState.current = pinch === undefined ? { x, moved: false } : { x, moved: true };
           }}
           onPointerMove={(event) => {
-            if (dragState.current === undefined) return;
+            if (!pointers.current.has(event.pointerId)) return;
             const x = localX(event.currentTarget, event.clientX);
+            pointers.current.set(event.pointerId, x);
+
+            const pinch = pinchOf([...pointers.current.values()]);
+            if (pinch !== undefined) {
+              const previous = pinchState.current;
+              pinchState.current = pinch;
+              if (previous === undefined) return;
+              // The midpoint moving is a pan, the fingers separating is a zoom,
+              // and a real gesture is nearly always both at once.
+              const panPixels = pinch.center - previous.center;
+              const factor = pinchScale(previous, pinch);
+              setCamera((current) =>
+                zoomLogAt(panLogByPixels(current, panPixels), factor, pinch.center, VIEWPORT),
+              );
+              return;
+            }
+
+            if (dragState.current === undefined) return;
             const delta = x - dragState.current.x;
             if (Math.abs(delta) > 0.5) {
               dragState.current = { x, moved: true };
@@ -204,16 +248,15 @@ export function AtlasView({
           }}
           onPointerUp={(event) => {
             const state = dragState.current;
-            dragState.current = undefined;
+            const wasPinching = pointers.current.size > 1;
+            endPointer(event);
             // A drag pans; a click selects. Distinguishing them here keeps
             // panning from clearing the selection every time.
-            if (state === undefined || state.moved) return;
+            if (state === undefined || state.moved || wasPinching) return;
             const hit = clusterNearest(clusters, localX(event.currentTarget, event.clientX));
             onSelect(hit?.representative.object.id);
           }}
-          onPointerCancel={() => {
-            dragState.current = undefined;
-          }}
+          onPointerCancel={(event) => endPointer(event)}
         >
           {ticks.map((tick) => (
             <g key={tick.exponent}>

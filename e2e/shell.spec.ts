@@ -1,4 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
+import { metresIn } from './parse';
 
 const readoutRow = (page: Page, header: string) =>
   page
@@ -14,13 +15,6 @@ const rulerWidth = async (page: Page): Promise<number> => {
   const box = await page.locator('svg.ruler').boundingBox();
   if (box === null) throw new Error('ruler has no box');
   return box.width;
-};
-
-/** The millimetre figure from an "Across the view" style readout. */
-const millimetresIn = (text: string): number => {
-  const [, value, prefix] = /([\d.]+)\s*(µ|m|c|k)?m\b/.exec(text) ?? [];
-  const scale: Record<string, number> = { µ: 1e-3, m: 1, c: 10, k: 1e6 };
-  return Number(value) * (prefix === undefined ? 1000 : (scale[prefix] ?? 1));
 };
 
 /** The app lands on the Atlas, so lab tests navigate there first. */
@@ -361,8 +355,8 @@ test('a large-offset disagreement view survives being sent as a link', async ({ 
   await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
   // Still millimetre-scale across, at the preset's 10 µm per pixel. The figure
   // is the scale times the width the view is drawn at, not a fixed number.
-  const across = millimetresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
-  expect(across).toBeCloseTo(0.01 * (await rulerWidth(page)), 1);
+  const across = metresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
+  expect(across).toBeCloseTo(1e-5 * (await rulerWidth(page)), 4);
 
   // And the rest of the view came with it.
   await page
@@ -672,9 +666,9 @@ test('the ruler resolves a millimetre beside a 1e20 m origin', async ({ page }) 
   await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
   // ...and the view across it is only millimetres wide: 10 µm per pixel, times
   // however many pixels the view was actually given.
-  const across = millimetresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
-  expect(across).toBeCloseTo(0.01 * (await rulerWidth(page)), 1);
-  expect(across).toBeLessThan(100);
+  const across = metresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
+  expect(across).toBeCloseTo(1e-5 * (await rulerWidth(page)), 4);
+  expect(across).toBeLessThan(0.1);
   await expect(readoutRow(page, 'Grid step')).toContainText('labelled in mm');
 
   // The grid still has labelled ticks out there, which is the whole point:

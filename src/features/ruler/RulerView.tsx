@@ -25,6 +25,7 @@ import {
 } from '../../camera/camera';
 import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camera/grid';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
+import { type Pinch, pinchLog10Delta, pinchOf } from '../../camera/pinch';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
 import { provenanceSummary } from '../../catalog/schema';
@@ -77,6 +78,9 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
     }));
   };
   const dragState = useRef<{ x: number } | undefined>(undefined);
+  /** Every pointer currently down, by id, at its position in view pixels. */
+  const pointers = useRef(new Map<number, number>());
+  const pinchState = useRef<Pinch | undefined>(undefined);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const selectPreset = (id: string): void => {
@@ -152,6 +156,29 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
   const localX = (element: Element, clientX: number): number => {
     const bounds = element.getBoundingClientRect();
     return ((clientX - bounds.left) / bounds.width) * VIEWPORT.widthPx;
+  };
+
+  /**
+   * Capture is a convenience, not a requirement: it keeps a finger that strays
+   * outside the element still steering the camera. A pointer the browser does
+   * not know about — a synthetic one from a test — cannot be captured, and that
+   * must not take the gesture down with it.
+   */
+  const capture = (event: React.PointerEvent<SVGSVGElement>): void => {
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      /* not capturable; the gesture works without it */
+    }
+  };
+
+  const endPointer = (event: React.PointerEvent<SVGSVGElement>): void => {
+    pointers.current.delete(event.pointerId);
+    pinchState.current = undefined;
+    // Lifting one of two fingers hands the drag to the one still down, so the
+    // view continues from where it is rather than jumping.
+    const remaining = [...pointers.current.values()];
+    dragState.current = remaining.length === 1 ? { x: remaining[0]! } : undefined;
   };
 
   // React attaches its wheel listener passively, so `preventDefault` inside an
@@ -234,22 +261,42 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           aria-label={`Metric ruler. ${KEYBOARD_HINT}`}
           onKeyDown={onKeyDown}
           onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            dragState.current = { x: localX(event.currentTarget, event.clientX) };
+            capture(event);
+            const x = localX(event.currentTarget, event.clientX);
+            pointers.current.set(event.pointerId, x);
+            const pinch = pinchOf([...pointers.current.values()]);
+            // A second finger ends the drag and starts a pinch, rather than
+            // both running at once and fighting over the camera.
+            pinchState.current = pinch;
+            dragState.current = pinch === undefined ? { x } : undefined;
           }}
           onPointerMove={(event) => {
-            if (dragState.current === undefined) return;
+            if (!pointers.current.has(event.pointerId)) return;
             const x = localX(event.currentTarget, event.clientX);
-            const delta = x - dragState.current.x;
+            pointers.current.set(event.pointerId, x);
+
+            const pinch = pinchOf([...pointers.current.values()]);
+            if (pinch !== undefined) {
+              const previous = pinchState.current;
+              pinchState.current = pinch;
+              if (previous === undefined) return;
+              // The midpoint moving is a pan, the fingers separating is a zoom,
+              // and a real gesture is nearly always both at once.
+              const panPixels = pinch.center - previous.center;
+              const delta = pinchLog10Delta(previous, pinch);
+              setCamera((current) =>
+                zoomAt(panByPixels(current, panPixels), delta, pinch.center, VIEWPORT),
+              );
+              return;
+            }
+
+            if (dragState.current === undefined) return;
+            const drag = x - dragState.current.x;
             dragState.current = { x };
-            setCamera((current) => panByPixels(current, delta));
+            setCamera((current) => panByPixels(current, drag));
           }}
-          onPointerUp={() => {
-            dragState.current = undefined;
-          }}
-          onPointerCancel={() => {
-            dragState.current = undefined;
-          }}
+          onPointerUp={(event) => endPointer(event)}
+          onPointerCancel={(event) => endPointer(event)}
         >
           <RulerGrid
             ticks={ticks}

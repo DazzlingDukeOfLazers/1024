@@ -261,8 +261,19 @@ Discovered while implementing:
       attached by effect.
 - [x] Manual `useMemo`/`useCallback` removed from the ruler: the React Compiler
       lint could not preserve it, and the computations are cheap.
-- [ ] Pinch zoom is not implemented — only wheel. It needs pointer-event
-      bookkeeping for two touches.
+- [x] **On a phone there was no way to zoom either view at all.** Both set
+      `touch-action: none`, which takes the browser's own pinch away — correct,
+      because the app owns the gesture, but only if the app then implements it,
+      and it did not. The wheel does not exist on a touchscreen and neither
+      does the keyboard, so the two central lenses were pan-only there. The
+      gesture arithmetic is in `pinch.ts`, pure and shared, so the ruler and
+      the atlas cannot drift; each view keeps its own pointer bookkeeping
+      because their drag semantics differ. Lifting one of two fingers hands
+      the drag to the one still down rather than jumping, and lifting out of a
+      pinch never reads as a tap on the Atlas.
+- [ ] Rotation and two-finger panning of a vertical axis are not handled, because
+      neither view has a second axis yet. When the ruler gains one, `pinch.ts`
+      needs the same treatment in y rather than a second gesture model.
 - [x] The viewport was a fixed 960×260 SVG viewBox scaled by CSS rather than a
       measured element, which made every figure the view stated in pixels false
       at every width but one. `useMeasuredWidth` and a `ResizeObserver` now size
