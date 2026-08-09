@@ -513,6 +513,20 @@ Discovered while implementing:
       comparison are still main-thread, and `docs/ARCHITECTURE.md` names both as
       later candidates.
 - [ ] CI has never actually run — there is no remote push yet from this machine.
+      What has been done instead: a clean clone of the branch into an empty
+      directory, `npm ci` from the lockfile, then the whole pipeline in order.
+      258 packages, no vulnerabilities, and typecheck, lint, format, 613 unit
+      tests, build and 81 Playwright tests all green from nothing. The
+      `allowScripts` block did its job and esbuild built itself. That covers
+      "did I forget to commit something" and "does it build without my machine's
+      state", which is most of what a first CI run finds.
+- [x] The one thing a Windows clean room cannot cover is Linux's case-sensitive
+      filesystem: `./exactnessTag` resolves to `ExactnessTag.tsx` here and fails
+      there, so it is a breakage that cannot be reproduced on the machine that
+      writes it. `src/imports.test.ts` checks all 429 relative imports against
+      the on-disk names. `forceConsistentCasingInFileNames` catches a file
+      imported two different ways; it does not catch one imported the wrong way
+      once.
       The workflow is correct by inspection, not by observation.
 
 ## Accessibility and robustness
