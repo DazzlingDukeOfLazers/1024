@@ -947,6 +947,35 @@ discipline paying for itself again.
       project's design rather than a shared rule, so a second implementation
       of it by the same author would be evidence of nothing.
 
+## Auditing the app against the nine required experiments
+
+CLAUDE.md names nine experiments to implement before adding many objects, and
+says each "must expose enough internal state to explain its result". Seven were
+there. Two were not, and both failed the same way: the machinery existed and the
+demonstration did not.
+
+- [x] **Required 7** — Q128.128 @ m holding 1 m, 1/2 m, 1 mm, 1 cm and 0.1 m.
+      Every one of those could be typed into the Microscope individually, which
+      is not the experiment: the lesson is the *pattern*, and a reader asked to
+      enter five values and hold five answers in their head has not been shown
+      it. Now one table.
+- [x] **Required 9** — binary64 neighbour gaps at 0, 1 m, 1e6 m and 1e20 m. Same
+      shape of gap, same fix. Four rows: 5 × 10^-324 m at zero, sixteen
+      kilometres at 10^20 m, and one metre asymmetric because it is a power of
+      two.
+
+Writing the test for 7 taught me something I had assumed wrong. I expected
+`0.1 m` to stay quantized when the machine moves to `@mm`, and it does not: at
+`@mm` a metre is 1000 machine units, a centimetre is 10, a tenth of a metre is
+100, so **all five become exact**. The base unit moved, not the digits. That is a
+sharper statement of "the machine base unit is not the display unit" than the one
+I was going to write, and the panel now says it.
+
+- [ ] Required 6 (the same register at mm/m/km) is served by the existing "Pick
+      your ruler" table, and required 1–5 and 8 by the Lab's fixtures. Worth
+      re-auditing whenever the spec's list changes, since nothing checks the app
+      against that list automatically — a test cannot read a requirement.
+
 ## Hardening
 
 - [x] Playwright critical path.

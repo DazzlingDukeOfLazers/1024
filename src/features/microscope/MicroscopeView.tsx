@@ -23,8 +23,10 @@ import {
   type ResolutionProfile,
   binary64LatticeReport,
   defaultProfiles,
+  gapsAcrossMagnitudes,
   planckLatticeReport,
   q128LatticeReport,
+  representabilityAtBaseUnit,
 } from './lattice';
 import { PickYourRuler } from './PickYourRuler';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
@@ -459,6 +461,79 @@ export function MicroscopeView({
             <p className="lens-question">
               Every row is the same 256-bit register. A smaller base unit buys resolution and spends
               range; a larger one does the reverse. The machine base unit is not the display unit.
+            </p>
+          </section>
+
+          {/* CLAUDE.md required experiments 7 and 9. Both are comparisons, and
+              a comparison shown one value at a time is not one — the machinery
+              was here and the lesson was not. */}
+          <section className="panel">
+            <h3>Which of these can it hold exactly?</h3>
+            <table className="readout">
+              <thead>
+                <tr>
+                  <th scope="col">Value</th>
+                  <th scope="col">Q128.128 @ {Q128_128_PRESETS[preset].baseUnitLabel}</th>
+                  <th scope="col">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {representabilityAtBaseUnit(Q128_128_PRESETS[preset]).map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td className="mono">
+                      {row.exact ? (
+                        <span className="tag tag-exact">exact</span>
+                      ) : (
+                        <span className="tag tag-rounded">quantized</span>
+                      )}
+                    </td>
+                    <td className="mono">
+                      {row.quantizationError === undefined || isZero(row.quantizationError)
+                        ? '—'
+                        : meters(row.quantizationError)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="lens-question">
+              At <strong>@m</strong> only the powers of two land: a half is free because the base is
+              two, and a tenth is impossible however many bits you spend. Switch the machine to{' '}
+              <strong>@mm</strong> and all five become exact — a metre is 1000 machine units, a
+              centimetre is 10 — because the base unit moved, not the digits.
+            </p>
+          </section>
+
+          <section className="panel">
+            <h3>How far apart are binary64&rsquo;s numbers?</h3>
+            <table className="readout">
+              <thead>
+                <tr>
+                  <th scope="col">Near</th>
+                  <th scope="col">Gap below</th>
+                  <th scope="col">Gap above</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gapsAcrossMagnitudes().map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    <td className="mono">
+                      {row.gapBelow === undefined ? 'undefined here' : meters(row.gapBelow)}
+                    </td>
+                    <td className="mono">
+                      {row.gapAbove === undefined ? 'undefined here' : meters(row.gapAbove)}
+                      {row.asymmetric && <span className="tag tag-rounded">asymmetric</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="lens-question">
+              At zero the neighbours are 5 × 10^-324 m away; at 10^20 m they are sixteen kilometres
+              away. Same 64 bits. One metre is a power of two, so its neighbours sit at different
+              distances — the grid below it is twice as fine as the grid above.
             </p>
           </section>
 

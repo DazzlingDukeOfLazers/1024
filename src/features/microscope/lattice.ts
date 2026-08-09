@@ -20,13 +20,16 @@ import {
   equals,
   isZero,
   mul,
+  ONE,
   pow2,
+  pow10,
   rational,
   sub,
 } from '../../core/rational/rational';
 import { log10RationalForDisplay } from '../../core/rational/log10';
 import {
   type Q128_128Config,
+  DEFAULT_Q128_128_CONFIG,
   Q128_128_PRESETS,
   type Q128_128PresetName,
   decodeMeters,
@@ -346,6 +349,90 @@ export interface BaseUnitSummary {
 }
 
 /** The data behind "Same 256 bits. Pick your ruler." */
+/* -------------------------------------------------------------------------- */
+/* The two curated comparisons CLAUDE.md asks for by name                      */
+/* -------------------------------------------------------------------------- */
+
+export interface RepresentabilityRow {
+  readonly label: string;
+  readonly meters: Rational;
+  readonly exact: boolean;
+  readonly quantizationError?: Rational | undefined;
+}
+
+/**
+ * CLAUDE.md required experiment 7: one Q128.128 machine, five values.
+ *
+ * The lesson is only visible side by side. A half is exact because two is the
+ * base; a tenth never is, at any binary scale, however many bits you spend. The
+ * Microscope can already show each of these one at a time, and asking a reader
+ * to type five values and hold the answers in their head is not the same thing
+ * as showing them the pattern.
+ */
+export function representabilityAtBaseUnit(
+  config: Q128_128Config = DEFAULT_Q128_128_CONFIG,
+): RepresentabilityRow[] {
+  const values: { label: string; meters: Rational }[] = [
+    { label: '1 m', meters: ONE },
+    { label: '1/2 m', meters: rational(1n, 2n) },
+    { label: '1 mm', meters: pow10(-3) },
+    { label: '1 cm', meters: rational(1n, 100n) },
+    { label: '0.1 m', meters: rational(1n, 10n) },
+  ];
+
+  return values.map(({ label, meters }) => {
+    const write = encodeQ128(config, meters);
+    const error = write.quantizationErrorMeters;
+    return {
+      label,
+      meters,
+      exact: error !== undefined && isZero(error),
+      ...(error === undefined ? {} : { quantizationError: error }),
+    };
+  });
+}
+
+export interface GapRow {
+  readonly label: string;
+  readonly meters: Rational;
+  readonly gapBelow?: Rational | undefined;
+  readonly gapAbove?: Rational | undefined;
+  /** True where the two differ — a power-of-two boundary. */
+  readonly asymmetric: boolean;
+}
+
+/**
+ * CLAUDE.md required experiment 9: binary64 neighbour gaps at 0, 1 m, 1e6 m and
+ * 1e20 m.
+ *
+ * Twenty decades of magnitude buy twenty decades of coarseness, and the four
+ * rows say so in a way no single reading does: at zero the neighbours are
+ * 5 × 10^-324 m away, and at 1e20 m they are 16 kilometres away.
+ */
+export function gapsAcrossMagnitudes(): GapRow[] {
+  const points: { label: string; meters: Rational }[] = [
+    { label: '0', meters: ZERO },
+    { label: '1 m', meters: ONE },
+    { label: '1e6 m', meters: pow10(6) },
+    { label: '1e20 m', meters: pow10(20) },
+  ];
+
+  return points.map(({ label, meters }) => {
+    const encoded = encodeRational(meters);
+    if (!isFiniteState(encoded.state)) {
+      return { label, meters, asymmetric: false };
+    }
+    const { gapBelow, gapAbove } = neighbors(encoded.state.value);
+    return {
+      label,
+      meters,
+      ...(gapBelow === undefined ? {} : { gapBelow }),
+      ...(gapAbove === undefined ? {} : { gapAbove }),
+      asymmetric: gapBelow !== undefined && gapAbove !== undefined && !equals(gapBelow, gapAbove),
+    };
+  });
+}
+
 export function baseUnitSummaries(meters: Rational): BaseUnitSummary[] {
   return (Object.keys(Q128_128_PRESETS) as Q128_128PresetName[]).map((preset) => {
     const config = Q128_128_PRESETS[preset];

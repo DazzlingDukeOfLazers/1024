@@ -162,6 +162,47 @@ test('binary64 spacing grows with magnitude while fixed point does not', async (
   await expect(gapAbove('Q128.128 @ m')).toContainText('2.939 × 10^-39 m');
 });
 
+test('the five values CLAUDE.md names are compared on one screen', async ({ page }) => {
+  await openMicroscope(page);
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Which of these can it hold exactly?' }) });
+
+  // At @m, only the powers of two land.
+  await expect(panel.locator('tbody tr')).toHaveCount(5);
+  const row = (label: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name: label, exact: true }) });
+  await expect(row('1 m')).toContainText('exact');
+  await expect(row('1/2 m')).toContainText('exact');
+  await expect(row('1 mm')).toContainText('quantized');
+  await expect(row('1 cm')).toContainText('quantized');
+  await expect(row('0.1 m')).toContainText('quantized');
+
+  // Move the machine's base unit and all five become whole machine units.
+  await page.getByLabel('Q128.128 base unit').selectOption('mm');
+  for (const label of ['1 m', '1/2 m', '1 mm', '1 cm', '0.1 m']) {
+    await expect(row(label), label).toContainText('exact');
+  }
+});
+
+test('the four magnitudes CLAUDE.md names show the gap growing', async ({ page }) => {
+  await openMicroscope(page);
+  // Matched on a fragment: the heading renders a typographic apostrophe, and a
+  // straight one in the test matches nothing at all.
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: /How far apart are binary64/ }) });
+
+  const row = (label: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name: label, exact: true }) });
+
+  // Zero to 1e20 m is twenty decades of magnitude and rather more of coarseness.
+  await expect(row('0')).toContainText('4.941 × 10^-324 m');
+  await expect(row('1 m')).toContainText('2.22 × 10^-16 m');
+  await expect(row('1 m')).toContainText('asymmetric');
+  await expect(row('1e20 m')).toContainText('1.638 × 10^4 m');
+});
+
 test('the microscope says when binary64 has stopped being floating point', async ({ page }) => {
   await openMicroscope(page);
   const binary64 = page

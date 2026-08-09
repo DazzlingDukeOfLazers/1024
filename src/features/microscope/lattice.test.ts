@@ -4,9 +4,11 @@ import {
   binary64LatticeReport,
   defaultProfiles,
   errorMagnitude,
+  gapsAcrossMagnitudes,
   localSpacing,
   planckLatticeReport,
   q128LatticeReport,
+  representabilityAtBaseUnit,
 } from './lattice';
 import {
   ONE,
@@ -22,7 +24,11 @@ import {
   sub,
 } from '../../core/rational/rational';
 import { parseDecimalExact } from '../../core/rational/parse';
-import { Q128_128_PRESETS } from '../../core/representations/q128_128';
+import {
+  DEFAULT_Q128_128_CONFIG,
+  Q128_128_PRESETS,
+  halfLsbMeters,
+} from '../../core/representations/q128_128';
 import { PLANCK_LENGTH } from '../../core/representations/constants';
 import { fromUnit } from '../../core/quantities/quantity';
 
@@ -130,6 +136,79 @@ describe('binary64 sees a grid that spreads out', () => {
     expect(report.nearest).toBeUndefined();
     expect(report.samples).toEqual([]);
     expect(report.note).toContain('positive-infinity');
+  });
+});
+
+describe('CLAUDE.md required experiment 7: five values on one machine', () => {
+  const rows = representabilityAtBaseUnit();
+
+  it('asks about exactly the five values the spec names', () => {
+    expect(rows.map((row) => row.label)).toEqual(['1 m', '1/2 m', '1 mm', '1 cm', '0.1 m']);
+  });
+
+  it('holds a half exactly and a tenth never', () => {
+    // The lesson, and the reason the five belong on one screen: the base is
+    // two, so halves are free and tenths are impossible — at any number of bits.
+    const exact = new Map(rows.map((row) => [row.label, row.exact]));
+    expect(exact.get('1 m')).toBe(true);
+    expect(exact.get('1/2 m')).toBe(true);
+    expect(exact.get('1 mm')).toBe(false);
+    expect(exact.get('1 cm')).toBe(false);
+    expect(exact.get('0.1 m')).toBe(false);
+  });
+
+  it('keeps every quantization within half an LSB', () => {
+    const half = halfLsbMeters(DEFAULT_Q128_128_CONFIG);
+    for (const row of rows) {
+      if (row.quantizationError === undefined) continue;
+      expect(
+        lt(abs(row.quantizationError), half) || equals(abs(row.quantizationError), half),
+        row.label,
+      ).toBe(true);
+    }
+  });
+
+  it('follows the machine base unit rather than the display unit', () => {
+    // I expected 0.1 m to stay inexact at @mm and it does not, which is the
+    // better lesson: at @mm all five are whole numbers of machine units — a
+    // metre is 1000, a centimetre is 10, a tenth of a metre is 100 — so all five
+    // are exact. The same 256 bits and the same five values, and every one of
+    // them lands, because the base unit moved and not the digits.
+    const atMm = representabilityAtBaseUnit(Q128_128_PRESETS.mm);
+    expect(atMm.every((row) => row.exact)).toBe(true);
+
+    // And at @m only the powers of two survive.
+    const atM = representabilityAtBaseUnit(Q128_128_PRESETS.m);
+    expect(atM.filter((row) => row.exact).map((row) => row.label)).toEqual(['1 m', '1/2 m']);
+  });
+});
+
+describe('CLAUDE.md required experiment 9: gaps at 0, 1 m, 1e6 m and 1e20 m', () => {
+  const rows = gapsAcrossMagnitudes();
+
+  it('covers exactly the four magnitudes the spec names', () => {
+    expect(rows.map((row) => row.label)).toEqual(['0', '1 m', '1e6 m', '1e20 m']);
+  });
+
+  it('grows the gap with the magnitude, by twenty decades and more', () => {
+    const gapAbove = new Map(rows.map((row) => [row.label, row.gapAbove]));
+    expect(gapAbove.get('0')).toEqual(pow2(-1074));
+    expect(gapAbove.get('1 m')).toEqual(pow2(-52));
+    expect(gapAbove.get('1e6 m')).toEqual(pow2(-33));
+    expect(gapAbove.get('1e20 m')).toEqual(pow2(14));
+  });
+
+  it('says the neighbours of one metre are different distances away', () => {
+    // 1 is a power of two, so the grid below it is twice as fine as above.
+    const one = rows.find((row) => row.label === '1 m')!;
+    expect(one.asymmetric).toBe(true);
+    expect(one.gapBelow).toEqual(pow2(-53));
+  });
+
+  it('is symmetric at zero, where the subnormal grid is uniform', () => {
+    const zero = rows.find((row) => row.label === '0')!;
+    expect(zero.asymmetric).toBe(false);
+    expect(zero.gapBelow).toEqual(pow2(-1074));
   });
 });
 
