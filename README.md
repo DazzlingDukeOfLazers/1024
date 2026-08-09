@@ -84,9 +84,12 @@ sitting 10^20 m from zero. The atlas positions magnitudes through an exact-safe
 log10, so it places 10^-35 and 10^27 on one axis — and would place 10^400, which
 has no `double` at all.
 
-The 24 catalog objects span about 10^-35 m to 10^27 m. Two are exact
-definitions; the rest are marked `demonstration value` and are not yet sourced —
-see `docs/DATA_MODEL.md`.
+The 28 catalog objects span about 10^-35 m to 10^27 m. Seven are cited — two IAU
+definitions, and CODATA, WGS 84, NASA and IAU figures for the Planck length,
+the proton, the hydrogen atom, the Moon, the Earth and the Sun. The other 21 are
+plausible round numbers with no source, and the Atlas says exactly that whenever
+one is selected. A value may only call itself `exact` or `measured` if it cites
+something; the schema throws otherwise. See `docs/DATA_MODEL.md`.
 
 Every lens is keyboard-operable and scanned by axe-core against WCAG 2 A and AA
 in CI, and each is wrapped in an error boundary so a failure costs you one lens

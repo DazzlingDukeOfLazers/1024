@@ -33,14 +33,14 @@
       "diameter": {
         "dimension": "length",
         "unit": "fm",
-        "representative": "1.68",
+        "representative": "1.6828",
         "range": {
-          "min": "1.6",
-          "max": "1.76"
+          "min": "1.679",
+          "max": "1.687"
         },
         "approximation": "measured",
-        "source": "demonstration value",
-        "note": "Twice the charge radius. A proton has no sharp edge; this is a scattering-derived figure."
+        "source": "CODATA 2018: proton rms charge radius 0.8414(19) fm, doubled",
+        "note": "A proton has no edge. \"Diameter\" here means twice the root-mean-square charge radius, and the range is the published standard uncertainty. CODATA 2014 gave 0.8751 fm from electron scattering; muonic-hydrogen spectroscopy disagreed, and CODATA 2018 moved. The number changed because the measurement did, not the proton."
       }
     },
     "relations": [
@@ -62,14 +62,14 @@
       "diameter": {
         "dimension": "length",
         "unit": "pm",
-        "representative": "106",
+        "representative": "105.835",
         "range": {
-          "min": "106",
+          "min": "105.835",
           "max": "240"
         },
         "approximation": "representative",
-        "source": "demonstration value",
-        "note": "Twice the Bohr radius. The upper bound is the van der Waals diameter — an atom's size depends on what you mean by size."
+        "source": "Twice the Bohr radius (CODATA 2018: a0 = 52.9177210903 pm)",
+        "note": "An atom has no edge either, so its size depends on which convention you ask for. The lower bound is twice the Bohr radius; the upper is twice the Bondi van der Waals radius of 120 pm. Both describe the same hydrogen atom."
       }
     },
     "relations": [
@@ -95,7 +95,6 @@
         "unit": "nm",
         "representative": "2",
         "approximation": "representative",
-        "source": "demonstration value",
         "note": "Width of the B-form helix."
       }
     },
@@ -123,7 +122,6 @@
           "max": "300"
         },
         "approximation": "representative",
-        "source": "demonstration value",
         "note": "Viruses vary enormously; this stands in for the common range, not for any particular one."
       }
     }
@@ -147,8 +145,7 @@
           "min": "0.5",
           "max": "5"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     }
   },
@@ -173,8 +170,7 @@
           "min": "6.2",
           "max": "8.2"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "visuals": [
@@ -207,8 +203,7 @@
           "min": "17",
           "max": "180"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "relations": [
@@ -235,7 +230,6 @@
           "max": "2"
         },
         "approximation": "representative",
-        "source": "demonstration value",
         "note": "The range is the Wentworth grade for sand; below it is silt, above it is gravel."
       }
     }
@@ -256,8 +250,7 @@
           "min": "1",
           "max": "25"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     }
   },
@@ -306,8 +299,7 @@
           "min": "1.4",
           "max": "2.0"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "visuals": [
@@ -334,8 +326,7 @@
           "min": "1.98",
           "max": "2.1"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "relations": [
@@ -361,8 +352,7 @@
           "min": "6",
           "max": "20"
         },
-        "approximation": "estimated",
-        "source": "demonstration value"
+        "approximation": "estimated"
       }
     },
     "relations": [
@@ -388,7 +378,6 @@
           "max": "830"
         },
         "approximation": "estimated",
-        "source": "demonstration value",
         "note": "The upper bound is roughly the tallest built."
       }
     },
@@ -415,8 +404,7 @@
           "min": "20",
           "max": "60"
         },
-        "approximation": "estimated",
-        "source": "demonstration value"
+        "approximation": "estimated"
       }
     }
   },
@@ -433,7 +421,8 @@
         "unit": "km",
         "representative": "3474.8",
         "approximation": "measured",
-        "source": "demonstration value"
+        "source": "NASA planetary fact sheet: volumetric mean radius 1737.4 km, doubled",
+        "note": "A mean: the Moon is not quite a sphere."
       }
     },
     "relations": [
@@ -460,7 +449,7 @@
           "max": "12756"
         },
         "approximation": "measured",
-        "source": "demonstration value",
+        "source": "WGS 84 reference ellipsoid: equatorial radius 6378.137 km, polar 6356.752 km; mean radius 6371.0 km, doubled",
         "note": "Mean diameter; the range spans polar to equatorial."
       }
     },
@@ -488,8 +477,8 @@
         "unit": "km",
         "representative": "1391400",
         "approximation": "measured",
-        "source": "demonstration value",
-        "note": "Twice the IAU nominal solar radius. A star has no surface in the way a planet does."
+        "source": "IAU 2015 Resolution B3: nominal solar radius 6.957e8 m, doubled",
+        "note": "The nominal solar radius is a defined conversion constant, not a measurement of the Sun on any particular day. A star has no surface in the way a planet does."
       }
     },
     "relations": [
@@ -533,7 +522,6 @@
         "unit": "au",
         "representative": "60.2",
         "approximation": "representative",
-        "source": "demonstration value",
         "note": "Where the Solar System ends depends on what you count; this uses Neptune's orbit."
       }
     },
@@ -579,7 +567,6 @@
           "max": "200000"
         },
         "approximation": "estimated",
-        "source": "demonstration value",
         "note": "A galaxy has no edge; estimates depend on which population you trace."
       }
     },
@@ -608,7 +595,6 @@
           "max": "95e9"
         },
         "approximation": "estimated",
-        "source": "demonstration value",
         "note": "Comoving diameter — much larger than light travel time alone would suggest, because space expanded while the light was in transit."
       }
     }
@@ -626,7 +612,6 @@
         "unit": "nm",
         "representative": "0.28",
         "approximation": "representative",
-        "source": "demonstration value",
         "note": "Van der Waals diameter. A molecule has no sharp edge either."
       }
     },
@@ -658,8 +643,7 @@
           "min": "20",
           "max": "40"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "relations": [
@@ -690,8 +674,7 @@
           "min": "0.06",
           "max": "0.10"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "relations": [
@@ -718,8 +701,7 @@
           "min": "0.16",
           "max": "0.22"
         },
-        "approximation": "representative",
-        "source": "demonstration value"
+        "approximation": "representative"
       }
     },
     "relations": [

@@ -532,6 +532,28 @@ test('clicking a marker selects what it stands for', async ({ page }) => {
   await expect(readoutRow(page, 'Object')).toContainText('Planck length');
 });
 
+test('the atlas says what backs every number it shows', async ({ page }) => {
+  await page.goto('/');
+  const provenance = readoutRow(page, 'Where it comes from');
+
+  // A cited measurement names what a reader would check it against.
+  await page.getByLabel('Object', { exact: true }).selectOption('earth');
+  await expect(provenance).toContainText('Measured.');
+  await expect(provenance).toContainText('WGS 84');
+
+  // A defined constant says it is defined.
+  await page.getByLabel('Object', { exact: true }).selectOption('astronomical-unit');
+  await expect(provenance).toContainText('Exactly defined.');
+  await expect(provenance).toContainText('IAU 2012');
+
+  // And a plausible round number says that it is one, in the same place, rather
+  // than being shown with the same certainty as the two above.
+  await page.getByLabel('Object', { exact: true }).selectOption('red-blood-cell');
+  await expect(provenance).toContainText('A representative figure.');
+  await expect(provenance).toContainText('No source recorded');
+  await expect(readoutRow(page, 'Size')).toContainText('ranges');
+});
+
 test('selecting in the atlas carries the object into the other lenses', async ({ page }) => {
   await page.goto('/');
 

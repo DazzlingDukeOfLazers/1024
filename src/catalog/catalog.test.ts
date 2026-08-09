@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import rawSample from '../../fixtures/objects.sample.json';
 import { CATALOG, createCatalog, requireLength } from './catalog';
-import { CatalogError, isExactQuantity, parseScaleObject, primaryLength } from './schema';
+import {
+  CatalogError,
+  isExactQuantity,
+  parseScaleObject,
+  primaryLength,
+  provenanceSummary,
+} from './schema';
 import { ONE, equals, gt, lt, pow10, rational } from '../core/rational/rational';
 import { parseDecimalExact } from '../core/rational/parse';
 import { toUnit } from '../core/quantities/quantity';
@@ -96,10 +102,41 @@ describe('exact definitions are marked as exact', () => {
     }
   });
 
-  it('gives every non-exact quantity a source', () => {
+  it('cites every quantity that claims to be exact or measured', () => {
     for (const object of CATALOG.objects) {
       const length = requireLength(object);
-      expect(length.source, `${object.id} has no source`).toBeDefined();
+      if (length.approximation === 'exact' || length.approximation === 'measured') {
+        expect(length.source, `${object.id} claims to be ${length.approximation}`).toBeDefined();
+      }
+    }
+  });
+
+  it('never dresses a provenance status up as a source', () => {
+    for (const object of CATALOG.objects) {
+      const source = requireLength(object).source;
+      if (source === undefined) continue;
+      // The fixtures used to carry `source: "demonstration value"`, which reads
+      // like a citation everywhere it is displayed and is not one.
+      expect(source.toLowerCase(), object.id).not.toMatch(
+        /^(demonstration|placeholder|tbd|unknown|n\/a)/,
+      );
+    }
+  });
+
+  it('says what backs a number whether or not it is cited', () => {
+    // Both branches have to produce a sentence, or a view that renders it will
+    // silently say nothing for exactly the values that need the caveat most.
+    expect(provenanceSummary(requireLength(CATALOG.require('earth')))).toMatch(
+      /^Measured\. WGS 84/,
+    );
+    expect(provenanceSummary(requireLength(CATALOG.require('red-blood-cell')))).toMatch(
+      /^A representative figure\. No source recorded/,
+    );
+    expect(provenanceSummary(requireLength(CATALOG.require('astronomical-unit')))).toMatch(
+      /^Exactly defined\. IAU 2012/,
+    );
+    for (const object of CATALOG.objects) {
+      expect(provenanceSummary(requireLength(object)).length, object.id).toBeGreaterThan(10);
     }
   });
 });
@@ -180,7 +217,13 @@ describe('schema validation', () => {
         id: 'x',
         name: 'x',
         quantities: {
-          mass: { dimension: 'mass', unit: 'kg', representative: '1', approximation: 'exact' },
+          mass: {
+            dimension: 'mass',
+            unit: 'kg',
+            representative: '1',
+            approximation: 'exact',
+            source: 'test fixture',
+          },
         },
       }),
     ).toThrow(CatalogError);
@@ -192,7 +235,13 @@ describe('schema validation', () => {
         id: 'x',
         name: 'x',
         quantities: {
-          length: { dimension: 'length', unit: 's', representative: '1', approximation: 'exact' },
+          length: {
+            dimension: 'length',
+            unit: 's',
+            representative: '1',
+            approximation: 'exact',
+            source: 'test fixture',
+          },
         },
       }),
     ).toThrow(/not a length/);
@@ -222,10 +271,60 @@ describe('schema validation', () => {
             representative: '1',
             range: { min: '2', max: '1' },
             approximation: 'measured',
+            source: 'test fixture',
           },
         },
       }),
     ).toThrow(/min is greater than max/);
+  });
+
+  it('refuses a measured or exact value with nothing behind it', () => {
+    // "Measured" and "exact" are claims a reader could go and check. Letting one
+    // through uncited is how a plausible round number ends up looking like a
+    // fact, which is the failure this whole project is about.
+    for (const approximation of ['exact', 'measured']) {
+      expect(() =>
+        parseScaleObject({
+          id: 'x',
+          name: 'x',
+          quantities: {
+            length: { dimension: 'length', unit: 'm', representative: '1', approximation },
+          },
+        }),
+      ).toThrow(/needs a source/);
+    }
+  });
+
+  it('allows a representative or estimated value to have no source', () => {
+    for (const approximation of ['representative', 'estimated']) {
+      expect(() =>
+        parseScaleObject({
+          id: 'x',
+          name: 'x',
+          quantities: {
+            length: { dimension: 'length', unit: 'm', representative: '1', approximation },
+          },
+        }),
+      ).not.toThrow();
+    }
+  });
+
+  it('refuses a provenance status written into the source field', () => {
+    expect(() =>
+      parseScaleObject({
+        id: 'x',
+        name: 'x',
+        quantities: {
+          length: {
+            dimension: 'length',
+            unit: 'm',
+            representative: '1',
+            approximation: 'representative',
+            source: 'Demonstration Value',
+          },
+        },
+      }),
+    ).toThrow(/is a provenance status, not a source/);
   });
 
   it('rejects an object with no quantities, which could not be compared', () => {
@@ -237,7 +336,13 @@ describe('schema validation', () => {
       id: 'x',
       name: 'x',
       quantities: {
-        length: { dimension: 'length', unit: 'm', representative: '1', approximation: 'exact' },
+        length: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '1',
+          approximation: 'exact',
+          source: 'test fixture',
+        },
       },
     };
     expect(() => createCatalog([object, object])).toThrow(/Duplicate/);
@@ -251,7 +356,13 @@ describe('schema validation', () => {
       id: 'x',
       name: 'x',
       quantities: {
-        length: { dimension: 'length', unit: 'm', representative: '1', approximation: 'exact' },
+        length: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '1',
+          approximation: 'exact',
+          source: 'test fixture',
+        },
       },
     });
     expect(withoutVisual.visuals).toEqual([]);
@@ -267,7 +378,13 @@ describe('schema validation', () => {
         id: 'x',
         name: 'x',
         quantities: {
-          length: { dimension: 'length', unit: 'm', representative: '1', approximation: 'exact' },
+          length: {
+            dimension: 'length',
+            unit: 'm',
+            representative: '1',
+            approximation: 'exact',
+            source: 'test fixture',
+          },
         },
         visuals: [{ provider: 'my-hard-drive' }],
       }),
@@ -279,7 +396,13 @@ describe('schema validation', () => {
       id: 'a',
       name: 'a',
       quantities: {
-        length: { dimension: 'length', unit: 'm', representative: '3/20', approximation: 'exact' },
+        length: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '3/20',
+          approximation: 'exact',
+          source: 'test fixture',
+        },
       },
     });
     const asFraction = parseScaleObject({
@@ -291,6 +414,7 @@ describe('schema validation', () => {
           unit: 'm',
           representative: { numerator: '3', denominator: '20' },
           approximation: 'exact',
+          source: 'test fixture',
         },
       },
     });

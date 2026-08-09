@@ -21,6 +21,20 @@ import { type Quantity, fromUnit } from '../core/quantities/quantity';
 export const APPROXIMATION_KINDS = ['exact', 'measured', 'representative', 'estimated'] as const;
 export type ApproximationKind = (typeof APPROXIMATION_KINDS)[number];
 
+/**
+ * Strings that describe a value's provenance *status* rather than name a source.
+ * The fixtures used to carry `source: "demonstration value"`, which reads like a
+ * citation in every list and table it appears in and is not one.
+ */
+const UNSOURCED_PLACEHOLDERS = new Set([
+  'demonstration value',
+  'demonstration',
+  'placeholder',
+  'tbd',
+  'unknown',
+  'n/a',
+]);
+
 export const VISUAL_PROVIDERS = [
   'bundled',
   'noun-project',
@@ -141,6 +155,27 @@ function parseQuantity(key: string, raw: unknown, objectId: string): CatalogQuan
     );
   }
 
+  const approximation = raw.approximation as ApproximationKind;
+  const source = typeof raw.source === 'string' ? raw.source.trim() : undefined;
+
+  // `exact` and `measured` are claims about the world that a reader could go and
+  // check, so they have to say what against. `representative` and `estimated`
+  // make no such claim, and an absent source is the honest way to say so — which
+  // is why a placeholder in the source field is rejected rather than tolerated:
+  // it reads like provenance and is not.
+  if (source !== undefined && UNSOURCED_PLACEHOLDERS.has(source.toLowerCase())) {
+    throw new CatalogError(
+      `${context}: "${source}" is a provenance status, not a source. Leave source out; ` +
+        `the approximation kind already says the value is not traceable to a citation.`,
+    );
+  }
+  if ((approximation === 'exact' || approximation === 'measured') && source === undefined) {
+    throw new CatalogError(
+      `${context}: ${approximation === 'exact' ? 'an exact' : 'a measured'} value needs a ` +
+        `source. Cite it, or call it representative or estimated, which claim less.`,
+    );
+  }
+
   const value = fromUnit(parseValue(raw.representative, `${context}.representative`), raw.unit);
 
   let range: QuantityRange | undefined;
@@ -158,11 +193,11 @@ function parseQuantity(key: string, raw: unknown, objectId: string): CatalogQuan
     key,
     dimension: raw.dimension,
     value,
-    approximation: raw.approximation as ApproximationKind,
+    approximation,
     declaredUnit: raw.unit,
     ...(range === undefined ? {} : { range }),
     ...(typeof raw.note === 'string' ? { note: raw.note } : {}),
-    ...(typeof raw.source === 'string' ? { source: raw.source } : {}),
+    ...(source === undefined ? {} : { source }),
   };
   return Object.freeze(quantity);
 }
@@ -242,6 +277,29 @@ export function parseScaleObject(raw: unknown): ScaleObject {
 /** True when the value is exactly defined rather than measured or representative. */
 export function isExactQuantity(quantity: CatalogQuantity): boolean {
   return quantity.approximation === 'exact' && quantity.range === undefined;
+}
+
+/**
+ * What backs a number, in one sentence, for anywhere the number is shown.
+ *
+ * The schema comment above promises the UI can never present an exact value and
+ * a plausible one with the same certainty. That promise is only kept if every
+ * view actually says which it is, so the sentence lives here rather than being
+ * written out again per lens.
+ */
+export function provenanceSummary(quantity: CatalogQuantity): string {
+  const kind = {
+    exact: 'Exactly defined.',
+    measured: 'Measured.',
+    representative: 'A representative figure.',
+    estimated: 'An estimate.',
+  }[quantity.approximation];
+
+  if (quantity.source !== undefined) return `${kind} ${quantity.source}.`;
+  return (
+    `${kind} No source recorded — a plausible figure chosen to make the scale legible, ` +
+    `not traceable to a citation.`
+  );
 }
 
 /**

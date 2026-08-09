@@ -212,7 +212,13 @@ describe('the fixture graph is well formed', () => {
           id: 'x',
           name: 'x',
           quantities: {
-            length: { dimension: 'length', unit: 'm', representative: '1', approximation: 'exact' },
+            length: {
+              dimension: 'length',
+              unit: 'm',
+              representative: '1',
+              approximation: 'exact',
+              source: 'test fixture',
+            },
           },
           relations: [{ type: 'part-of', targetId: 'nowhere' }],
         },

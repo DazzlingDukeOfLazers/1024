@@ -95,7 +95,13 @@ Do not reduce naturally varying objects to false exact values.
 
 Every curated physical quantity should eventually include enough provenance to answer "where did this number come from?"
 
-v0 fixtures may use clearly marked demonstration values while the data pipeline is being built.
+v0 fixtures may use clearly marked demonstration values while the data pipeline is being built. The marking is the `approximation` kind, not a string in the `source` field:
+
+- `exact` and `measured` are claims a reader could go and check, so **the schema refuses them without a source**. `parseScaleObject` throws.
+- `representative` and `estimated` claim nothing checkable. An **absent** source is the honest way to say so.
+- A placeholder written into `source` — `"demonstration value"`, `"TBD"`, `"unknown"` — is **rejected**. It reads like a citation in every list and table that displays it, and is not one.
+
+Every view that shows a curated number must also show `provenanceSummary(quantity)`, which produces one sentence for both cases: `"Measured. WGS 84 reference ellipsoid…"` or `"A representative figure. No source recorded — a plausible figure chosen to make the scale legible, not traceable to a citation."` A number displayed without it is presented with the same certainty as a defined constant, which is the thing this schema exists to prevent.
 
 ### Allow multiple dimensions later
 
@@ -194,8 +200,23 @@ The first objective is to prove navigation and comparison behavior.
 
 ## Provenance status of the v0 fixture
 
-`fixtures/objects.json` holds 24 objects spanning ~10^-35 m to ~10^27 m.
+`fixtures/objects.json` holds 28 objects spanning ~10^-35 m to ~10^27 m.
 
-Only two are exact: the astronomical unit and the light-year, both defined constants. The Planck length carries its CODATA 2018 declaration and published uncertainty. **Every other entry is marked `source: "demonstration value"`** — curated, plausible, deliberately round, and not traceable to a citation. That is what this section already permits while the data pipeline is being built, and the marking is what makes it honest rather than sloppy.
+Seven are backed by a citation:
 
-Replacing them is a data task, not a code task: the schema, the range handling and the exact/approximate wording all work already. A test asserts that no object outside the two definitions claims to be exact.
+| object | claim | source |
+| --- | --- | --- |
+| astronomical unit | exact | IAU 2012 definition |
+| light-year | exact | IAU: the speed of light times a Julian year |
+| Planck length | measured | CODATA 2018, with the published standard uncertainty as the range |
+| proton | measured | CODATA 2018 proton rms charge radius 0.8414(19) fm, doubled |
+| hydrogen atom | representative | twice the Bohr radius (CODATA 2018), with the Bondi van der Waals diameter as the upper bound |
+| Moon | measured | NASA planetary fact sheet, volumetric mean radius 1737.4 km, doubled |
+| Earth | measured | WGS 84 reference ellipsoid; mean radius 6371.0 km, doubled |
+| Sun | measured | IAU 2015 Resolution B3 nominal solar radius 6.957e8 m, doubled |
+
+The remaining 21 are `representative` or `estimated` **with no source**, which is what they are: curated, plausible, deliberately round, and not traceable to a citation. The Atlas says so under "Where it comes from" every time one is selected.
+
+Four of these previously claimed `approximation: "measured"` while carrying `source: "demonstration value"` — a contradiction, because a measurement with no citation is not a measurement. The schema now rejects that combination outright, so the fixture cannot drift back into it.
+
+Replacing the remaining 21 is a data task, not a code task: the schema, the range handling and the exact/approximate wording all work already. Tests assert that no object outside the two definitions claims to be exact, that every `exact` or `measured` quantity is cited, and that no source is a provenance status in disguise.

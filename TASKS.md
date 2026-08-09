@@ -174,10 +174,23 @@ Discovered while implementing:
       and fixtures declare a natural unit. `docs/DATA_MODEL.md` updated.
 - [x] `au` and `ly` added to the unit registry — both are exactly defined, so
       they are conversions rather than catalog measurements.
-- [ ] **22 of the 24 objects carry `source: "demonstration value"`.** They are
-      curated and plausible, not sourced. Replacing them is a data task; the
-      schema, ranges and exact/approximate wording already work. A test asserts
-      nothing outside the two definitions claims to be exact.
+- [x] **Four objects claimed `approximation: "measured"` while carrying
+      `source: "demonstration value"`.** A measurement with no citation is not a
+      measurement, and the schema permitted the contradiction. It now rejects it:
+      `exact` and `measured` require a source, and a provenance status written
+      into the source field is refused outright. The proton, Moon, Earth and Sun
+      are cited (CODATA 2018, NASA, WGS 84, IAU 2015 B3), as is the hydrogen
+      atom's derivation from the Bohr radius. The other 21 dropped the
+      placeholder: `representative` and `estimated` claim nothing checkable, so
+      an absent source is the honest way to say so.
+- [x] **The Atlas showed a curated number with no indication of what backed it.**
+      A red blood cell read `7.5 µm`, in the same type as an exactly defined
+      astronomical unit, which is precisely what the `approximation` field exists
+      to prevent. The selection panel now carries the range and a "Where it comes
+      from" row, from a single `provenanceSummary` so the lenses cannot drift.
+- [ ] Source the remaining 21 objects. A data task; the schema, ranges and
+      wording all work. Until then the app says they are unsourced, which is
+      true, but "true and unsourced" is a weaker position than "sourced".
 - [ ] Only one length per object. A second length (a human's width, say) needs an
       explicit `primary` field rather than `primaryLength`'s current "the one
       length there is".

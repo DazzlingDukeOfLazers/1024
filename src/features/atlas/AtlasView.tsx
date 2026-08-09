@@ -22,6 +22,7 @@ import {
   zoomLogAt,
 } from '../../camera/logCamera';
 import { CATALOG } from '../../catalog/catalog';
+import { primaryLength, provenanceSummary } from '../../catalog/schema';
 import { type AtlasState } from '../../share/appState';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
@@ -85,6 +86,7 @@ export function AtlasView({
   };
   const clusters = declutter(ENTRIES, camera, VIEWPORT);
   const selected = selectedId === undefined ? undefined : CATALOG.get(selectedId);
+  const selectedLength = selected === undefined ? undefined : primaryLength(selected);
   const selectedEntry = ENTRIES.find((entry) => entry.object.id === selectedId);
 
   const localX = (element: Element, clientX: number): number => {
@@ -317,8 +319,34 @@ export function AtlasView({
                   <th scope="row">Size</th>
                   <td className="mono">
                     {formatEngineering(quantity('length', selectedEntry.meters)).text}
+                    {selectedLength?.range !== undefined && (
+                      <>
+                        <br />
+                        <small>
+                          ranges {formatEngineering(selectedLength.range.min).text} to{' '}
+                          {formatEngineering(selectedLength.range.max).text}
+                        </small>
+                      </>
+                    )}
                   </td>
                 </tr>
+                {/* A number shown without saying what backs it is presented with
+                    the same certainty as one that is defined. The schema exists
+                    to stop that, and only works if the view says so. */}
+                {selectedLength !== undefined && (
+                  <tr>
+                    <th scope="row">Where it comes from</th>
+                    <td>
+                      {provenanceSummary(selectedLength)}
+                      {selectedLength.note !== undefined && (
+                        <>
+                          {' '}
+                          <small>{selectedLength.note}</small>
+                        </>
+                      )}
+                    </td>
+                  </tr>
+                )}
                 <tr>
                   <th scope="row">Order of magnitude</th>
                   <td className="mono">
