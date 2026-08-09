@@ -782,6 +782,31 @@ test('how many red blood cells span a millimetre', async ({ page }) => {
   await expect(row('Red blood cell (diameter)')).toContainText('7.5 µm');
 });
 
+test('a repeating answer is not shown as though it terminated', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+
+  // 1 mm across a 7.5 µm cell is 400/3, which has no finite decimal. The row is
+  // headed "Exact value", so the digits under it must say they are a reading of
+  // the answer rather than the answer.
+  await page.getByLabel('A', { exact: true }).selectOption('object:red-blood-cell');
+  await page.getByLabel('B', { exact: true }).selectOption('unit:mm');
+  await page.getByLabel('Operation').selectOption('how-many-fit');
+
+  const exactValue = readoutRow(page, 'Exact value');
+  await expect(exactValue).toContainText('133.333333333');
+  await expect(exactValue).toContainText('rounded');
+  await expect(exactValue).toContainText('exactly 400/3');
+
+  // And a ratio that does terminate says so instead.
+  await page.getByLabel('A', { exact: true }).selectOption('unit:km');
+  await expect(exactValue).toContainText('exact');
+  await expect(exactValue).not.toContainText('rounded');
+});
+
 test('a comparison between two definitions is exact', async ({ page }) => {
   await page.goto('/');
   await page

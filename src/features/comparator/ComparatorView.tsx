@@ -12,6 +12,8 @@ import { fromUnit } from '../../core/quantities/quantity';
 import { formatCount, formatEngineering } from '../../core/units/format';
 import { CATALOG } from '../../catalog/catalog';
 import { provenanceSummary } from '../../catalog/schema';
+import { toCompactString } from '../../core/rational/json';
+import { ExactnessTag } from '../../ui/ExactnessTag';
 import {
   type ComparisonOperation,
   type ComparisonResult,
@@ -107,6 +109,11 @@ function Answer({ result }: { result: ComparisonResult }) {
       ? `${approximate ? 'about ' : ''}${formatCount(result.value, digits).text}`
       : `${approximate ? 'about ' : ''}${formatEngineering(result.value, { significantDigits: digits }).text}`;
 
+  const exactValue =
+    result.kind === 'count'
+      ? formatCount(result.value, 12)
+      : formatEngineering(result.value, { significantDigits: 12 });
+
   return (
     <>
       <p className="answer">
@@ -121,9 +128,21 @@ function Answer({ result }: { result: ComparisonResult }) {
           <tr>
             <th scope="row">Exact value</th>
             <td className="mono">
-              {result.kind === 'count'
-                ? formatCount(result.value, 12).text
-                : formatEngineering(result.value, { significantDigits: 12 }).text}
+              {/* The row is headed "exact", so the decimal under it has to say
+                  whether it is one. 400/3 renders as 133.333333333, which is a
+                  rounded reading of the answer and not the answer — and the
+                  formatter knew that all along and was being ignored. */}
+              {exactValue.text} <ExactnessTag exact={exactValue.exact} />
+              {!exactValue.exact && (
+                <>
+                  <br />
+                  <small>
+                    exactly{' '}
+                    {toCompactString(result.kind === 'count' ? result.value : result.value.value)}{' '}
+                    {result.kind === 'count' ? '' : 'm'}
+                  </small>
+                </>
+              )}
             </td>
           </tr>
           {result.range !== undefined && (

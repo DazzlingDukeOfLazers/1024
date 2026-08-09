@@ -747,6 +747,27 @@ a person sees in one glance and a DOM assertion never mentions.
       chart is a second axis problem rather than the one-dimensional one that
       module solves.
 
+## The Comparator printed a rounded answer under a heading that said exact
+
+The fifth lens, once I looked at that one too. `1 mm ÷ 7.5 µm` is 400/3, which
+has no finite decimal, and the row headed **Exact value** read `133.333333333`
+with nothing to say it had been cut off. `formatCount` returns `{ text, exact }`
+and the view was using `.text` and discarding the flag — the information was
+there and thrown away, under a heading asserting the opposite.
+
+This is rule 2 of CLAUDE.md, in the lens whose whole job is answering "how many
+X make Y". The Representation Lab had been tagging its renderings correctly since
+milestone 1, so the two lenses disagreed about the same idea.
+
+- [x] `ExactnessTag` moved out of the Lab into `src/ui`, so there is one way the
+      flag is shown and the lenses cannot drift on it.
+- [x] The Comparator tags the rendering, and when the decimal cannot be exact it
+      prints the exact fraction underneath — `exactly 400/3`. The heading is now
+      true rather than aspirational.
+- [ ] Audit the remaining formatter calls for the same pattern. Every call site
+      that takes `.text` and drops `.exact` is a potential instance; the type
+      cannot catch it because the flag is optional to use.
+
 ## Hardening
 
 - [x] Playwright critical path.

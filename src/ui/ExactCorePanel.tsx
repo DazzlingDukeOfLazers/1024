@@ -13,6 +13,7 @@ import { isZero } from '../core/rational/rational';
 import { type Quantity, toUnit } from '../core/quantities/quantity';
 import { formatEngineering, formatRawSi, formatScientific } from '../core/units/format';
 import { findUnit } from '../core/units/units';
+import { ExactnessTag } from './ExactnessTag';
 
 const DISPLAY_UNITS = [
   'pm',
@@ -35,14 +36,6 @@ interface Row {
   label: string;
   value: string;
   exact?: boolean;
-}
-
-function ExactnessTag({ exact }: { exact: boolean }) {
-  return (
-    <span className={exact ? 'tag tag-exact' : 'tag tag-rounded'}>
-      {exact ? 'exact' : 'rounded'}
-    </span>
-  );
 }
 
 function readoutRows(q: Quantity): Row[] {
