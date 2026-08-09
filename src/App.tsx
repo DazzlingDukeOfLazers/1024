@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { LENSES, type LensId } from './ui/lenses';
 import { ShareBar } from './ui/ShareBar';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { LabView } from './ui/LabView';
 import { ComparatorView } from './features/comparator/ComparatorView';
 import { RulerView } from './features/ruler/RulerView';
@@ -153,42 +154,45 @@ export function App() {
           </p>
         )}
 
-        {state.lens === 'atlas' ? (
-          <AtlasView
-            state={state.atlas}
-            onChange={setAtlas}
-            selectedId={state.selectedObjectId}
-            onSelect={setSelected}
-            onOpenInRuler={openInRuler}
-          />
-        ) : state.lens === 'ruler' ? (
-          <RulerView
-            state={state.ruler}
-            onChange={setRuler}
-            focusObjectId={state.selectedObjectId}
-          />
-        ) : state.lens === 'comparator' ? (
-          <ComparatorView state={state.comparator} onChange={setComparator} />
-        ) : state.lens === 'microscope' ? (
-          <MicroscopeView
-            state={state.microscope}
-            onChange={setMicroscope}
-            representations={state.representations}
-            onRepresentationsChange={setRepresentations}
-          />
-        ) : state.lens === 'lab' ? (
-          <LabView
-            state={state.lab}
-            onChange={setLab}
-            representations={state.representations}
-            onRepresentationsChange={setRepresentations}
-          />
-        ) : (
-          <p className="placeholder">
-            Not built yet — see docs/IMPLEMENTATION_PLAN.md for the milestone that delivers this
-            lens.
-          </p>
-        )}
+        {/* Keyed on the lens so switching away clears a previous failure. */}
+        <ErrorBoundary key={state.lens} label={active?.title ?? 'This lens'}>
+          {state.lens === 'atlas' ? (
+            <AtlasView
+              state={state.atlas}
+              onChange={setAtlas}
+              selectedId={state.selectedObjectId}
+              onSelect={setSelected}
+              onOpenInRuler={openInRuler}
+            />
+          ) : state.lens === 'ruler' ? (
+            <RulerView
+              state={state.ruler}
+              onChange={setRuler}
+              focusObjectId={state.selectedObjectId}
+            />
+          ) : state.lens === 'comparator' ? (
+            <ComparatorView state={state.comparator} onChange={setComparator} />
+          ) : state.lens === 'microscope' ? (
+            <MicroscopeView
+              state={state.microscope}
+              onChange={setMicroscope}
+              representations={state.representations}
+              onRepresentationsChange={setRepresentations}
+            />
+          ) : state.lens === 'lab' ? (
+            <LabView
+              state={state.lab}
+              onChange={setLab}
+              representations={state.representations}
+              onRepresentationsChange={setRepresentations}
+            />
+          ) : (
+            <p className="placeholder">
+              Not built yet — see docs/IMPLEMENTATION_PLAN.md for the milestone that delivers this
+              lens.
+            </p>
+          )}
+        </ErrorBoundary>
       </main>
     </div>
   );

@@ -24,6 +24,7 @@ import {
   zoomAt,
 } from '../../camera/camera';
 import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camera/grid';
+import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
 import { type RulerState } from '../../share/appState';
@@ -167,6 +168,23 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
     return () => element.removeEventListener('wheel', onWheel);
   }, [onChange]);
 
+  /** Arrow keys and friends, so the view is not pointer-only. */
+  const onKeyDown = (event: React.KeyboardEvent<SVGSVGElement>): void => {
+    const command = commandForKey(event.key, { shiftKey: event.shiftKey });
+    if (command === undefined) return;
+    event.preventDefault();
+
+    if (command.kind === 'reset') {
+      onChange(() => ({ presetId, camera: preset.camera }));
+      return;
+    }
+    if (command.kind === 'pan') {
+      setCamera((current) => panByPixels(current, command.pixels));
+      return;
+    }
+    setCamera((current) => zoomAt(current, -command.steps * 0.2, VIEWPORT.widthPx / 2, VIEWPORT));
+  };
+
   return (
     <>
       <section className="panel">
@@ -197,8 +215,10 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           viewBox={`0 0 ${VIEWPORT.widthPx} ${VIEWPORT.heightPx}`}
           width="100%"
           className="ruler"
-          role="img"
-          aria-label="Metric ruler"
+          role="application"
+          tabIndex={0}
+          aria-label={`Metric ruler. ${KEYBOARD_HINT}`}
+          onKeyDown={onKeyDown}
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);
             dragState.current = { x: localX(event.currentTarget, event.clientX) };
@@ -349,9 +369,9 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           </tbody>
         </table>
         <p className="lens-question">
-          Drag to pan, scroll to zoom. The centre is an exact rational, so panning out and back
-          returns to exactly where it started — and a millimetre stays resolvable however far from
-          zero the camera sits.
+          Drag to pan, scroll to zoom, or focus the ruler and use the keyboard. {KEYBOARD_HINT} The
+          centre is an exact rational, so panning out and back returns to exactly where it started —
+          and a millimetre stays resolvable however far from zero the camera sits.
         </p>
       </section>
     </>

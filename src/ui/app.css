@@ -277,6 +277,11 @@ table.readout tr.selected td {
   padding: 0.1rem 0.45rem;
 }
 
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 svg.atlas,
 svg.ruler {
   background: var(--bg);

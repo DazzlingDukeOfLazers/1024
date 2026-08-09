@@ -234,7 +234,9 @@ test('a long experiment runs off the main thread', async ({ page }) => {
     .getByRole('navigation', { name: 'Lenses' })
     .getByRole('button', { name: 'Scale Atlas' })
     .click({ timeout: 1000 });
-  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible({ timeout: 1000 });
+  await expect(page.getByRole('application', { name: /Scale atlas/ })).toBeVisible({
+    timeout: 1000,
+  });
 });
 
 test('a running experiment reports progress and can be cancelled', async ({ page }) => {
@@ -377,7 +379,7 @@ test('a malformed link says so instead of silently loading something else', asyn
   await page.goto('/#1.bm90LWpzb24');
   await expect(page.getByRole('status')).toContainText('Could not restore that link');
   // And it falls back to a usable app rather than a blank page.
-  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible();
+  await expect(page.getByRole('application', { name: /Scale atlas/ })).toBeVisible();
 });
 
 test('a link from a future schema is refused rather than guessed at', async ({ page }) => {
@@ -389,7 +391,7 @@ test('the atlas spans the catalog on one logarithmic axis', async ({ page }) => 
   await page.goto('/');
 
   // The Atlas is the landing lens.
-  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible();
+  await expect(page.getByRole('application', { name: /Scale atlas/ })).toBeVisible();
 
   // Engineering boundaries are labelled with prefixes, across the whole range.
   const axis = page.locator('svg.atlas');

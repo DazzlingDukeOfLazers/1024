@@ -442,10 +442,46 @@ Discovered while implementing:
 - [ ] CI has never actually run — there is no remote push yet from this machine.
       The workflow is correct by inspection, not by observation.
 
+## Accessibility and robustness
+
+- [x] axe-core scan of every lens, WCAG 2 A and AA, run in CI.
+- [x] Keyboard operation for the Ruler and the Atlas.
+- [x] Visible focus ring.
+- [x] Per-lens error boundary.
+
+Discovered while implementing:
+
+- [x] axe found **zero** violations across all five lenses before any fix. The
+      semantic HTML, labelled controls and table headers used throughout carried
+      it. Worth having measured rather than assumed.
+- [x] The real gap was one axe cannot see: both SVG views were pointer-only. A
+      `role="img"` SVG is not *expected* to be interactive, so nothing was
+      technically wrong — it was just unusable without a mouse. They are now
+      `role="application"` with `tabIndex`, a key map, and the keys named in the
+      accessible label.
+- [x] The key map is shared between the two views and pure, so they cannot drift
+      apart and it can be tested without a browser. It deliberately returns
+      `undefined` for Tab and Escape — swallowing those would trap focus.
+- [x] The error boundary is per lens and keyed on it, so a failure clears when
+      you switch away. React asked for one out loud in milestone 6 when a Ruler
+      crash took the page down.
+- [x] A robustness test feeds every lens `0`, negatives, `1e400`, empty and
+      nonsense, and asserts the boundary is never reached. The guards hold; the
+      boundary is a floor, not a crutch.
+- [x] A share link naming a catalog id that no longer exists opens and explains,
+      rather than failing. Links outlive builds.
+- [ ] `role="application"` tells assistive technology to pass all keys through.
+      That is right for a pannable view but it is a strong claim, and it has not
+      been checked with a real screen reader — only with axe.
+- [ ] No skip link. With five lenses and a share bar the tab order to reach
+      content is short, but it will not stay that way.
+- [ ] Colour contrast passes axe, but the palette has never been checked against
+      a colour-vision simulation.
+
 ## Hardening
 
-- [ ] Playwright critical path.
-- [ ] accessibility pass.
+- [x] Playwright critical path.
+- [x] Accessibility pass.
 - [ ] performance profiling.
 - [ ] visual regression after layout stabilizes.
 - [ ] documentation refresh.

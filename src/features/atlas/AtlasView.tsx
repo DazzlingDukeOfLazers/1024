@@ -23,6 +23,7 @@ import {
 } from '../../camera/logCamera';
 import { CATALOG } from '../../catalog/catalog';
 import { type AtlasState } from '../../share/appState';
+import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { SemanticPanel } from './SemanticPanel';
 import {
   ATLAS_ENTRIES,
@@ -103,6 +104,25 @@ export function AtlasView({
     return () => element.removeEventListener('wheel', onWheel);
   }, [onChange]);
 
+  /** Arrow keys and friends, so the view is not pointer-only. */
+  const onKeyDown = (event: React.KeyboardEvent<SVGSVGElement>): void => {
+    const command = commandForKey(event.key, { shiftKey: event.shiftKey });
+    if (command === undefined) return;
+    event.preventDefault();
+
+    if (command.kind === 'reset') {
+      setCamera(FULL_RANGE);
+      return;
+    }
+    if (command.kind === 'pan') {
+      setCamera((current) => panLogByPixels(current, command.pixels));
+      return;
+    }
+    setCamera((current) =>
+      zoomLogAt(current, Math.pow(2, command.steps * 0.5), VIEWPORT.widthPx / 2, VIEWPORT),
+    );
+  };
+
   return (
     <>
       <section className="panel">
@@ -152,8 +172,10 @@ export function AtlasView({
           viewBox={`0 0 ${VIEWPORT.widthPx} ${VIEWPORT.heightPx}`}
           width="100%"
           className="atlas"
-          role="img"
-          aria-label="Scale atlas"
+          role="application"
+          tabIndex={0}
+          aria-label={`Scale atlas. ${KEYBOARD_HINT}`}
+          onKeyDown={onKeyDown}
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);
             dragState.current = { x: localX(event.currentTarget, event.clientX), moved: false };
@@ -263,7 +285,8 @@ export function AtlasView({
         </svg>
 
         <p className="lens-question">
-          Click a marker to select it. Drag to pan, scroll to zoom. {clusteredCount(clusters)} of{' '}
+          Click a marker to select it, or pick one by name above. Drag to pan, scroll to zoom, or
+          focus the axis and use the keyboard. {KEYBOARD_HINT} {clusteredCount(clusters)} of{' '}
           {ENTRIES.length} objects in view, in {clusters.length} markers — crowded ones merge rather
           than being dropped.
         </p>

@@ -88,6 +88,10 @@ The 24 catalog objects span about 10^-35 m to 10^27 m. Two are exact
 definitions; the rest are marked `demonstration value` and are not yet sourced —
 see `docs/DATA_MODEL.md`.
 
+Every lens is keyboard-operable and scanned by axe-core against WCAG 2 A and AA
+in CI, and each is wrapped in an error boundary so a failure costs you one lens
+rather than the page.
+
 ## Start here
 
 See `REVISION_NOTES.md` for the architectural changes incorporated in this revision.
