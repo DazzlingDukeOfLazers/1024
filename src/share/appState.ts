@@ -19,6 +19,8 @@ import { defaultRulerCamera } from '../features/ruler/presets';
 import { fullRangeCamera } from '../features/atlas/atlas';
 import { BUILT_IN_EXPERIMENTS } from '../core/experiments/fixtures';
 import { Q128_128_PRESETS, type Q128_128PresetName } from '../core/representations/q128_128';
+import { type DigitWidth } from '../core/wide/digits';
+import { type ScenarioName } from '../core/wide/scenario';
 
 export interface RulerState {
   readonly presetId: string;
@@ -59,6 +61,20 @@ export interface MicroscopeState {
   readonly unit: string;
 }
 
+/**
+ * docs/WIDE_INTEGER_ARCHITECTURE.md. The operands are kept as typed decimal
+ * strings for the same reason every other literal in this app is: they are what
+ * the user asked for, and parsing them to a number on the way in would be the
+ * mistake the whole project is about.
+ */
+export interface ArchitectureState {
+  readonly aLiteral: string;
+  readonly bLiteral: string;
+  readonly digitBits: DigitWidth;
+  readonly scenario: ScenarioName;
+  readonly skipZeroDigits: boolean;
+}
+
 export interface RepresentationState {
   /**
    * Which Q128.128 machine the lab emphasises. Changing this changes the
@@ -75,6 +91,7 @@ export interface AppState {
   readonly comparator: ComparatorState;
   readonly lab: LabState;
   readonly microscope: MicroscopeState;
+  readonly architecture: ArchitectureState;
   readonly representations: RepresentationState;
 }
 
@@ -97,6 +114,15 @@ export function defaultAppState(): AppState {
       zoomToDisagreement: false,
     },
     microscope: { literal: '1', unit: 'm' },
+    architecture: {
+      // Sparse on purpose: two set bits in a 1024-bit register is §4's own
+      // example, and it is what makes the multiplication matrix worth drawing.
+      aLiteral: '2^700 + 2^12',
+      bLiteral: '2^300 + 1',
+      digitBits: 64,
+      scenario: 'round',
+      skipZeroDigits: true,
+    },
     representations: { q128Preset: 'm' },
   };
 }

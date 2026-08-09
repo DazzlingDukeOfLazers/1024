@@ -1032,8 +1032,18 @@ What it asks for, roughly in dependency order:
       "Preserve everything" needed a decision: it cannot mean "never narrow" in a
       fixed-width machine, so it means narrow and carry the leftovers, which is
       what `ACCUMULATE_RESIDUE` supports and what the conservation test asserts.
-- [ ] The metrics in §20 — significant width, partial products executed against
-      skipped, modeled cycles — because the point is measurement, not intuition.
+- [x] The visualization of full result / destination / residue from §8, plus
+      §22's wide-number chunks, significant-width band and multiplication matrix
+      with skipped products faded — as a sixth lens, **Architecture Lab**. It is
+      listed last and documented as an experiment rather than one of the five
+      UI_SPEC names.
+- [x] The metrics in §20 — significant width, partial products executed against
+      skipped, modeled cycles, widest intermediate — shown beside the picture
+      they describe.
+- [ ] §22's animations: the accumulation of a partial product into the wide
+      accumulator, and the quotient digits of a division appearing one at a
+      time. Both are movement rather than layout, and everything here so far is
+      a still.
 - [ ] WebGPU compute track (§18), after the CPU simulation works.
 
 Two notes on how this lands against what exists:
@@ -1064,6 +1074,19 @@ second look — and it removes the transient-read failure mode.
 
 - [ ] If it recurs, capture the error context before rerunning. The diagnostic
       was lost to a reflex.
+
+## The sweep was checking one axis of a two-axis problem
+
+`e2e/conformance.spec.ts` tested that no label ran off the left or right of its
+own drawing, and said nothing about the top or bottom. Adding the vertical check
+found two clipped labels immediately: a caption I had just placed fourteen pixels
+below its viewBox in the new lens, and — older, and reported clean every run
+until now — the "off scale" labels in the Representation Lab's disagreement
+strip, where the third machine's label fell outside a 96-pixel box.
+
+A rule that covers one axis of a two-axis problem passes for the same reason a
+rule that covers one panel of five does. Worth remembering the next time a check
+looks complete.
 
 ## Hardening
 

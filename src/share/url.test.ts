@@ -148,11 +148,31 @@ describe('everything else in the view', () => {
       zoomToDisagreement: true,
     },
     microscope: { literal: '2.5', unit: 'nm' },
+    architecture: {
+      aLiteral: '2^512 - 1',
+      bLiteral: '2^64 + 3',
+      digitBits: 32,
+      scenario: 'preserve',
+      skipZeroDigits: false,
+    },
     representations: { q128Preset: 'mm' },
   };
 
   it('round-trips every field', () => {
     expect(roundTrip(state)).toEqual(state);
+  });
+
+  it('carries the architecture lab settings', () => {
+    expect(roundTrip(state).architecture).toEqual(state.architecture);
+  });
+
+  it('restores a link written before the architecture lens existed', () => {
+    // A v1 payload stays a valid v1 payload: the field is absent rather than
+    // wrong, so it takes the default instead of refusing the whole link.
+    const older = { ...state, architecture: undefined } as unknown as AppState;
+    const restored = roundTrip(older);
+    expect(restored.architecture).toEqual(defaultAppState().architecture);
+    expect(restored.lens).toBe('comparator');
   });
 
   it('carries the selection', () => {

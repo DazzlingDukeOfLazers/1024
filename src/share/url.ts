@@ -23,6 +23,16 @@ import {
   type SubjectChoice,
 } from '../features/comparator/compare';
 import { type AppState, defaultAppState, isQ128PresetName } from './appState';
+import { DIGIT_WIDTHS, type DigitWidth } from '../core/wide/digits';
+import { SCENARIOS, type ScenarioName } from '../core/wide/scenario';
+
+function isDigitWidth(value: unknown): value is DigitWidth {
+  return typeof value === 'number' && (DIGIT_WIDTHS as readonly number[]).includes(value);
+}
+
+function isScenarioName(value: unknown): value is ScenarioName {
+  return typeof value === 'string' && Object.hasOwn(SCENARIOS, value);
+}
 import { ShareEncodingError, decodeBase64Url, encodeBase64Url } from './base64url';
 
 export const SHARE_SCHEMA_VERSION = 1;
@@ -63,6 +73,13 @@ interface ShareStateJSON {
     zoomToDisagreement: boolean;
   };
   microscope: { literal: string; unit: string };
+  architecture?: {
+    aLiteral: string;
+    bLiteral: string;
+    digitBits: number;
+    scenario: string;
+    skipZeroDigits: boolean;
+  };
   representations: { q128Preset: string };
 }
 
@@ -108,6 +125,7 @@ export function stateToJSON(state: AppState): ShareStateJSON {
     },
     lab: { ...state.lab },
     microscope: { ...state.microscope },
+    architecture: { ...state.architecture },
     representations: { ...state.representations },
   };
   return state.selectedObjectId === undefined
@@ -229,6 +247,23 @@ export function stateFromJSON(json: unknown): AppState {
     microscope: {
       literal: requireString(record.microscope?.literal, defaults.microscope.literal),
       unit: requireString(record.microscope?.unit, defaults.microscope.unit),
+    },
+    // Absent in links written before the architecture lens existed, which is
+    // why it decodes to the default rather than refusing: a v1 payload is still
+    // a valid v1 payload (docs/NUMERICS.md §14).
+    architecture: {
+      aLiteral: requireString(record.architecture?.aLiteral, defaults.architecture.aLiteral),
+      bLiteral: requireString(record.architecture?.bLiteral, defaults.architecture.bLiteral),
+      digitBits: isDigitWidth(record.architecture?.digitBits)
+        ? record.architecture.digitBits
+        : defaults.architecture.digitBits,
+      scenario: isScenarioName(record.architecture?.scenario)
+        ? record.architecture.scenario
+        : defaults.architecture.scenario,
+      skipZeroDigits:
+        typeof record.architecture?.skipZeroDigits === 'boolean'
+          ? record.architecture.skipZeroDigits
+          : defaults.architecture.skipZeroDigits,
     },
     representations: {
       q128Preset:

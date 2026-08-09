@@ -54,6 +54,12 @@ async function inspect(page: Page): Promise<{ findings: Finding[]; examined: num
         if (label.box.left < frame.left - 1 || label.box.right > frame.right + 1) {
           findings.push({ rule: 'off the edge', detail: `"${label.text}"` });
         }
+        // Vertical too. This was missing, and a caption placed fourteen pixels
+        // below its own viewBox was clipped in half while the sweep reported
+        // the state clean — a rule that checks one axis of a two-axis problem.
+        if (label.box.top < frame.top - 1 || label.box.bottom > frame.bottom + 1) {
+          findings.push({ rule: 'clipped vertically', detail: `"${label.text}"` });
+        }
       }
 
       for (let i = 0; i < labels.length; i += 1) {

@@ -83,6 +83,32 @@ for (const [value, unit, name] of [
   });
 }
 
+for (const [a, b, name] of [
+  ['2^700 + 2^12', '2^300 + 1', 'sparse'],
+  ['2^1024 - 1', '2^1024 - 1', 'dense'],
+  ['0', '5', 'zero'],
+  ['not a number', '1', 'unreadable'],
+] as const) {
+  STATES.push({
+    name: `architecture/${name}`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('A', { exact: true }).fill(a);
+      await page.getByLabel('B', { exact: true }).fill(b);
+    },
+  });
+}
+
+for (const digitBits of ['8', '128'] as const) {
+  STATES.push({
+    name: `architecture/${digitBits}-bit-digits`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('Digit width').selectOption(digitBits);
+    },
+  });
+}
+
 for (const experiment of [
   'decimal-0-1-plus-0-2',
   'million-millimeters',

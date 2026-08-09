@@ -32,7 +32,11 @@ import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 import { Rendered } from '../../ui/Rendered';
 import { estimateTextWidth, placeInRows } from '../../camera/labels';
 
-const STRIP: Viewport = { widthPx: 820, heightPx: 96 };
+// Tall enough for the "off scale" labels, which stack one per machine below the
+// axis. At 96 the third of them fell outside the box and was clipped in half —
+// found by the conformance sweep once it started checking vertical bounds too,
+// having reported this state clean for as long as it only checked horizontal.
+const STRIP: Viewport = { widthPx: 820, heightPx: 116 };
 const ROW_Y = 46;
 /** Must match the `fontSize` the point labels draw at, or the estimate is of the wrong text. */
 const POINT_LABEL_FONT_SIZE = 10;

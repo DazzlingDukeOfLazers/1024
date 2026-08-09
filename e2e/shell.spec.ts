@@ -33,8 +33,12 @@ test('the app shell navigates between lenses', async ({ page }) => {
     page.getByRole('heading', { name: 'Scale Atlas / Numerical Microscope' }),
   ).toBeVisible();
 
+  // Five from docs/UI_SPEC.md, plus the architecture track from
+  // docs/WIDE_INTEGER_ARCHITECTURE.md, which is an experiment rather than one of
+  // the five and is listed last for that reason.
   const nav = page.getByRole('navigation', { name: 'Lenses' });
-  await expect(nav.getByRole('button')).toHaveCount(5);
+  await expect(nav.getByRole('button')).toHaveCount(6);
+  await expect(nav.getByRole('button').last()).toHaveText('Architecture Lab');
 
   await nav.getByRole('button', { name: 'Scale Atlas' }).click();
   await expect(page.getByText('What order of magnitude is this?')).toBeVisible();

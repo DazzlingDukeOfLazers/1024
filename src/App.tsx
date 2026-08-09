@@ -7,11 +7,13 @@ import { ComparatorView } from './features/comparator/ComparatorView';
 import { RulerView } from './features/ruler/RulerView';
 import { AtlasView } from './features/atlas/AtlasView';
 import { MicroscopeView } from './features/microscope/MicroscopeView';
+import { ArchitectureLab } from './features/architecture/ArchitectureLab';
 import { rulerPresets } from './features/ruler/presets';
 import { CATALOG } from './catalog/catalog';
 import {
   type AppState,
   type AtlasState,
+  type ArchitectureState,
   type ComparatorState,
   type LabState,
   type MicroscopeState,
@@ -141,6 +143,11 @@ export function App() {
       setState((current) => ({ ...current, microscope: update(current.microscope) })),
     [],
   );
+  const setArchitecture = useCallback(
+    (update: (current: ArchitectureState) => ArchitectureState) =>
+      setState((current) => ({ ...current, architecture: update(current.architecture) })),
+    [],
+  );
   const setRepresentations = useCallback(
     (update: (current: RepresentationState) => RepresentationState) =>
       setState((current) => ({ ...current, representations: update(current.representations) })),
@@ -235,6 +242,8 @@ export function App() {
               representations={state.representations}
               onRepresentationsChange={setRepresentations}
             />
+          ) : state.lens === 'architecture' ? (
+            <ArchitectureLab state={state.architecture} onChange={setArchitecture} />
           ) : (
             <p className="placeholder">
               Not built yet — see docs/IMPLEMENTATION_PLAN.md for the milestone that delivers this
