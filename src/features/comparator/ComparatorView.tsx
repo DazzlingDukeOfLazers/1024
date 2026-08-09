@@ -129,10 +129,16 @@ function Answer({ result }: { result: ComparisonResult }) {
             <th scope="row">Exact value</th>
             <td className="mono">
               {/* The row is headed "exact", so the decimal under it has to say
-                  whether it is one. 400/3 renders as 133.333333333, which is a
-                  rounded reading of the answer and not the answer — and the
-                  formatter knew that all along and was being ignored. */}
-              {exactValue.text} <ExactnessTag exact={exactValue.exact} />
+                  when it is not. 400/3 renders as 133.333333333, which is a
+                  rounded reading of the answer and not the answer.
+
+                  Marked only when rounded, per docs/NUMERICS.md §15. An "exact"
+                  tag here would sit inches from the headline's "approximate"
+                  tag, describing the same number: one means the digits are all
+                  of it, the other means the red blood cell is a representative
+                  size. Both true, both in the same two words, side by side. */}
+              {exactValue.text}
+              {!exactValue.exact && <ExactnessTag exact={false} />}
               {!exactValue.exact && (
                 <>
                   <br />

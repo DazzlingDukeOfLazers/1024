@@ -836,10 +836,36 @@ test('a repeating answer is not shown as though it terminated', async ({ page })
   await expect(exactValue).toContainText('rounded');
   await expect(exactValue).toContainText('exactly 400/3');
 
-  // And a ratio that does terminate says so instead.
+  // And one that does terminate carries no mark at all. An "exact" tag here
+  // would sit beside the headline's "approximate" tag, about the same number:
+  // one about the digits, one about the red blood cell. Same words, different
+  // axes, inches apart.
   await page.getByLabel('A', { exact: true }).selectOption('unit:km');
-  await expect(exactValue).toContainText('exact');
   await expect(exactValue).not.toContainText('rounded');
+  await expect(exactValue).not.toContainText('exactly ');
+});
+
+test('laying N items end to end draws them against the total, not against one', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+  await page.getByLabel('A', { exact: true }).selectOption('object:red-blood-cell');
+  await page.getByLabel('Operation').selectOption('end-to-end');
+  await page.getByLabel('N', { exact: true }).fill('123');
+
+  const strip = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'To scale' }) });
+
+  // `endToEnd` has no second subject, so the strip used to draw the cell against
+  // itself and report "1 shown" — two identical bars, identically labelled.
+  await expect(strip).toContainText('123 × Red blood cell');
+  await expect(strip).not.toContainText('1 shown');
+  await expect(strip).toContainText('123 shown');
 });
 
 test('a comparison between two definitions is exact', async ({ page }) => {

@@ -13,8 +13,8 @@
 import { type Rational, div, isZero, lt, mul, rational } from '../../core/rational/rational';
 import { toNumberForDisplay } from '../../core/rational/log10';
 import { ratio as quantityRatio } from '../../core/quantities/quantity';
-import { formatEngineering } from '../../core/units/format';
-import { type ComparisonResult } from './compare';
+import { formatCount, formatEngineering } from '../../core/units/format';
+import { type ComparisonResult, type QuantityResult } from './compare';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
 const NOMINAL_WIDTH = 640;
@@ -34,13 +34,32 @@ function toPixels(fraction: Rational, track: number): number {
   return toNumberForDisplay(mul(fraction, rational(BigInt(Math.round(track)))));
 }
 
+/** "123 × Red blood cell (diameter)", for the end-to-end total. */
+function totalLabel(result: QuantityResult): string {
+  const count = result.count === undefined ? undefined : formatCount(result.count).text;
+  return count === undefined ? `All of them — ${result.a.label}` : `${count} × ${result.a.label}`;
+}
+
 export function ComparisonStrip({ result }: { result: ComparisonResult }) {
   // Measured, so "below a pixel" means a pixel on this screen rather than a
   // pixel on a nominal 640-wide one.
   const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
   const track = width - MARGIN * 2;
 
-  const { a, b } = result;
+  /**
+   * `N × A, end to end` has no second subject — `endToEnd` sets `b` to `a`, so
+   * the strip drew one red blood cell against one red blood cell and reported
+   * "1 shown". The comparison that operation is actually making is between one
+   * item and the total, which is the "123 coconuts end to end" picture the
+   * project keeps promising.
+   */
+  const laidOut =
+    result.kind === 'quantity' && result.operation === 'end-to-end'
+      ? { total: { label: totalLabel(result), value: result.value }, item: result.a }
+      : undefined;
+
+  const { a, b } =
+    laidOut === undefined ? result : { a: laidOut.item, b: laidOut.total as typeof result.a };
 
   // Everything is drawn relative to the larger of the two subjects.
   const aIsLarger = !lt(a.value.value, b.value.value);

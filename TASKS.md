@@ -836,6 +836,31 @@ evidence the test looked, not a claim about how many labels there ought to be.
       sits beside the axis and no longer competes with it, and the ruler shows
       three tick labels on a phone instead of two.
 
+## The three Comparator operations I had never opened
+
+I had only ever exercised `how many A fit across B`. Opening the other three
+found two defects, one of them mine from two commits earlier.
+
+- [x] **`N × A, end to end` drew the subject against itself.** `endToEnd` sets
+      `b` to `a`, because the operation has no second subject, and the strip took
+      that literally: two identical bars, identically labelled, "Drawn to scale:
+      1 shown". The comparison that operation actually makes is between one item
+      and the total, which is the "123 coconuts end to end" picture in the
+      project's own guiding phrases. The strip now draws that, and the fix is in
+      the strip rather than in `endToEnd`, whose `b === a` is what correctly
+      collapses the subject table to one row.
+- [x] **The headline said `approximate` and the row beside it said `exact`**,
+      about the same number, inches apart. One meant the red blood cell is a
+      representative size; the other meant the digits are all of the value. Both
+      true, both in the same two words. I introduced that when I added the
+      rendering tag, having applied the mark-only-what-is-rounded convention to
+      the Lab and not to the Comparator. `docs/NUMERICS.md` §15 already said
+      which way this goes.
+
+Also confirmed while looking: all six runnable experiments load and render, and
+the two fixtures with no steps are correctly absent from the dropdown rather
+than offering an empty run.
+
 ## Hardening
 
 - [x] Playwright critical path.
