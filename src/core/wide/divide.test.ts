@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { WideError } from './digits';
-import { divRem, divideUntilExact, refine } from './divide';
+import { DIVISION_ALGORITHMS, divRem, divideUntilExact, refine } from './divide';
 
 describe('the invariant DIV_REM exists to hold', () => {
   it('satisfies A = Q × B + R for every sign combination', () => {
@@ -201,6 +201,69 @@ describe('what the division reports about its work', () => {
     expect(result.remainder).toBe(0n);
     expect(result.exact).toBe(true);
     expect(result.metrics.quotientDigitsGenerated).toBe(0);
+  });
+});
+
+describe('two algorithms, benchmarked rather than chosen (§10)', () => {
+  const cases: [bigint, bigint, number][] = [
+    [(1n << 512n) + 12345n, 7n, 0],
+    [1n, 3n, 256],
+    [(1n << 200n) - 1n, (1n << 64n) + 1n, 64],
+    [12345678901234567890n, 987654321n, 128],
+    [(1n << 1024n) - 1n, (1n << 512n) - 1n, 0],
+  ];
+
+  it('agree on every answer, which is the precondition for comparing them', () => {
+    for (const [dividend, divisor, fractionBits] of cases) {
+      const results = DIVISION_ALGORITHMS.map((algorithm) =>
+        divRem({ dividend, divisor, fractionBits, algorithm }),
+      );
+      const [first, ...rest] = results;
+      for (const other of rest) {
+        expect(other!.quotient, `${dividend} ÷ ${divisor}`).toBe(first!.quotient);
+        expect(other!.remainder, `${dividend} ÷ ${divisor}`).toBe(first!.remainder);
+      }
+    }
+  });
+
+  it('disagree about the work, which is the reason to have both', () => {
+    // Restoring pays a magnitude comparison every step and a subtraction only
+    // when the divisor fits. Non-restoring pays an add-or-subtract every step
+    // and no comparison at all, plus at most one correction at the end.
+    const [dividend, divisor] = [(1n << 512n) + 12345n, 7n] as const;
+    const restoring = divRem({ dividend, divisor, algorithm: 'restoring-radix-2' }).metrics;
+    const nonRestoring = divRem({ dividend, divisor, algorithm: 'non-restoring-radix-2' }).metrics;
+
+    expect(restoring.compareOperations).toBeGreaterThan(0);
+    expect(nonRestoring.compareOperations).toBe(0);
+    expect(nonRestoring.subtractOperations).toBeGreaterThan(restoring.subtractOperations);
+    expect(restoring.shiftOperations).toBe(nonRestoring.shiftOperations);
+  });
+
+  it('changes which one wins when the cost of a comparison changes', () => {
+    // This is the whole point of §10's instruction not to lock the project to
+    // one algorithm. Neither is simply better; it depends on what the hardware
+    // charges, and the simulator can now say where the crossover is.
+    const [dividend, divisor] = [(1n << 512n) + 12345n, 7n] as const;
+    const run = (algorithm: (typeof DIVISION_ALGORITHMS)[number], cyclesPerCompare: number) =>
+      divRem({ dividend, divisor, algorithm, cyclesPerCompare }).metrics.modeledCycles;
+
+    // Measured, and the crossover is sharper than I expected: on this input
+    // restoring makes 513 comparisons to save 345 subtractions, so it wins only
+    // while a comparison is literally free, and loses at a cost of one.
+    expect(run('restoring-radix-2', 0)).toBeLessThan(run('non-restoring-radix-2', 0));
+    expect(run('restoring-radix-2', 1)).toBeGreaterThan(run('non-restoring-radix-2', 1));
+  });
+
+  it('refines from either, because both leave the remainder in range', () => {
+    // A non-restoring run corrects at the end, so its state satisfies the
+    // invariant a restoring continuation needs.
+    for (const algorithm of DIVISION_ALGORITHMS) {
+      const first = divRem({ dividend: 1n, divisor: 7n, fractionBits: 8, algorithm });
+      const more = refine(first, 24);
+      expect(more.quotient * 7n + more.remainder, algorithm).toBe(1n << 32n);
+      expect(more.metrics.algorithm, 'the leading digits keep their provenance').toBe(algorithm);
+    }
   });
 });
 

@@ -1022,9 +1022,25 @@ What it asks for, roughly in dependency order:
       one algorithm before benchmarks exist — non-restoring, radix-2^N and
       reciprocal-based are open, and `DivisionState` is shaped to hold any of
       them.
-- [ ] The other division algorithms §10 lists, and a benchmark that compares
-      them. The point of naming the algorithm in the metrics is to make that
-      comparison possible; nothing compares yet.
+- [x] A second division algorithm and the benchmark §10 asks for. Non-restoring
+      radix-2: subtract unconditionally, let the remainder go negative, add back
+      on the next step, and correct once at the end. Both algorithms are checked
+      against all 140 oracle fixtures, because agreeing on every answer is the
+      precondition for comparing their work.
+
+      **Measured, on `(2^512 + 12345) ÷ 7`:**
+
+      | algorithm | comparisons | add/subtracts | cycles at compare=0 | at compare=1 |
+      | --- | --- | --- | --- | --- |
+      | restoring | 513 | 168 | 681 | 1194 |
+      | non-restoring | 0 | 514 | 1027 | 1027 |
+
+      The crossover is sharper than I expected: restoring makes 513 comparisons
+      to save 345 subtractions, so it wins only while a comparison is literally
+      free and loses at a cost of one. Which is exactly why §10 says not to pick
+      one before benchmarks exist — I would have picked restoring.
+- [ ] Radix-2^N and reciprocal-based division, the other two §10 names. The
+      comparison harness is there now; these would slot into it.
 - [x] Scenario settings (§14) so one workload runs under several policies. The
       four §14 names as values in `scenario.ts`, threaded through rather than
       ambient, and a workload runner that carries an exact rational reference so

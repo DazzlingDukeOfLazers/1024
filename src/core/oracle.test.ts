@@ -55,7 +55,7 @@ import { encodeMeters as encodePlanck } from './representations/planck';
 import { Q512_512, encode as encodeFixedPoint } from './representations/fixedPoint';
 import { DIGIT_WIDTHS } from './wide/digits';
 import { mulWide } from './wide/multiply';
-import { divRem } from './wide/divide';
+import { DIVISION_ALGORITHMS, divRem } from './wide/divide';
 
 const r = ([numerator, denominator]: string[]): Rational =>
   rational(BigInt(numerator!), BigInt(denominator!));
@@ -306,19 +306,24 @@ describe('DIV_REM agrees with the CPU oracle, as §19 requires', () => {
     expect(oracle.wideDivide.some((entry) => entry.fractionBits > 0)).toBe(true);
   });
 
-  it('produces the same quotient and remainder', () => {
+  it('produces the same quotient and remainder, whichever algorithm runs', () => {
     // The simulator shifts, compares and subtracts one bit at a time and never
-    // divides. Python divides. They should not be able to tell each other apart.
+    // divides. Python divides. They should not be able to tell each other apart
+    // — and neither should the two algorithms, which is what makes a comparison
+    // of their *work* meaningful.
     for (const entry of oracle.wideDivide) {
-      const result = divRem({
-        dividend: BigInt(entry.dividend),
-        divisor: BigInt(entry.divisor),
-        fractionBits: entry.fractionBits,
-      });
-      const where = `${entry.dividend} ÷ ${entry.divisor} at F=${entry.fractionBits}`;
-      expect(result.quotient.toString(), `${where} quotient`).toBe(entry.quotient);
-      expect(result.remainder.toString(), `${where} remainder`).toBe(entry.remainder);
-      expect(result.exact, `${where} exact`).toBe(entry.exact);
+      for (const algorithm of DIVISION_ALGORITHMS) {
+        const result = divRem({
+          dividend: BigInt(entry.dividend),
+          divisor: BigInt(entry.divisor),
+          fractionBits: entry.fractionBits,
+          algorithm,
+        });
+        const where = `${entry.dividend} ÷ ${entry.divisor} at F=${entry.fractionBits} (${algorithm})`;
+        expect(result.quotient.toString(), `${where} quotient`).toBe(entry.quotient);
+        expect(result.remainder.toString(), `${where} remainder`).toBe(entry.remainder);
+        expect(result.exact, `${where} exact`).toBe(entry.exact);
+      }
     }
   });
 

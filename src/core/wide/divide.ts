@@ -23,7 +23,13 @@
 
 import { WideError, bitLength } from './digits';
 
-export type DivisionAlgorithm = 'restoring-radix-2';
+/**
+ * §10 lists several, and says not to lock the project to one before benchmarks
+ * exist. Two are implemented; they must agree on every answer and are free to
+ * disagree about the work, which is the only reason to have both.
+ */
+export const DIVISION_ALGORITHMS = ['restoring-radix-2', 'non-restoring-radix-2'] as const;
+export type DivisionAlgorithm = (typeof DIVISION_ALGORITHMS)[number];
 
 export interface DivisionCosts {
   readonly cyclesPerShift?: number;
@@ -96,6 +102,77 @@ function cyclesOf(metrics: Omit<DivisionMetrics, 'modeledCycles'>, costs: Requir
   );
 }
 
+interface Digits {
+  readonly remainder: bigint;
+  readonly quotient: bigint;
+  readonly shifts: number;
+  readonly compares: number;
+  readonly subtracts: number;
+}
+
+/**
+ * Bring down one bit, compare, subtract if it fits, and put it back if it does
+ * not. The SHIFT / COMPARE / SUBTRACT loop §10 describes, in its plainest form.
+ */
+function restoring(scaled: bigint, divisor: bigint, bits: number): Digits {
+  let remainder = 0n;
+  let quotient = 0n;
+  let subtracts = 0;
+
+  for (let index = bits - 1; index >= 0; index -= 1) {
+    remainder = (remainder << 1n) | ((scaled >> BigInt(index)) & 1n);
+    quotient <<= 1n;
+    if (remainder >= divisor) {
+      remainder -= divisor;
+      quotient |= 1n;
+      subtracts += 1;
+    }
+  }
+  return { remainder, quotient, shifts: bits, compares: bits, subtracts };
+}
+
+/**
+ * Subtract unconditionally and let the remainder go negative, adding the divisor
+ * back on the next step instead of undoing the subtraction on this one.
+ *
+ * The trade §10 wants measured: one add-or-subtract every step and no magnitude
+ * comparison at all — the decision is a sign bit — against one final correction
+ * when the last remainder came out negative. Whether that is cheaper depends on
+ * what a comparison costs relative to an addition, which is why both are here
+ * and why the costs are parameters.
+ */
+function nonRestoring(scaled: bigint, divisor: bigint, bits: number): Digits {
+  let remainder = 0n;
+  let quotient = 0n;
+  let addsAndSubtracts = 0;
+
+  for (let index = bits - 1; index >= 0; index -= 1) {
+    const negative = remainder < 0n;
+    remainder = (remainder << 1n) | ((scaled >> BigInt(index)) & 1n);
+    remainder = negative ? remainder + divisor : remainder - divisor;
+    addsAndSubtracts += 1;
+
+    quotient <<= 1n;
+    if (remainder >= 0n) quotient |= 1n;
+  }
+
+  // The correction that pays for never having restored.
+  let corrections = 0;
+  if (remainder < 0n) {
+    remainder += divisor;
+    corrections = 1;
+  }
+
+  return {
+    remainder,
+    quotient,
+    shifts: bits,
+    // A sign test rather than a magnitude comparison, which is the saving.
+    compares: 0,
+    subtracts: addsAndSubtracts + corrections,
+  };
+}
+
 export function divRem(request: DivRemRequest): DivRemResult {
   const {
     dividend,
@@ -116,27 +193,11 @@ export function divRem(request: DivRemRequest): DivRemResult {
   const scaled = (dividend < 0n ? -dividend : dividend) << BigInt(fractionBits);
   const divisorMagnitude = divisor < 0n ? -divisor : divisor;
 
-  let remainder = 0n;
-  let quotient = 0n;
-  let shifts = 0;
-  let compares = 0;
-  let subtracts = 0;
-
-  // Restoring radix-2: bring down one bit, compare, subtract if it fits. This is
-  // the SHIFT / COMPARE / SUBTRACT loop §10 describes, and the cost of a wide
-  // division in this architecture is the length of it.
   const bits = bitLength(scaled);
-  for (let index = bits - 1; index >= 0; index -= 1) {
-    remainder = (remainder << 1n) | ((scaled >> BigInt(index)) & 1n);
-    quotient <<= 1n;
-    shifts += 1;
-    compares += 1;
-    if (remainder >= divisorMagnitude) {
-      remainder -= divisorMagnitude;
-      quotient |= 1n;
-      subtracts += 1;
-    }
-  }
+  const { remainder, quotient, shifts, compares, subtracts } =
+    algorithm === 'restoring-radix-2'
+      ? restoring(scaled, divisorMagnitude, bits)
+      : nonRestoring(scaled, divisorMagnitude, bits);
 
   const partial = {
     algorithm,
@@ -175,6 +236,12 @@ export function divRem(request: DivRemRequest): DivRemResult {
  * time scales with the precision asked for rather than being fixed by the
  * format. This is what makes "give me another 64 bits" a real request and not a
  * re-computation.
+ *
+ * The continuation is restoring whichever algorithm produced the state, which is
+ * sound rather than lazy: both leave the remainder in `[0, divisor)` — the
+ * non-restoring one after its final correction — and that is exactly the
+ * invariant a restoring step needs. The metrics still name the algorithm that
+ * generated the leading digits.
  */
 export function refine(previous: DivRemResult, additionalFractionBits: number): DivRemResult {
   if (additionalFractionBits < 0) throw new WideError('cannot refine by a negative width');
