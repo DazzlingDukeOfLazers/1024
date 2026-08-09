@@ -55,6 +55,7 @@ import { encodeMeters as encodePlanck } from './representations/planck';
 import { Q512_512, encode as encodeFixedPoint } from './representations/fixedPoint';
 import { DIGIT_WIDTHS } from './wide/digits';
 import { mulWide } from './wide/multiply';
+import { divRem } from './wide/divide';
 
 const r = ([numerator, denominator]: string[]): Rational =>
   rational(BigInt(numerator!), BigInt(denominator!));
@@ -291,6 +292,44 @@ describe('MUL_WIDE agrees with the CPU oracle, as §19 requires', () => {
   it('needs no more than double width, whatever the operands', () => {
     for (const entry of oracle.wideMultiply) {
       expect(entry.productBits, `${entry.a} × ${entry.b}`).toBeLessThanOrEqual(2048);
+    }
+  });
+});
+
+describe('DIV_REM agrees with the CPU oracle, as §19 requires', () => {
+  it('was given cases to check, on both sides of exact', () => {
+    expect(oracle.wideDivide.length).toBeGreaterThan(100);
+    expect(oracle.wideDivide.some((entry) => entry.exact)).toBe(true);
+    expect(oracle.wideDivide.some((entry) => !entry.exact)).toBe(true);
+    expect(oracle.wideDivide.some((entry) => entry.dividend.startsWith('-'))).toBe(true);
+    expect(oracle.wideDivide.some((entry) => entry.divisor.startsWith('-'))).toBe(true);
+    expect(oracle.wideDivide.some((entry) => entry.fractionBits > 0)).toBe(true);
+  });
+
+  it('produces the same quotient and remainder', () => {
+    // The simulator shifts, compares and subtracts one bit at a time and never
+    // divides. Python divides. They should not be able to tell each other apart.
+    for (const entry of oracle.wideDivide) {
+      const result = divRem({
+        dividend: BigInt(entry.dividend),
+        divisor: BigInt(entry.divisor),
+        fractionBits: entry.fractionBits,
+      });
+      const where = `${entry.dividend} ÷ ${entry.divisor} at F=${entry.fractionBits}`;
+      expect(result.quotient.toString(), `${where} quotient`).toBe(entry.quotient);
+      expect(result.remainder.toString(), `${where} remainder`).toBe(entry.remainder);
+      expect(result.exact, `${where} exact`).toBe(entry.exact);
+    }
+  });
+
+  it('holds A × 2^F = Q × B + R on every one of them', () => {
+    // The contract itself, checked against the oracle's own numbers rather than
+    // against the simulator's.
+    for (const entry of oracle.wideDivide) {
+      const dividend = BigInt(entry.dividend);
+      const divisor = BigInt(entry.divisor);
+      const scaled = dividend * (1n << BigInt(entry.fractionBits));
+      expect(BigInt(entry.quotient) * divisor + BigInt(entry.remainder)).toBe(scaled);
     }
   });
 });

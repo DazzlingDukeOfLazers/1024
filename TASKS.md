@@ -1016,8 +1016,15 @@ What it asks for, roughly in dependency order:
       reading of the document rather than something it states.
 - [ ] The visualization of full result / destination / residue from §8. The
       arithmetic is done; the picture is not.
-- [ ] `DIV_REM` holding `A = Q × B + R`, with the remainder a first-class result
-      rather than a failure, and demand-driven extra quotient digits.
+- [x] `DIV_REM` holding `A = Q × B + R`, with the remainder a first-class result
+      rather than a failure, and demand-driven extra quotient digits. Restoring
+      radix-2, named in the result because §10 says not to lock the project to
+      one algorithm before benchmarks exist — non-restoring, radix-2^N and
+      reciprocal-based are open, and `DivisionState` is shaped to hold any of
+      them.
+- [ ] The other division algorithms §10 lists, and a benchmark that compares
+      them. The point of naming the algorithm in the metrics is to make that
+      comparison possible; nothing compares yet.
 - [ ] Scenario settings (§14) so one workload runs under several policies.
 - [ ] The metrics in §20 — significant width, partial products executed against
       skipped, modeled cycles — because the point is measurement, not intuition.
@@ -1034,6 +1041,23 @@ Two notes on how this lands against what exists:
 - §23's precision statement is consistent with what the app already teaches: the
   architecture moves where error occurs rather than removing it. The Microscope's
   existing framing carries over.
+
+## One conformance flake, hardened rather than diagnosed
+
+The conformance sweep failed once at 420 px during a full run, passed on its own
+immediately afterwards, and the passing rerun deleted the error context before I
+read it. Twelve further attempts — four full suites and eight repeats of the
+sweep under eight workers — did not reproduce it.
+
+So this is a guess at the mechanism, and worth labelling as one. A measured view
+renders at the old width, gets observed, and renders again; a sample taken
+between those two is self-consistent and about to be replaced. `settled` now
+requires two consecutive agreeing samples across an animation frame instead of
+one. That cannot mask a real violation — an overlap is still an overlap on the
+second look — and it removes the transient-read failure mode.
+
+- [ ] If it recurs, capture the error context before rerunning. The diagnostic
+      was lost to a reflex.
 
 ## Hardening
 

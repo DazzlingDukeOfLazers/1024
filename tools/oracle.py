@@ -407,6 +407,35 @@ def main():
             }
         )
 
+    # §19 again, for DIV_REM. The invariant A × 2^F = Q × B + R is the whole
+    # contract, so the oracle supplies both halves and the test checks the
+    # identity as well as the values. Python truncates toward zero, which is the
+    # convention that keeps the identity true for signed operands.
+    wide_divide = []
+    divisors = [d for d in operands if d != 0][:12]
+    for _ in range(140):
+        a = rng.choice(operands)
+        b = rng.choice(divisors)
+        sign_a = -1 if rng.random() < 0.25 else 1
+        sign_b = -1 if rng.random() < 0.25 else 1
+        fraction_bits = rng.choice([0, 0, 8, 64, 128])
+        scaled = sign_a * a * 2**fraction_bits
+        divisor = sign_b * b
+        quotient = abs(scaled) // abs(divisor)
+        if (scaled < 0) != (divisor < 0):
+            quotient = -quotient
+        remainder = scaled - quotient * divisor
+        wide_divide.append(
+            {
+                'dividend': str(sign_a * a),
+                'divisor': str(divisor),
+                'fractionBits': fraction_bits,
+                'quotient': str(quotient),
+                'remainder': str(remainder),
+                'exact': remainder == 0,
+            }
+        )
+
     generator = io.open(os.path.abspath(__file__), 'rb').read()
     document = {
         'note': (
@@ -424,6 +453,7 @@ def main():
         'planck': planck,
         'errorMeter': meter,
         'wideMultiply': wide_multiply,
+        'wideDivide': wide_divide,
     }
 
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(
@@ -431,7 +461,7 @@ def main():
     )
     print(
         'wrote %s: %d arithmetic, %d magnitudes, %d decimals, %d encodings, '
-        '%d neighbourhoods, %d q128, %d planck, %d error meter, %d wide multiply'
+        '%d neighbourhoods, %d q128, %d planck, %d error meter, %d wide multiply, %d wide divide'
         % (
             os.path.relpath(OUT, HERE),
             len(arithmetic),
@@ -443,6 +473,7 @@ def main():
             len(planck),
             len(meter),
             len(wide_multiply),
+            len(wide_divide),
         )
     )
 

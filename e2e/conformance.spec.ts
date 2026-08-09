@@ -123,18 +123,49 @@ async function inspect(page: Page): Promise<{ findings: Finding[]; examined: num
   });
 }
 
-/** Wait until every measured view has had its measurement. */
+/**
+ * Wait until every measured view has had its measurement, and has stopped
+ * changing.
+ *
+ * Matching once is not enough. A view is measured by a `ResizeObserver`, so a
+ * state change is: render at the old width, observe, render again. Sampling
+ * between those can catch geometry that is consistent with itself and about to
+ * be replaced, and the sweep would then report an overlap that exists for one
+ * frame. Requiring two consecutive agreeing samples across an animation frame
+ * removes that without weakening anything: a real overlap is still an overlap on
+ * the second look.
+ *
+ * This was added after one failure in roughly six full runs that could not be
+ * reproduced in twelve subsequent attempts, and whose diagnostic the passing
+ * rerun had already deleted. It is the most plausible cause rather than a
+ * diagnosed one, and is recorded that way in TASKS.
+ */
 async function settled(page: Page): Promise<void> {
-  await expect
-    .poll(async () =>
-      page.evaluate(() =>
-        Array.from(document.querySelectorAll('svg[viewBox]')).every((svg) => {
-          const declared = Number(svg.getAttribute('viewBox')!.split(' ')[2]);
-          const drawn = svg.getBoundingClientRect().width;
-          return drawn === 0 || Math.abs(declared - drawn) < 1.5;
+  const measure = () =>
+    page.evaluate(
+      () =>
+        new Promise<string>((resolve) => {
+          requestAnimationFrame(() => {
+            resolve(
+              Array.from(document.querySelectorAll('svg[viewBox]'))
+                .map((svg) => {
+                  const declared = Number(svg.getAttribute('viewBox')!.split(' ')[2]);
+                  const drawn = svg.getBoundingClientRect().width;
+                  const settledHere = drawn === 0 || Math.abs(declared - drawn) < 1.5;
+                  return `${settledHere ? 'ok' : 'no'}:${Math.round(drawn)}`;
+                })
+                .join('|'),
+            );
+          });
         }),
-      ),
-    )
+    );
+
+  await expect
+    .poll(async () => {
+      const first = await measure();
+      if (first.includes('no:')) return false;
+      return first === (await measure());
+    })
     .toBe(true);
 }
 
