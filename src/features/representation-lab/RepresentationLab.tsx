@@ -28,6 +28,7 @@ import { readAccumulator } from '../../core/representations/q512_512';
 import { metersToPlanckLengths } from '../../core/representations/planck';
 import { relativeError } from '../../core/representations/binary64';
 import { buildDisagreementView, drawnSeparationPixels } from './disagreement';
+import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
 const STRIP: Viewport = { widthPx: 820, heightPx: 96 };
 const ROW_Y = 46;
@@ -53,6 +54,12 @@ function DisagreementStrip({
   zoomed: boolean;
   onToggle: (zoomed: boolean) => void;
 }) {
+  // Measured, like every other view that states a figure in pixels: this one
+  // discloses its magnification and how far apart the machines are *drawn*, and
+  // both are lies on any screen that is not the nominal width.
+  const [width, measure] = useMeasuredWidth(STRIP.widthPx);
+  const strip: Viewport = { widthPx: width, heightPx: STRIP.heightPx };
+
   const view = buildDisagreementView(
     result.exactFinal,
     result.machines.map((machine) => ({
@@ -60,13 +67,13 @@ function DisagreementStrip({
       label: machine.label,
       decoded: machine.final.decoded,
     })),
-    STRIP,
+    strip,
     zoomed,
   );
   const separation = drawnSeparationPixels(view);
 
   return (
-    <section className="panel">
+    <section className="panel" ref={measure}>
       <h3>Zoom to disagreement</h3>
 
       <div className="field">
@@ -94,7 +101,7 @@ function DisagreementStrip({
       )}
 
       <svg
-        viewBox={`0 0 ${STRIP.widthPx} ${STRIP.heightPx}`}
+        viewBox={`0 0 ${strip.widthPx} ${strip.heightPx}`}
         width="100%"
         role="img"
         aria-label="Representation divergence"
@@ -102,7 +109,7 @@ function DisagreementStrip({
         <line
           x1={0}
           y1={ROW_Y}
-          x2={STRIP.widthPx}
+          x2={strip.widthPx}
           y2={ROW_Y}
           stroke="currentColor"
           strokeOpacity={0.3}

@@ -715,6 +715,38 @@ nothing overlaps or runs off the edge. A bad estimate now fails loudly.
       top of each other; it will happily confirm that two unreadable labels are
       each exactly where the code put them.
 
+## The other three lenses, once I looked at those too
+
+Having found four defects in the two lenses I had screenshotted, I screenshotted
+the other three. Four more, and one of them was my own unfinished work.
+
+- **The Microscope and the Lab still drew into fixed viewBoxes.** The
+  measured-width commit converted the Ruler, the Atlas and the comparison strip
+  and missed three SVGs: both lattice rows and the resolution chart in the
+  Microscope, and the disagreement strip in the Lab. Scaled into 340 px, a 10 px
+  label renders at about four and a half. The Lab's strip is the worse of the
+  two, because it discloses its magnification and how far apart the machines are
+  *drawn* — figures that were false everywhere but at 820 px.
+- **`.mono { overflow-wrap: anywhere }`** broke every value mid-token on a narrow
+  screen: `2.939 × 10^-42 m` came apart as `2.93 / 9 × / 10^- / 42 m`. It was
+  there so a 64-digit raw register could wrap. `break-word` breaks inside a token
+  only when the token alone will not fit, which is what the register needs and a
+  number does not.
+- **`table.readout th` was `width: 14rem` and `white-space: nowrap`**, which sets
+  a floor no 360 px screen can meet. With four columns the Lab's tables pushed
+  the whole document to 455 px, so the page scrolled sideways on a phone. Row
+  headers now wrap below 640 px, and `.panel` scrolls so a table that genuinely
+  cannot fit takes its own scrollbar instead of the page's.
+
+`e2e/narrow.spec.ts` holds both properties at 360 px and 420 px: the document is
+never wider than the screen, and no SVG text renders below 7 px. Both are things
+a person sees in one glance and a DOM assertion never mentions.
+
+- [ ] The resolution chart's legend sits on top of its own plotted line. Legible,
+      but the line runs through the words. `labels.ts` could place it, but the
+      chart is a second axis problem rather than the one-dimensional one that
+      module solves.
+
 ## Hardening
 
 - [x] Playwright critical path.

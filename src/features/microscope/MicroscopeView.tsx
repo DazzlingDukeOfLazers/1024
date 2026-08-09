@@ -27,13 +27,13 @@ import {
   q128LatticeReport,
 } from './lattice';
 import { PickYourRuler } from './PickYourRuler';
+import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
 const UNIT_CHOICES = ['fm', 'pm', 'nm', 'µm', 'mm', 'm', 'km', 'Mm', 'Gm', 'au', 'ly'];
 
-const LATTICE_WIDTH = 760;
+const NOMINAL_LATTICE_WIDTH = 760;
 const LATTICE_HEIGHT = 64;
 const LATTICE_MARGIN = 30;
-const LATTICE_TRACK = LATTICE_WIDTH - LATTICE_MARGIN * 2;
 
 function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
@@ -44,6 +44,12 @@ function meters(value: Rational): string {
 /* -------------------------------------------------------------------------- */
 
 function LatticeRow({ report }: { report: LatticeReport }) {
+  // Measured, like the Ruler and the Atlas. On a fixed 760-unit viewBox scaled
+  // into 340 px, a 10 px label draws at about four and a half — not small, just
+  // unreadable.
+  const [LATTICE_WIDTH, measure] = useMeasuredWidth(NOMINAL_LATTICE_WIDTH);
+  const LATTICE_TRACK = LATTICE_WIDTH - LATTICE_MARGIN * 2;
+
   const samples = report.samples;
   const first = samples[0]?.value;
   const last = samples.at(-1)?.value;
@@ -70,7 +76,7 @@ function LatticeRow({ report }: { report: LatticeReport }) {
     report.nearest === undefined ? undefined : toExactDecimalString(report.nearest);
 
   return (
-    <section className="panel">
+    <section className="panel" ref={measure}>
       <h3>{report.label}</h3>
 
       {samples.length === 0 ? (
@@ -201,7 +207,7 @@ function LatticeRow({ report }: { report: LatticeReport }) {
 /* Resolution against magnitude                                                */
 /* -------------------------------------------------------------------------- */
 
-const CHART_WIDTH = 760;
+const NOMINAL_CHART_WIDTH = 760;
 const CHART_HEIGHT = 260;
 const CHART_PAD = 40;
 
@@ -212,6 +218,10 @@ function ResolutionChart({
   profiles: readonly ResolutionProfile[];
   referenceLog10: number | undefined;
 }) {
+  // Measured, for the same reason as the lattices: the legend and the axis
+  // labels have to be readable at whatever width the chart is given.
+  const [CHART_WIDTH, measure] = useMeasuredWidth(NOMINAL_CHART_WIDTH);
+
   const all = profiles.flatMap((profile) =>
     profile.samples
       .map((sample) => sample.log10Gap)
@@ -231,88 +241,90 @@ function ResolutionChart({
     CHART_HEIGHT - CHART_PAD - ((value - minY) / (maxY - minY)) * (CHART_HEIGHT - CHART_PAD * 2);
 
   return (
-    <svg
-      viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-      width="100%"
-      role="img"
-      aria-label="Local resolution against magnitude"
-    >
-      <line
-        x1={CHART_PAD}
-        y1={CHART_HEIGHT - CHART_PAD}
-        x2={CHART_WIDTH - CHART_PAD}
-        y2={CHART_HEIGHT - CHART_PAD}
-        stroke="currentColor"
-        strokeOpacity={0.5}
-      />
-      <line
-        x1={CHART_PAD}
-        y1={CHART_PAD}
-        x2={CHART_PAD}
-        y2={CHART_HEIGHT - CHART_PAD}
-        stroke="currentColor"
-        strokeOpacity={0.5}
-      />
-      <text
-        x={CHART_WIDTH - CHART_PAD}
-        y={CHART_HEIGHT - 12}
-        fontSize={10}
-        textAnchor="end"
-        fill="currentColor"
+    <div ref={measure}>
+      <svg
+        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
+        width="100%"
+        role="img"
+        aria-label="Local resolution against magnitude"
       >
-        magnitude, 10^{maxX} m
-      </text>
-      <text x={CHART_PAD} y={CHART_HEIGHT - 12} fontSize={10} fill="currentColor">
-        10^{minX} m
-      </text>
-      <text x={4} y={CHART_PAD - 8} fontSize={10} fill="currentColor">
-        local spacing, 10^{Math.round(maxY)} m
-      </text>
-      <text x={4} y={CHART_HEIGHT - CHART_PAD + 14} fontSize={10} fill="currentColor">
-        10^{Math.round(minY)} m
-      </text>
-
-      {referenceLog10 !== undefined && referenceLog10 >= minX && referenceLog10 <= maxX && (
         <line
-          x1={x(referenceLog10)}
-          y1={CHART_PAD}
-          x2={x(referenceLog10)}
+          x1={CHART_PAD}
+          y1={CHART_HEIGHT - CHART_PAD}
+          x2={CHART_WIDTH - CHART_PAD}
           y2={CHART_HEIGHT - CHART_PAD}
           stroke="currentColor"
-          strokeOpacity={0.4}
-          strokeDasharray="3 3"
+          strokeOpacity={0.5}
         />
-      )}
+        <line
+          x1={CHART_PAD}
+          y1={CHART_PAD}
+          x2={CHART_PAD}
+          y2={CHART_HEIGHT - CHART_PAD}
+          stroke="currentColor"
+          strokeOpacity={0.5}
+        />
+        <text
+          x={CHART_WIDTH - CHART_PAD}
+          y={CHART_HEIGHT - 12}
+          fontSize={10}
+          textAnchor="end"
+          fill="currentColor"
+        >
+          magnitude, 10^{maxX} m
+        </text>
+        <text x={CHART_PAD} y={CHART_HEIGHT - 12} fontSize={10} fill="currentColor">
+          10^{minX} m
+        </text>
+        <text x={4} y={CHART_PAD - 8} fontSize={10} fill="currentColor">
+          local spacing, 10^{Math.round(maxY)} m
+        </text>
+        <text x={4} y={CHART_HEIGHT - CHART_PAD + 14} fontSize={10} fill="currentColor">
+          10^{Math.round(minY)} m
+        </text>
 
-      {profiles.map((profile, index) => {
-        const points = profile.samples
-          .filter((sample) => sample.log10Gap !== undefined)
-          .map((sample) => `${x(sample.log10Magnitude)},${y(sample.log10Gap!)}`)
-          .join(' ');
-        return (
-          <g key={profile.id}>
-            <polyline
-              points={points}
-              fill="none"
-              stroke="currentColor"
-              strokeOpacity={0.85}
-              strokeWidth={2}
-              strokeDasharray={profile.constant ? '6 4' : undefined}
-            />
-            <text
-              x={CHART_WIDTH - CHART_PAD - 4}
-              y={CHART_PAD + 14 + index * 14}
-              fontSize={11}
-              textAnchor="end"
-              fill="currentColor"
-            >
-              {profile.label}
-              {profile.constant ? ' (constant)' : ' (grows)'}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+        {referenceLog10 !== undefined && referenceLog10 >= minX && referenceLog10 <= maxX && (
+          <line
+            x1={x(referenceLog10)}
+            y1={CHART_PAD}
+            x2={x(referenceLog10)}
+            y2={CHART_HEIGHT - CHART_PAD}
+            stroke="currentColor"
+            strokeOpacity={0.4}
+            strokeDasharray="3 3"
+          />
+        )}
+
+        {profiles.map((profile, index) => {
+          const points = profile.samples
+            .filter((sample) => sample.log10Gap !== undefined)
+            .map((sample) => `${x(sample.log10Magnitude)},${y(sample.log10Gap!)}`)
+            .join(' ');
+          return (
+            <g key={profile.id}>
+              <polyline
+                points={points}
+                fill="none"
+                stroke="currentColor"
+                strokeOpacity={0.85}
+                strokeWidth={2}
+                strokeDasharray={profile.constant ? '6 4' : undefined}
+              />
+              <text
+                x={CHART_WIDTH - CHART_PAD - 4}
+                y={CHART_PAD + 14 + index * 14}
+                fontSize={11}
+                textAnchor="end"
+                fill="currentColor"
+              >
+                {profile.label}
+                {profile.constant ? ' (constant)' : ' (grows)'}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 

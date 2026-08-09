@@ -97,6 +97,10 @@ body {
   border-radius: 8px;
   margin-bottom: 1rem;
   padding: 1rem;
+  /* A four-column table of exact values has a width below which it cannot go
+     without lying about the values. When that width exceeds the screen, the
+     panel scrolls; the page does not. */
+  overflow-x: auto;
 }
 
 .panel h3 {
@@ -165,6 +169,16 @@ table.readout th {
   font-weight: 500;
   white-space: nowrap;
   width: 14rem;
+}
+
+/* On a phone a 14rem row header leaves too little for the value beside it, and
+   a nowrap header sets a minimum width the screen cannot meet. Let them wrap
+   and take what they need. */
+@media (max-width: 640px) {
+  table.readout th {
+    white-space: normal;
+    width: auto;
+  }
 }
 
 .answer {
@@ -302,7 +316,11 @@ svg.ruler:active {
 
 .mono {
   font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
-  overflow-wrap: anywhere;
+  /* `anywhere` breaks even where an ordinary break is available, so on a narrow
+     screen "2.939 × 10^-42 m" came apart as "2.93 / 9 × / 10^- / 42 m". This
+     breaks inside a token only when the token alone will not fit, which is what
+     a 64-digit raw register needs and a number does not. */
+  overflow-wrap: break-word;
 }
 
 .tag {
