@@ -188,6 +188,25 @@ Figures stated in pixels are held against measured DOM geometry rather than
 against the code that produced them (`e2e/pixels.spec.ts`). A readout that agrees
 with itself in viewBox units can be wrong on every screen at once.
 
+## Enumerate the states; check the rules across all of them
+
+Two failure modes accounted for nearly every defect found after the milestones were complete:
+
+1. **a path nobody had walked** — three of the Comparator's four operations, four of the Ruler's presets, most of the Lab's experiments;
+2. **a fix that was right where I was looking and missing one panel over** — bounds added to the Atlas and not the Ruler, a rounding mark added to the Comparator and not the Lab, a convention written into `docs/NUMERICS.md` and applied to one of the two places it governed.
+
+Neither is fixed by looking harder, and both are fixed the same way. `e2e/conformance.spec.ts` enumerates the states the app can be put into — every lens, operation, preset, experiment and a spread of magnitudes — and at each one evaluates every invariant **against the whole document**:
+
+- no two labels overlap;
+- no label is cut off by the edge of its own drawing;
+- no label is drawn too small to read;
+- the page never scrolls sideways;
+- a value under a label claiming exactness carries the formatter's verdict.
+
+The last of these is why `Rendered` writes `data-exact` into the DOM. A rule that can only be checked by reading the digits is a rule that can be satisfied by luck; an attribute is either there or it is not, in every panel, and a new panel that drops the flag fails this file rather than waiting to be noticed.
+
+Write these checks page-wide even when the defect that prompted them was in one place. A per-panel assertion cannot fail for the panel it was not written about, which is precisely the gap it needs to cover.
+
 ## An assertion that nothing is wrong must prove it looked
 
 `expect(overlaps).toEqual([])` is also what an empty page says. So is "no accessibility violations", "no text below 7 px", "no file missing", "no cell unmarked". Every assertion of that shape needs a companion assertion that the collection it scanned was not empty:

@@ -29,10 +29,13 @@ import { metersToPlanckLengths } from '../../core/representations/planck';
 import { relativeError } from '../../core/representations/binary64';
 import { buildDisagreementView, drawnSeparationPixels } from './disagreement';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
-import { ExactnessTag } from '../../ui/ExactnessTag';
+import { Rendered } from '../../ui/Rendered';
+import { estimateTextWidth, placeInRows } from '../../camera/labels';
 
 const STRIP: Viewport = { widthPx: 820, heightPx: 96 };
 const ROW_Y = 46;
+/** Must match the `fontSize` the point labels draw at, or the estimate is of the wrong text. */
+const POINT_LABEL_FONT_SIZE = 10;
 
 function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
@@ -44,17 +47,12 @@ function meters(value: Rational): string {
  * digits, and a rounded number under a heading that says exact is the thing this
  * project exists not to do.
  *
- * Marked only when it *is* rounded: an unmarked number in these two places is an
- * exact one, and the timeline has enough columns without a tag on every cell.
+ * `Rendered` marks it only when rounded, and puts the formatter's verdict into
+ * the DOM so `e2e/conformance.spec.ts` can hold every such cell to it at once
+ * rather than one panel at a time.
  */
 function ExactLength({ value }: { value: Rational }) {
-  const rendered = formatScientific(quantity('length', value));
-  return (
-    <>
-      {rendered.text}
-      {!rendered.exact && <ExactnessTag exact={false} />}
-    </>
-  );
+  return <Rendered value={formatScientific(quantity('length', value))} />;
 }
 
 function inPlanckLengths(value: Rational): string {
@@ -91,6 +89,27 @@ function DisagreementStrip({
     zoomed,
   );
   const separation = drawnSeparationPixels(view);
+
+  /**
+   * Which row each machine's label sits on.
+   *
+   * This used to stagger by index parity, so with three machines the first and
+   * third shared a row — and at true scale they are all at the same x, which is
+   * the entire point of the picture. "Planck grid (256-bit)" printed straight
+   * through "binary64". Placed by actual label width now, using the same helper
+   * as the Ruler and the Atlas.
+   */
+  const labelRows = new Map(
+    placeInRows(
+      view.points.filter((point) => point.x !== undefined && !point.offScreen),
+      (point) => ({
+        x: point.x!,
+        width: estimateTextWidth(point.label, POINT_LABEL_FONT_SIZE),
+        anchor: 'middle' as const,
+      }),
+      view.points.length,
+    ).map(({ item, row }) => [item.id, Math.max(row, 0)] as const),
+  );
 
   return (
     <section className="panel" ref={measure}>
@@ -162,8 +181,8 @@ function DisagreementStrip({
               <circle cx={point.x} cy={ROW_Y} r={5} fill="currentColor" fillOpacity={0.6} />
               <text
                 x={point.x}
-                y={ROW_Y + 20 + (index % 2) * 14}
-                fontSize={10}
+                y={ROW_Y + 20 + (labelRows.get(point.id) ?? 0) * 14}
+                fontSize={POINT_LABEL_FONT_SIZE}
                 textAnchor="middle"
                 fill="currentColor"
                 fillOpacity={0.85}

@@ -20,6 +20,7 @@ import {
   relativeError,
 } from '../core/representations/binary64';
 import { metersToPlanckLengths } from '../core/representations/planck';
+import { Rendered } from './Rendered';
 
 function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
@@ -97,7 +98,18 @@ export function Binary64Panel({ length }: { length: Quantity<'length'> }) {
           </tr>
           <tr>
             <th scope="row">Stored value (exact)</th>
-            <td className="mono">{exactDecimal ?? 'not a terminating decimal'}</td>
+            {/* Every binary64 value has a terminating decimal expansion, so this
+                is genuinely exact and prints in full — 55 digits for 0.1. The
+                verdict is still carried, because the row header claims it and
+                the conformance sweep holds every such row to the same rule. */}
+            <td className="mono">
+              <Rendered
+                value={{
+                  text: exactDecimal ?? 'not a terminating decimal',
+                  exact: exactDecimal !== undefined,
+                }}
+              />
+            </td>
           </tr>
           <tr>
             <th scope="row">Error vs intent</th>

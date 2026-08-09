@@ -42,6 +42,12 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
         width: estimateTextWidth(tick.label ?? '', LABEL_FONT_SIZE),
         anchor: 'start' as const,
       }),
+      // Bounds, which the Atlas has had since the label work and this did not:
+      // at a 1e20 m origin a tick is labelled "100000000000000000000000" and ran
+      // clean off the right-hand side. Exactly the shape of defect the
+      // conformance sweep exists to find — right where I was looking, missing
+      // one file over.
+      { bounds: { min: 0, max: width } },
     ).map((tick) => tick.x),
   );
 

@@ -105,8 +105,14 @@ export function ExactCorePanel({
           {readoutRows(quantity).map((row) => (
             <tr key={row.label}>
               <th scope="row">{row.label}</th>
+              {/* This panel shows both verdicts, because comparing them across
+                  renderings of one value is its whole point: engineering exact,
+                  scientific rounded, same number. `data-exact` is what the
+                  conformance sweep reads. */}
               <td className="mono">
-                {row.value} {row.exact !== undefined && <ExactnessTag exact={row.exact} />}
+                <span data-exact={row.exact === false ? 'false' : 'true'}>
+                  {row.value} {row.exact !== undefined && <ExactnessTag exact={row.exact} />}
+                </span>
               </td>
             </tr>
           ))}

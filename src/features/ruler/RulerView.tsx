@@ -26,6 +26,7 @@ import {
 import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camera/grid';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { type Pinch, pinchLog10Delta, pinchOf } from '../../camera/pinch';
+import { estimateTextWidth } from '../../camera/labels';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
 import { provenanceSummary } from '../../catalog/schema';
@@ -35,6 +36,8 @@ import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
 const BASELINE = 210;
 const ROW_Y = 120;
+/** Must match the `fontSize` the object rows draw at, or the width estimate is of the wrong text. */
+const OBJECT_LABEL_FONT_SIZE = 10;
 
 interface PlacedObject {
   id: string;
@@ -351,19 +354,39 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           {repeated === undefined &&
             nearby.map((entry, index) => {
               const x = toScreen(ZERO);
+              const barWidth = Math.max(entry.widthPx, 1);
+              // A bar anchored at zero is often mostly off-screen — at a 1e20 m
+              // origin, entirely so — and its label used to follow it over the
+              // edge. The label belongs to the bar, so it is pinned inside the
+              // view while any of the bar is, and dropped when the view is too
+              // narrow to hold it.
+              if (x + barWidth < 0 || x > VIEWPORT.widthPx) return null;
+              const text = `${entry.object.name} — ${
+                formatEngineering(quantity('length', entry.size)).text
+              }`;
+              const textWidth = estimateTextWidth(text, OBJECT_LABEL_FONT_SIZE);
+              const rightmost = VIEWPORT.widthPx - textWidth - 4;
+              const labelX = Math.min(Math.max(x + 4, 4), rightmost);
               return (
                 <g key={entry.object.id}>
                   <rect
                     x={x}
                     y={40 + index * 22}
-                    width={Math.max(entry.widthPx, 1)}
+                    width={barWidth}
                     height={14}
                     fill="currentColor"
                     fillOpacity={0.4}
                   />
-                  <text x={x + 4} y={40 + index * 22 + 11} fontSize={10} fill="currentColor">
-                    {entry.object.name} — {formatEngineering(quantity('length', entry.size)).text}
-                  </text>
+                  {rightmost >= 4 && (
+                    <text
+                      x={labelX}
+                      y={40 + index * 22 + 11}
+                      fontSize={OBJECT_LABEL_FONT_SIZE}
+                      fill="currentColor"
+                    >
+                      {text}
+                    </text>
+                  )}
                 </g>
               );
             })}

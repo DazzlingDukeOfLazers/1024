@@ -861,6 +861,47 @@ Also confirmed while looking: all six runnable experiments load and render, and
 the two fixtures with no steps are correctly absent from the dropdown rather
 than offering an empty run.
 
+## Naming the pattern, and closing it
+
+Nearly every defect found after the milestones came from one of two things: a
+path nobody had walked, or a fix that was right where I was looking and missing
+one panel over. Both are structural, and neither is answered by looking harder.
+
+`e2e/conformance.spec.ts` enumerates 27 states — every lens, every Comparator
+operation against two kinds of subject, every Ruler preset, five magnitudes in
+the Microscope including the subnormal range, every runnable experiment — and
+evaluates every invariant earned so far against the whole document at each, at
+420 px and 1280 px.
+
+It found four defects on its first run, in states nothing had visited:
+
+- [x] At a 1e20 m origin the Ruler labelled a tick `100000000000000000000000`
+      and let it run off the right-hand edge. The Atlas has had bounds since the
+      label work; `RulerGrid` never got them. The pattern, exactly.
+- [x] The Ruler's object rows are anchored at zero, which is off-screen in most
+      presets, and their labels followed the bars over the edge. Pinned inside
+      the view while any of the bar is, dropped when the view cannot hold them.
+- [x] The disagreement strip staggered its machine labels by index parity, so
+      with three machines the first and third shared a row — and at true scale
+      they sit at the same x, which is the whole point of the picture.
+      "Planck grid (256-bit)" printed through "binary64". Placed by width now,
+      through the same helper as the other two views.
+- [x] `Stored value (exact)` in the binary64 panel: a row header claiming
+      exactness above a 55-digit decimal with no verdict attached. A third
+      instance of the defect I had fixed twice, in a panel I had not thought to
+      look at.
+
+`Rendered` writes `data-exact` into the DOM so the exactness rule is structural
+rather than inferred from digits. A panel that drops the formatter's flag now
+fails the sweep instead of waiting to be seen.
+
+- [ ] At a 1e20 m origin every grid label reads `1000000000000000000000...`, and
+      they are visually identical because the digits that differ are twenty-one
+      orders down. Correct, in bounds, and unreadable as a grid. Labelling
+      relative to the camera centre would fix it, but that is a change to what
+      the ruler means rather than to how it draws, so it is a decision rather
+      than a defect.
+
 ## Hardening
 
 - [x] Playwright critical path.
