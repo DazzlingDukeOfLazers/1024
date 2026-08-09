@@ -378,11 +378,24 @@ Discovered while implementing:
 - [ ] The chart samples one point per decade. Near a power of two the binary64
       line is really a staircase, and at this resolution it reads as a straight
       line.
-- [ ] Subnormals are reachable but not called out. Below ~10^-308 binary64's
-      spacing stops growing and goes constant, which is worth a note in the lens.
-
-## Progressive semantic graph
-
+- [x] **The lens said something false in the subnormal range.** Below 2^-1022
+      the exponent has bottomed out, the significand shrinks alone, and every
+      value is a multiple of one fixed quantum — binary64 is a fixed-point
+      machine down there. The note read "Spacing grows with magnitude; there
+      is no single constant LSB" at 10^-310, which is the opposite of what is
+      happening and the opposite of what the lens exists to teach. The gap
+      arithmetic underneath was already right; only the reporting lied. There
+      is now a `subnormal` flag, a Regime row naming the quantum, and a note
+      per regime.
+- [x] The smallest normal, 2^-1022, is called out as the one power-of-two
+      boundary whose neighbours are equidistant — the subnormal grid below
+      already has that spacing. Every other power of two has a gap below half
+      its gap above, and the lens said so without noticing the exception.
+- [ ] The resolution chart runs 10^-40 to 10^30, so the subnormal floor —
+      binary64's line going flat below 10^-308 while every other machine's
+      stays flat throughout — is off the left edge. Widening the domain by
+      270 decades to show it would squash the part of the chart that is about
+      metres. It probably wants its own inset rather than a wider axis.
 - [x] Author relations in the catalog fixture.
 - [x] Derive inverse relations rather than authoring both directions.
 - [x] Relation path search (graph traversal, not a hard-coded tree).

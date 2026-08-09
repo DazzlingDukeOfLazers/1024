@@ -318,6 +318,14 @@ Use `gapBelow` and `gapAbove` rather than assuming one symmetric "ULP spacing." 
 
 At infinities/NaN, neighbor/gap fields may be undefined or represented as events rather than fake rationals.
 
+## Subnormals are a different regime, and must be reported as one
+
+Below `2^-1022` the exponent field has bottomed out. The significand shrinks on its own, so every value is a multiple of the fixed quantum `2^-1074` all the way to zero, and the spacing stops depending on magnitude. In this range binary64 **is a fixed-point machine**: it trades its constant relative precision for reaching zero gradually instead of falling off it.
+
+Any surface that describes binary64 as "spacing grows with magnitude" or "no single constant LSB" is stating something false here, and must branch on the regime rather than repeat one sentence everywhere. Expose whether a value is subnormal alongside its gaps.
+
+`2^-1022` itself is the one power-of-two boundary whose neighbours are **equidistant**: the subnormal grid immediately below already has spacing `2^-1074`, which is also the gap above. Every other power of two has a gap below half its gap above, and a "power-of-two boundaries are asymmetric" rule stated without this exception is wrong at exactly one place.
+
 ---
 
 # 9. Relative error

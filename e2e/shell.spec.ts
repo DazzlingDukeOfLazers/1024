@@ -162,6 +162,36 @@ test('binary64 spacing grows with magnitude while fixed point does not', async (
   await expect(gapAbove('Q128.128 @ m')).toContainText('2.939 × 10^-39 m');
 });
 
+test('the microscope says when binary64 has stopped being floating point', async ({ page }) => {
+  await openMicroscope(page);
+  const binary64 = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+
+  // At three metres it is the machine everyone describes: spacing set by
+  // magnitude. (One metre is a power of two, which has its own note.)
+  await page.getByLabel('Value', { exact: true }).fill('3');
+  await expect(binary64).toContainText('Spacing grows with magnitude');
+
+  await page.getByLabel('Value', { exact: true }).fill('1e-310');
+  await page.getByLabel('Unit', { exact: true }).selectOption('m');
+
+  // Down here it is not. Saying "spacing grows with magnitude" at 1e-310 would
+  // be teaching the opposite of what the lens exists to show.
+  await expect(binary64).not.toContainText('Spacing grows with magnitude');
+  await expect(binary64).toContainText('subnormal');
+  await expect(binary64).toContainText('2^-1074');
+  await expect(
+    binary64.locator('tr').filter({ has: page.getByRole('rowheader', { name: 'Regime' }) }),
+  ).toContainText('fixed spacing');
+
+  // Both neighbours the same distance away, ten decades from the boundary.
+  const gap = (name: string) =>
+    binary64.locator('tr').filter({ has: page.getByRole('rowheader', { name }) });
+  await expect(gap('Gap below')).toContainText('4.941 × 10^-324 m');
+  await expect(gap('Gap above')).toContainText('4.941 × 10^-324 m');
+});
+
 test('switching the Q128.128 base unit trades range against resolution', async ({ page }) => {
   await openMicroscope(page);
 

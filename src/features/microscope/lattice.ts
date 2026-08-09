@@ -20,6 +20,7 @@ import {
   equals,
   isZero,
   mul,
+  pow2,
   rational,
   sub,
 } from '../../core/rational/rational';
@@ -38,8 +39,10 @@ import {
   encodeMeters as encodePlanck,
 } from '../../core/representations/planck';
 import {
+  MIN_SUBNORMAL_EXPONENT,
   encodeRational,
   exactValue,
+  fields,
   isFiniteState,
   neighbors,
   predecessor,
@@ -71,6 +74,12 @@ export interface LatticeReport {
   readonly asymmetric: boolean;
   /** Set when the machine's spacing is the same everywhere in its range. */
   readonly constantSpacing?: Rational | undefined;
+  /**
+   * binary64 only: true below 2^-1022, where the exponent has bottomed out and
+   * the significand absorbs the shrinking alone. The lens says "spacing grows
+   * with magnitude" everywhere else, and that sentence is false here.
+   */
+  readonly subnormal?: boolean | undefined;
   readonly samples: readonly LatticeSample[];
   /** Raw register contents, where the machine has one. */
   readonly raw?: string | undefined;
@@ -197,6 +206,13 @@ export function binary64LatticeReport(meters: Rational, radius = 4): LatticeRepo
   const asymmetric =
     gapBelow !== undefined && gapAbove !== undefined && !equals(gapBelow, gapAbove);
 
+  // Below 2^-1022 the exponent has bottomed out, so the significand shrinks on
+  // its own and every value is a multiple of one fixed quantum. binary64 is a
+  // fixed-point machine down here, and the lens must not keep saying otherwise.
+  const { isSubnormal } = fields(centre);
+  const atSmallestNormal = !isSubnormal && equals(encoded.state.exact, pow2(-1022));
+  const quantum = pow2(MIN_SUBNORMAL_EXPONENT);
+
   return {
     id: 'binary64',
     label: 'binary64',
@@ -206,11 +222,22 @@ export function binary64LatticeReport(meters: Rational, radius = 4): LatticeRepo
     gapBelow,
     gapAbove,
     asymmetric,
+    subnormal: isSubnormal,
+    ...(isSubnormal ? { constantSpacing: quantum } : {}),
     samples,
     raw: `0x${bitsOf(centre).toString(16).padStart(16, '0')}`,
-    note: asymmetric
-      ? 'The neighbours are different distances away — this is a power-of-two boundary.'
-      : 'Spacing grows with magnitude; there is no single constant LSB.',
+    note: isSubnormal
+      ? 'This is the subnormal range. The exponent has bottomed out, so the spacing stops ' +
+        'shrinking: every value below 2^-1022 is a multiple of 2^-1074, the same quantum all ' +
+        'the way to zero. Down here binary64 is a fixed-point machine, trading its constant ' +
+        'relative precision for reaching zero gradually instead of falling off it.'
+      : atSmallestNormal
+        ? 'The smallest normal value, and the one power-of-two boundary whose neighbours are ' +
+          'the same distance away: the subnormal grid below already has this spacing. Every ' +
+          'other power of two has a gap below half its gap above.'
+        : asymmetric
+          ? 'The neighbours are different distances away — this is a power-of-two boundary.'
+          : 'Spacing grows with magnitude; there is no single constant LSB.',
   };
 }
 

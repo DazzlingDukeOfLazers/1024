@@ -133,6 +133,53 @@ describe('binary64 sees a grid that spreads out', () => {
   });
 });
 
+describe('the subnormal range, where binary64 stops being floating point', () => {
+  it('has constant spacing, which is the opposite of the usual story', () => {
+    // Below 2^-1022 the exponent cannot go lower, so the significand absorbs the
+    // shrinking on its own and every value is a multiple of one fixed quantum.
+    const report = binary64LatticeReport(pow10(-310), 2);
+    expect(report.gapBelow).toEqual(pow2(-1074));
+    expect(report.gapAbove).toEqual(pow2(-1074));
+    expect(report.asymmetric).toBe(false);
+    expect(report.subnormal).toBe(true);
+    expect(report.constantSpacing).toEqual(pow2(-1074));
+  });
+
+  it('does not tell the reader its spacing grows here, because it does not', () => {
+    const report = binary64LatticeReport(pow10(-310), 1);
+    expect(report.note).not.toContain('grows with magnitude');
+    expect(report.note).toContain('subnormal');
+    expect(report.note).toContain('2^-1074');
+  });
+
+  it('is flat across the whole subnormal range, unlike anywhere else', () => {
+    const at320 = localSpacing(binary64LatticeReport(pow10(-320), 0))!;
+    const at310 = localSpacing(binary64LatticeReport(pow10(-310), 0))!;
+    // Ten decades apart and the same spacing. Ten decades apart in the normal
+    // range is ten decades of spacing.
+    expect(at320).toEqual(at310);
+    expect(localSpacing(binary64LatticeReport(pow10(-30), 0))).not.toEqual(at310);
+  });
+
+  it('calls the smallest normal what it is: the one boundary that is symmetric', () => {
+    // Every other power of two has a gap below half the gap above. Here the
+    // subnormal grid underneath already has the wider spacing, so they match.
+    const report = binary64LatticeReport(pow2(-1022), 1);
+    expect(report.subnormal).toBe(false);
+    expect(report.gapBelow).toEqual(pow2(-1074));
+    expect(report.gapAbove).toEqual(pow2(-1074));
+    expect(report.asymmetric).toBe(false);
+    expect(report.note).toContain('smallest normal');
+  });
+
+  it('still reaches the last value before zero', () => {
+    const report = binary64LatticeReport(pow2(-1074), 1);
+    expect(report.nearest).toEqual(pow2(-1074));
+    expect(report.subnormal).toBe(true);
+    expect(report.note).toContain('subnormal');
+  });
+});
+
 describe('the Planck grid', () => {
   it('has one tick of constant spacing', () => {
     const report = planckLatticeReport(ONE, 2);

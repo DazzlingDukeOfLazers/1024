@@ -168,6 +168,21 @@ function LatticeRow({ report }: { report: LatticeReport }) {
                   {report.asymmetric && <span className="tag tag-rounded">asymmetric</span>}
                 </td>
               </tr>
+              {/* Not a footnote. In this range binary64 is a different kind of
+                  machine, and the lens is named after asking which one you are
+                  looking at. */}
+              {report.subnormal === true && (
+                <tr>
+                  <th scope="row">Regime</th>
+                  <td className="mono">
+                    subnormal <span className="tag tag-rounded">fixed spacing</span>
+                    <br />
+                    <small>
+                      every value here is a multiple of {meters(report.constantSpacing!)}
+                    </small>
+                  </td>
+                </tr>
+              )}
               <tr>
                 <th scope="row">Raw register</th>
                 <td className="mono">{report.raw ?? '—'}</td>
