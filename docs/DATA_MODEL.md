@@ -202,7 +202,7 @@ The first objective is to prove navigation and comparison behavior.
 
 `fixtures/objects.json` holds 28 objects spanning ~10^-35 m to ~10^27 m.
 
-Seven are backed by a citation:
+Nine are backed by a citation:
 
 | object | claim | source |
 | --- | --- | --- |
@@ -210,13 +210,16 @@ Seven are backed by a citation:
 | light-year | exact | IAU: the speed of light times a Julian year |
 | Planck length | measured | CODATA 2018, with the published standard uncertainty as the range |
 | proton | measured | CODATA 2018 proton rms charge radius 0.8414(19) fm, doubled |
-| hydrogen atom | representative | twice the Bohr radius (CODATA 2018), with the Bondi van der Waals diameter as the upper bound |
 | Moon | measured | NASA planetary fact sheet, volumetric mean radius 1737.4 km, doubled |
 | Earth | measured | WGS 84 reference ellipsoid; mean radius 6371.0 km, doubled |
 | Sun | measured | IAU 2015 Resolution B3 nominal solar radius 6.957e8 m, doubled |
+| hydrogen atom | representative | twice the Bohr radius (CODATA 2018), with the Bondi van der Waals diameter as the upper bound |
+| coconut | representative | PROJECT_SPEC.md section 16 |
 
-The remaining 21 are `representative` or `estimated` **with no source**, which is what they are: curated, plausible, deliberately round, and not traceable to a citation. The Atlas says so under "Where it comes from" every time one is selected.
+The last two are `representative` and did not need a source; having one is better than not, and says where a chosen number was chosen from.
 
-Four of these previously claimed `approximation: "measured"` while carrying `source: "demonstration value"` — a contradiction, because a measurement with no citation is not a measurement. The schema now rejects that combination outright, so the fixture cannot drift back into it.
+The remaining 19 are `representative` or `estimated` **with no source**, which is what they are: curated, plausible, deliberately round, and not traceable to a citation. Every lens that shows one says so, in the same words.
 
-Replacing the remaining 21 is a data task, not a code task: the schema, the range handling and the exact/approximate wording all work already. Tests assert that no object outside the two definitions claims to be exact, that every `exact` or `measured` quantity is cited, and that no source is a provenance status in disguise.
+Four of the nine — the proton, the Moon, the Earth and the Sun — previously claimed `approximation: "measured"` while carrying `source: "demonstration value"`. That is a contradiction, because a measurement with no citation is not a measurement. The schema now rejects the combination outright, so the fixture cannot drift back into it.
+
+Replacing the remaining 19 is a data task, not a code task: the schema, the range handling and the exact/approximate wording all work already. Tests assert that no object outside the two definitions claims to be exact, that every `exact` or `measured` quantity is cited, and that no source is a provenance status in disguise.

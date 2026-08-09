@@ -32,7 +32,9 @@ Do **not** make Three.js, Godot, or an external icon service a dependency of the
 
 ## Getting started
 
-Requires Node.js 20 or newer.
+Requires Node.js `^20.19.0 || >=22.12.0`, which is what Vite 7 needs. The
+`engines` field in `package.json` says so, so npm will tell you rather than
+letting the build fail obscurely.
 
 ```
 npm install
@@ -42,8 +44,13 @@ npm run build
 npm run dev       # http://localhost:5173
 
 npx playwright install chromium   # once
-npm run test:e2e
+npm run test:e2e  # builds, then serves the production bundle on :4173
 ```
+
+The end-to-end suite deliberately does not run against the dev server. React's
+development build is a different program — it double-invokes effects under
+StrictMode, spends most of its render path in prop validation, and reports errors
+differently — so testing it verifies something other than what ships.
 
 Current state: Milestones 0–11 of `docs/IMPLEMENTATION_PLAN.md` — the whole v0
 plan. All five lenses are live, on top of the exact quantity core, the finite
@@ -84,12 +91,15 @@ sitting 10^20 m from zero. The atlas positions magnitudes through an exact-safe
 log10, so it places 10^-35 and 10^27 on one axis — and would place 10^400, which
 has no `double` at all.
 
-The 28 catalog objects span about 10^-35 m to 10^27 m. Seven are cited — two IAU
-definitions, and CODATA, WGS 84, NASA and IAU figures for the Planck length,
-the proton, the hydrogen atom, the Moon, the Earth and the Sun. The other 21 are
-plausible round numbers with no source, and the Atlas says exactly that whenever
-one is selected. A value may only call itself `exact` or `measured` if it cites
-something; the schema throws otherwise. See `docs/DATA_MODEL.md`.
+The 28 catalog objects span about 10^-35 m to 10^27 m. Nine are cited — two IAU
+definitions, CODATA figures for the Planck length, the proton and the hydrogen
+atom, WGS 84 for the Earth, NASA for the Moon, IAU for the Sun, and the project
+spec for the coconut. The other 19 are
+plausible round numbers with no source, and every lens that shows one says so in
+the same words — the Atlas under the selection, the Comparator beside each
+subject, the Ruler beside the object it is drawing to scale. A value may only
+call itself `exact` or `measured` if it cites something; the schema throws
+otherwise. See `docs/DATA_MODEL.md`.
 
 Every lens is keyboard-operable and scanned by axe-core against WCAG 2 A and AA
 in CI, and each is wrapped in an error boundary so a failure costs you one lens

@@ -180,7 +180,7 @@ Discovered while implementing:
       `exact` and `measured` require a source, and a provenance status written
       into the source field is refused outright. The proton, Moon, Earth and Sun
       are cited (CODATA 2018, NASA, WGS 84, IAU 2015 B3), as is the hydrogen
-      atom's derivation from the Bohr radius. The other 21 dropped the
+      atom's derivation from the Bohr radius. The other 19 dropped the
       placeholder: `representative` and `estimated` claim nothing checkable, so
       an absent source is the honest way to say so.
 - [x] **The Atlas showed a curated number with no indication of what backed it.**
@@ -199,7 +199,7 @@ Discovered while implementing:
       `CatalogQuantity`, so a comparator subject built from a unit literal gets
       the same sentence from the same code — and says "Exactly defined." with no
       caveat, because a millimetre is a definition, not a plausible round number.
-- [ ] Source the remaining 21 objects. A data task; the schema, ranges and
+- [ ] Source the remaining 19 objects. A data task; the schema, ranges and
       wording all work. Until then the app says they are unsourced, which is
       true, but "true and unsourced" is a weaker position than "sourced".
 - [ ] Only one length per object. A second length (a human's width, say) needs an
@@ -225,7 +225,7 @@ Discovered while implementing:
       objects out — 134 cells, not 133.3.
 - [x] The strip renderer collapses to an aggregate when items fall below a pixel,
       and says so. The count never changes; only the drawing does.
-- [ ] Search is a substring scan over 24 objects. Fine now; it needs an index
+- [ ] Search is a substring scan over 28 objects. Fine now; it needs an index
       long before the catalog is large.
 - [ ] The comparator is length-only in practice. Area and volume need real
       geometry, not a reused length ratio (`docs/DATA_MODEL.md`).
@@ -291,7 +291,7 @@ Discovered while implementing:
 - [x] The landing lens is now the Atlas. Nine e2e tests that assumed the Lab was
       on screen navigate there explicitly.
 - [ ] Cluster membership is anchored at the first member, so which object
-      represents a cluster can change as you pan. Fine at 24 objects; a stable
+      represents a cluster can change as you pan. Fine at 28 objects; a stable
       representative (largest? nearest the centroid?) would be better at 500.
 - [ ] Progressive semantic detail (milestone 11) is the missing half of the
       Atlas: zooming should reveal *related* objects, not just closer ones.
@@ -587,6 +587,28 @@ these numbers describe one machine.
 - [ ] Re-measure on a phone-class device before claiming the drag is smooth
       there. 2.7 ms here could be 15 ms on a low-end Android.
 
+## The documentation stated counts that nothing checked
+
+`24 catalog objects` sat in the README and twice in this file for several commits
+after the catalog grew to 28, and nothing failed. For a project whose subject is
+numbers that do not lie, a stale number in the front door is worth a test rather
+than a proofread.
+
+`src/docs.test.ts` reads README.md and docs/DATA_MODEL.md and checks the claims a
+machine can settle: the catalog size, how many objects are cited, how many are
+not, and that the citation table in DATA_MODEL lists exactly the cited set. Prose
+still needs reading; counts no longer do.
+
+It found two wrong numbers on its first run — a good sign for the test and a bad
+one for the sentence I had written a commit earlier. Nine objects are cited, not
+seven: I had forgotten the coconut, which has carried
+`source: "PROJECT_SPEC.md section 16"` since the fixture was written, and the
+citation table I had just added was missing it too.
+
+Also corrected while auditing: the README said Node 20 or newer, but Vite 7 wants
+`^20.19.0 || >=22.12.0` — Node 20.0 through 20.18 would have failed obscurely.
+`package.json` now carries the `engines` field the README claims it does.
+
 ## Hardening
 
 - [x] Playwright critical path.
@@ -594,5 +616,8 @@ these numbers describe one machine.
 - [x] Pixel claims measured against the DOM.
 - [x] End-to-end tests run against the production bundle.
 - [x] performance profiling.
-- [ ] visual regression after layout stabilizes.
-- [ ] documentation refresh.
+- [x] documentation refresh, with the checkable claims under test.
+- [ ] visual regression. Still deferred, and now for a concrete reason rather
+      than a general one: the views were switched to measuring their own width
+      this week, so a screenshot taken today locks in a layout that has just
+      moved. Revisit once nothing has changed shape for a while.
