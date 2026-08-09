@@ -902,6 +902,42 @@ fails the sweep instead of waiting to be seen.
       the ruler means rather than to how it draws, so it is a decision rather
       than a defect.
 
+## An oracle that is not us
+
+Every test here other than these was written by the same author as the code, at
+the same time, holding the same idea of what the answer should be. That catches
+slips and cannot catch a misconception — believe that ties round half away from
+zero and you write the code and the test to agree.
+
+`tools/oracle.py` is a second implementation with different bugs, using
+`fractions.Fraction` and `struct`. `npm run oracle` regenerates
+`fixtures/oracle.json`; `src/core/oracle.test.ts` compares. The fixture is
+committed, so CI needs no Python.
+
+- [x] 300 arithmetic cases, ~390 each of order-of-magnitude, exact-decimal,
+      binary64 encoding and neighbour gaps. Generated cases include values
+      exactly half an ulp above a representable double — the only input that
+      separates ties-to-even from ties-away-from-zero — plus subnormals to
+      10^-310, the largest finite double, and the first value past it.
+- [x] The core agreed on every case, first run. That is the result I wanted and
+      not the one I expected to be interesting.
+- [x] Falsified before trusting: perturbing one expected product and one
+      expected bit pattern makes it fail, so the comparison is real.
+
+Two things the oracle taught rather than confirmed. Python's `float(Fraction)`
+raises `OverflowError` rather than returning infinity, so past the top of
+binary64's range the oracle applies the IEEE rule itself — on that one case it
+asserts a rule rather than offering an independent implementation of one, and
+says so where it does it. And the coverage assertions caught the fixture having
+no overflow case at all before the comparison ran, which is the anti-vacuity
+discipline paying for itself again.
+
+- [ ] The finite machines are deliberately outside the oracle's remit. Python's
+      unbounded integers would succeed silently exactly where Q128.128 and the
+      256-bit Planck tick are constrained by finiteness, so a Python check there
+      would be worse than none: it would look like evidence. A second
+      implementation for those wants a language with fixed-width integers.
+
 ## Hardening
 
 - [x] Playwright critical path.

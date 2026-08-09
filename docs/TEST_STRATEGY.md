@@ -188,6 +188,25 @@ Figures stated in pixels are held against measured DOM geometry rather than
 against the code that produced them (`e2e/pixels.spec.ts`). A readout that agrees
 with itself in viewBox units can be wrong on every screen at once.
 
+## Check the core against an implementation that is not itself
+
+Every test in this repository other than these was written by the same author as the code it tests, at the same time, holding the same idea of what the answer should be. That shape of suite catches slips and cannot catch a misconception: an author who believes ties round half away from zero writes the code and the test to agree, and both pass.
+
+`tools/oracle.py` is a second implementation with different bugs. It uses Python's `fractions.Fraction` for exact arithmetic and `struct` for the bits of a double, and writes `fixtures/oracle.json`: 300 arithmetic cases, and roughly 390 each of order-of-magnitude, exact-decimal, binary64 encoding and neighbour cases. `src/core/oracle.test.ts` reads that fixture and compares.
+
+The fixture is **committed**, so the comparison runs in CI with no Python installed. Regenerate deliberately with `npm run oracle`, and read the diff — a change there means one of the two implementations moved.
+
+Python earns this job in a narrow band and is asked nothing wider:
+
+- `Fraction` is exact rational arithmetic written by other people;
+- `float(Fraction)` is correctly rounded nearest-even, the rule `encodeRational` implements by hand rather than delegating to `Number(string)`;
+- `Fraction(some_float)` is the exact value of a double, which is what `exactValue` claims to produce;
+- `math.nextafter` walks real neighbours.
+
+It is deliberately **not** asked about the finite machines. Python's integers are unbounded, so a Q128.128 register or a 256-bit Planck tick would succeed silently in Python exactly where the design constraint is finiteness. Rounding is shared ground; overflow is not — and even at the top of binary64's range Python declines, raising `OverflowError` instead of returning infinity, so the oracle applies the IEEE rule itself there and says so in a comment. On that one case it asserts a rule rather than offering a second implementation of one.
+
+Generated cases include the inputs that separate a correct implementation from a plausible one: values exactly half an ulp above a representable double, where ties-to-even and ties-away-from-zero disagree; subnormals down to 10^-310; the largest finite double and the first value past it.
+
 ## Enumerate the states; check the rules across all of them
 
 Two failure modes accounted for nearly every defect found after the milestones were complete:

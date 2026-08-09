@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
+    "oracle": "python tools/oracle.py",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "lint": "eslint .",
