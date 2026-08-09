@@ -1006,8 +1006,16 @@ What it asks for, roughly in dependency order:
       not assumed to be free.
 - [ ] `MUL_WIDE` — 1024 × 1024 → 2048, wide first and narrow later, so
       calculation is separated from information loss.
-- [ ] `NARROW source → destination + residue`, with the policy list from §8 and
-      a visualization of full result / destination / residue.
+- [x] `NARROW source → destination + residue`, with the policy list from §8.
+      **One interpretation to be aware of**: §8 lists its twelve policies in a
+      single block, and they are not alternatives to each other — rounding to
+      nearest and saturating on overflow answer different questions. They are
+      modelled as four orthogonal axes (rounding rule, range rule, inexact rule,
+      residue rule), and each of the twelve names maps onto one setting of one
+      axis. A flat enum would have needed a name per combination. That is a
+      reading of the document rather than something it states.
+- [ ] The visualization of full result / destination / residue from §8. The
+      arithmetic is done; the picture is not.
 - [ ] `DIV_REM` holding `A = Q × B + R`, with the remainder a first-class result
       rather than a failure, and demand-driven extra quotient digits.
 - [ ] Scenario settings (§14) so one workload runs under several policies.
