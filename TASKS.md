@@ -69,11 +69,12 @@ Discovered while implementing:
       counterpart of the signed Q512.512 meter, so the meter's own quantization is
       measurable rather than assumed. `docs/NUMERICS.md` §6 updated.
 - [x] Four-register spacetime frames (`spacetime.ts`) with exact `ct` conversion.
-- [ ] `ErrorContribution` is currently produced by hand. The experiment runner
-      (milestone 4) must compute the §7 decomposition and assert
-      `decompositionResidual` is zero on every step.
-- [ ] Only addition is implemented on the finite machines. Subtraction, multiply
-      and divide arrive with the experiment step types in milestone 4.
+- [x] `ErrorContribution` is computed by the runner, not by hand, and every
+      step asserts `decompositionResidual` is zero — a decomposition bug
+      throws rather than being absorbed into a bucket.
+- [x] `set`, `add`, `sub`, `mul` and `div` are implemented on every finite
+      machine. `mul` is what `(1/10) × 10` needs, which CLAUDE.md lists as a
+      required initial experiment.
 
 ## Planck representation
 
@@ -205,8 +206,8 @@ Discovered while implementing:
 - [ ] Only one length per object. A second length (a human's width, say) needs an
       explicit `primary` field rather than `primaryLength`'s current "the one
       length there is".
-- [ ] `relations` is validated but empty. Progressive semantic detail
-      (milestone 11) is what will fill it.
+- [x] `relations` carries 20 edges across the 28 objects, which is what the
+      Atlas walks. Progressive semantic detail (milestone 11) filled it.
 
 ## Comparator
 
@@ -262,9 +263,10 @@ Discovered while implementing:
       lint could not preserve it, and the computations are cheap.
 - [ ] Pinch zoom is not implemented — only wheel. It needs pointer-event
       bookkeeping for two touches.
-- [ ] The viewport is a fixed 960×260 SVG viewBox scaled by CSS rather than a
-      measured element. Fine for now; the atlas will want a real resize
-      observer.
+- [x] The viewport was a fixed 960×260 SVG viewBox scaled by CSS rather than a
+      measured element, which made every figure the view stated in pixels false
+      at every width but one. `useMeasuredWidth` and a `ResizeObserver` now size
+      the viewBox so one unit is one CSS pixel.
 - [ ] The ruler is one-dimensional. A vertical axis needs the same camera
       applied twice, not a second camera model.
 
@@ -295,7 +297,9 @@ Discovered while implementing:
       representative (largest? nearest the centroid?) would be better at 500.
 - [ ] Progressive semantic detail (milestone 11) is the missing half of the
       Atlas: zooming should reveal *related* objects, not just closer ones.
-- [ ] No keyboard navigation for selection yet — the markers are pointer-only.
+- [x] Selection is keyboard-reachable through the object picker, and the axis
+      pans and zooms from the keyboard. The markers themselves are still
+      pointer-only hit targets, which is why the picker exists.
 
 ## Representation Lab
 
@@ -629,6 +633,31 @@ citation table I had just added was missing it too.
 Also corrected while auditing: the README said Node 20 or newer, but Vite 7 wants
 `^20.19.0 || >=22.12.0` — Node 20.0 through 20.18 would have failed obscurely.
 `package.json` now carries the `engines` field the README claims it does.
+
+## Five open items had already been done
+
+The backlog is what I plan from, so a backlog that lies is worth the same audit
+as documentation that lies. Checking every open item's premise against the code
+found five that were false, some for several milestones:
+
+- `ErrorContribution` "is currently produced by hand" — the runner computes the
+  §7 decomposition and throws if `decompositionResidual` is non-zero.
+- "Only addition is implemented on the finite machines" — `set`, `add`, `sub`,
+  `mul` and `div` all are, and `mul` is what `(1/10) × 10` needs. That one
+  claimed a CLAUDE.md required experiment could not run, which would have been
+  serious had it been true.
+- "`relations` is validated but empty" — 20 edges across 28 objects, which is
+  what the Atlas walks.
+- "The viewport is a fixed 960×260 viewBox" — fixed this week.
+- "No keyboard navigation for selection" — the object picker is exactly that.
+  Reworded rather than deleted: the markers really are still pointer-only hit
+  targets, which is why the picker exists.
+
+`src/docs.test.ts` gained a check for the rot class a machine *can* settle:
+every backticked filename in the docs must exist, by path or by basename. It
+found nothing today, which is the point of adding it before a rename rather than
+after. It cannot tell a done item from an open one — that stays a reading job,
+and this section is the record that it needs doing.
 
 ## Hardening
 

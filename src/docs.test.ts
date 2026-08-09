@@ -9,11 +9,12 @@
  * These check only the claims a machine can settle. Prose still needs reading.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CATALOG, requireLength } from './catalog/catalog';
 
-const read = (path: string): string => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
+const resolve = (path: string): URL => new URL(`../${path}`, import.meta.url);
+const read = (path: string): string => readFileSync(resolve(path), 'utf8');
 
 const NUMBER_WORDS: Record<number, string> = {
   1: 'One',
@@ -29,6 +30,57 @@ const NUMBER_WORDS: Record<number, string> = {
 };
 
 const cited = CATALOG.objects.filter((object) => requireLength(object).source !== undefined);
+
+describe('the documentation points at files that exist', () => {
+  // Every backticked token that looks like a path. A backlog entry naming a
+  // module that has since been renamed still reads as current, and there is no
+  // way to notice by eye across forty-odd open items.
+  const PROSE = [
+    'README.md',
+    'TASKS.md',
+    'CLAUDE.md',
+    'docs/ARCHITECTURE.md',
+    'docs/DATA_MODEL.md',
+    'docs/NUMERICS.md',
+    'docs/TEST_STRATEGY.md',
+    'docs/UI_SPEC.md',
+    'docs/IMPLEMENTATION_PLAN.md',
+  ];
+
+  // Bare filenames — `binary64.ts`, `spacetime.ts` — are shorthand for "the
+  // module called that", so they are checked by basename anywhere in the tree.
+  const BASENAMES = new Set(
+    ['src', 'e2e', 'fixtures']
+      .flatMap((dir) => readdirSync(resolve(dir), { recursive: true }) as string[])
+      .map((entry) => entry.split(/[\\/]/).at(-1)!),
+  );
+
+  const referencesIn = (doc: string): string[] => [
+    ...new Set(
+      [...read(doc).matchAll(/`([\w./-]+\.(?:ts|tsx|json|css|yml))`/g)]
+        .map((match) => match[1]!)
+        .filter((path) => !path.startsWith('.github/')),
+    ),
+  ];
+
+  for (const doc of PROSE) {
+    it(`${doc} names no missing file`, () => {
+      const missing = referencesIn(doc).filter(
+        (path) => !existsSync(resolve(path)) && !BASENAMES.has(path),
+      );
+      expect(missing, `${doc} refers to files that are not there`).toEqual([]);
+    });
+  }
+
+  it('is actually finding references rather than passing on an empty set', () => {
+    // Nine distinct code files are named across the docs today. The floor is
+    // well under that: this guard exists to catch the pattern silently matching
+    // nothing, not to freeze how many files the prose happens to mention.
+    const all = new Set(PROSE.flatMap(referencesIn));
+    expect(all.size).toBeGreaterThan(4);
+    expect([...all]).toContain('binary64.ts');
+  });
+});
 
 describe('the README counts what is actually there', () => {
   const readme = read('README.md');
