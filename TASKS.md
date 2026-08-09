@@ -777,6 +777,33 @@ milestone 1, so the two lenses disagreed about the same idea.
       alone deliberately: a tag on every cell is noise rather than honesty. Worth
       revisiting if any of those labels ever starts making a claim.
 
+## Tests that assert nothing is wrong
+
+Writing the "rounded" test found it passing by scanning an experiment whose
+values all render exactly — it asserted a label was missing and found it
+missing. That is a shape, not a one-off, so I went through every negative
+assertion in the suite. Three more could pass on an empty collection:
+
+- the axe scan of each lens, if axe had run against nothing;
+- the label-overlap tests, if the selector had matched nothing;
+- the too-small-text test, likewise.
+
+Each now counts what it examined first. For axe the evidence is `results.passes`
+— rules run and nodes checked — because "no violations" is exactly what a scan of
+an empty page reports.
+
+The guards were then checked against deliberately empty collections rather than
+assumed to work, which is the same discipline one level up. The ruler floor was
+wrong on the first try: at 420 px the ruler draws three labels, not four, because
+the unit symbol in the corner costs the last tick label. A floor should be
+evidence the test looked, not a claim about how many labels there ought to be.
+
+`docs/TEST_STRATEGY.md` states the rule.
+
+- [ ] At 420 px the ruler loses its rightmost tick label to the unit symbol. The
+      symbol could move rather than win the collision. Correct as it stands —
+      the two never overlap — but the tick label is the more useful of the pair.
+
 ## Hardening
 
 - [x] Playwright critical path.

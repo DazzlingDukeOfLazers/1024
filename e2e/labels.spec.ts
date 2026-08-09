@@ -74,6 +74,9 @@ for (const width of [420, 800, 1280, 1600]) {
       .toBeLessThan(1.5);
 
     const boxes = await textBoxes(atlas);
+    // "Nothing overlaps" is also true of a view with no labels at all, which is
+    // what a wrong selector or an unrendered lens produces.
+    expect(boxes.length, `at ${width}px there were no labels to check`).toBeGreaterThan(5);
     expect(overlaps(boxes), `at ${width}px`).toEqual([]);
 
     // Nor may a label run off the edge, where it is cut in half rather than read.
@@ -103,7 +106,12 @@ for (const width of [420, 800, 1280, 1600]) {
       })
       .toBeLessThan(1.5);
 
-    expect(overlaps(await textBoxes(ruler)), `at ${width}px`).toEqual([]);
+    const boxes = await textBoxes(ruler);
+    // A floor that proves the test looked, not a claim about how many labels
+    // there ought to be: at 420 px the ruler draws three — two ticks and the
+    // unit symbol — because the symbol in the corner costs the last tick label.
+    expect(boxes.length, `at ${width}px there were no labels to check`).toBeGreaterThan(1);
+    expect(overlaps(boxes), `at ${width}px`).toEqual([]);
   });
 }
 

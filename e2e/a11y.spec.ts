@@ -32,6 +32,15 @@ for (const lens of LENSES) {
       (violation) => `${violation.id} (${violation.impact}): ${violation.nodes.length} node(s)`,
     );
     expect(summary, summary.join('\n')).toEqual([]);
+
+    // "No violations" is also what a scan of an empty page says. These two
+    // numbers are the evidence that it looked: dozens of rules, run against real
+    // nodes on this lens.
+    expect(results.passes.length, `${lens}: axe ran no rules`).toBeGreaterThan(10);
+    expect(
+      results.passes.reduce((total, rule) => total + rule.nodes.length, 0),
+      `${lens}: axe found no nodes to check`,
+    ).toBeGreaterThan(20);
   });
 }
 

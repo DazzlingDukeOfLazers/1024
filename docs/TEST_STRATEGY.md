@@ -188,6 +188,18 @@ Figures stated in pixels are held against measured DOM geometry rather than
 against the code that produced them (`e2e/pixels.spec.ts`). A readout that agrees
 with itself in viewBox units can be wrong on every screen at once.
 
+## An assertion that nothing is wrong must prove it looked
+
+`expect(overlaps).toEqual([])` is also what an empty page says. So is "no accessibility violations", "no text below 7 px", "no file missing", "no cell unmarked". Every assertion of that shape needs a companion assertion that the collection it scanned was not empty:
+
+- count what was examined and require a floor — `expect(boxes.length).toBeGreaterThan(1)`;
+- make the floor evidence that the test looked, not a claim about how many there ought to be, or it becomes a second thing to maintain;
+- for `axe`, the evidence is `results.passes` — rules run and nodes checked — not the absence of violations.
+
+This is not hypothetical. A test written to catch a missing "rounded" mark passed on its first run by scanning an experiment whose values all render exactly: it asserted that a label was missing and found it missing. The guard turned it red, and the test was pointed at an experiment with something to be honest about.
+
+The same reasoning applies to a matcher pattern that can never match: `keepNonOverlapping` and friends must be tested for what they keep as well as what they drop.
+
 ---
 
 # Visual regression
