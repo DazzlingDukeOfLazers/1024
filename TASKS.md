@@ -272,14 +272,39 @@ Discovered while implementing:
 
 ## Representation Lab
 
-- [ ] Render representation rows.
-- [ ] Step runner controls.
-- [ ] Error metrics.
-- [ ] Raw-bit inspection.
-- [ ] Implement Zoom to Disagreement.
-- [ ] Display magnification disclosure.
-- [ ] Add "Abuse the Computer" presets.
-- [ ] Add floating-origin/rebasing preset showing absolute vs local coordinates.
+- [x] Render representation rows.
+- [x] Step runner controls.
+- [x] Error metrics.
+- [x] Raw-bit inspection.
+- [x] Implement Zoom to Disagreement.
+- [x] Display magnification disclosure.
+- [x] Add "Abuse the Computer" presets.
+- [x] Add floating-origin/rebasing preset showing absolute vs local coordinates.
+
+Discovered while implementing:
+
+- [x] The magnification is computed from the two cameras actually drawn with,
+      not from the intended zoom, so the disclosed figure always describes the
+      picture on screen rather than an intention.
+- [x] Whether the view is magnified is part of the shareable state. A link that
+      dropped it would show the recipient a different claim than the sender
+      made.
+- [x] Two experiments added to complete CLAUDE.md's required list: `(1/10) × 10`
+      and subtracting nearly equal numbers. The first is a good result —
+      binary64 rounds twice and lands back on 1 exactly, while the fixed-point
+      machines do not, because a tenth was never on their grid.
+- [x] A machine whose divergence is many decades smaller than the widest lands
+      on the same pixel as the reference even when zoomed. That is correct: at
+      that zoom its error genuinely is invisible. The test asserts nothing is
+      ever drawn on the *wrong* side rather than demanding strict separation.
+- [ ] The runner still executes on the main thread. A million-step experiment
+      blocks for about a second and a half; the runner has been Worker-ready
+      since milestone 4 and this is the natural moment to move it.
+- [ ] The timeline shows divergence per checkpoint but does not chart it.
+      A sparkline per representation would show the drift accumulating.
+- [ ] Zoom to Disagreement is a toggle, not a continuous zoom. The spec's
+      "centre the local ruler" phrasing suggests handing the camera to the
+      Ruler lens instead.
 
 ## Numerical Microscope
 

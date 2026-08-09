@@ -45,6 +45,11 @@ export interface LabState {
   readonly unit: string;
   /** Display-only: which unit the exact core panel reads the value back in. */
   readonly displayUnit: string;
+  /**
+   * Whether the divergence strip is magnified. This changes what the picture
+   * means, so it is part of the shareable state (docs/UI_SPEC.md §5).
+   */
+  readonly zoomToDisagreement: boolean;
 }
 
 export interface RepresentationState {
@@ -81,6 +86,7 @@ export function defaultAppState(): AppState {
       literal: '0.1',
       unit: 'm',
       displayUnit: 'mm',
+      zoomToDisagreement: false,
     },
     representations: { q128Preset: 'm' },
   };

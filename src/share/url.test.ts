@@ -140,7 +140,13 @@ describe('everything else in the view', () => {
       operation: 'end-to-end',
       countText: '123',
     },
-    lab: { experimentId: 'thirds', literal: '1/7', unit: 'km', displayUnit: 'nm' },
+    lab: {
+      experimentId: 'thirds',
+      literal: '1/7',
+      unit: 'km',
+      displayUnit: 'nm',
+      zoomToDisagreement: true,
+    },
     representations: { q128Preset: 'mm' },
   };
 
@@ -156,6 +162,16 @@ describe('everything else in the view', () => {
   it('carries the Q128.128 machine base unit, which is not a display setting', () => {
     // docs/NUMERICS.md §5: changing this changes the machine.
     expect(roundTrip(state).representations.q128Preset).toBe('mm');
+  });
+
+  it('carries whether the divergence view is magnified', () => {
+    // A magnified picture means something different from a true-scale one, so
+    // a link that dropped this would show the recipient a different claim.
+    expect(roundTrip(state).lab.zoomToDisagreement).toBe(true);
+    expect(
+      roundTrip({ ...state, lab: { ...state.lab, zoomToDisagreement: false } }).lab
+        .zoomToDisagreement,
+    ).toBe(false);
   });
 
   it('carries a unit subject as a symbol and an object subject as an id', () => {

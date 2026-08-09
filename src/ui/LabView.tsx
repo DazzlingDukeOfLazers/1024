@@ -12,7 +12,8 @@ import { type Quantity, fromUnit } from '../core/quantities/quantity';
 import { ExactCorePanel } from './ExactCorePanel';
 import { FiniteMachinesPanel } from './FiniteMachinesPanel';
 import { Binary64Panel } from './Binary64Panel';
-import { ExperimentsPanel } from './ExperimentsPanel';
+import { RepresentationLab } from '../features/representation-lab/RepresentationLab';
+import { FloatingOriginPanel } from '../features/representation-lab/FloatingOriginPanel';
 import { type LabState, type RepresentationState } from '../share/appState';
 
 const UNIT_CHOICES = [
@@ -63,10 +64,16 @@ export function LabView({
 
   return (
     <>
-      <ExperimentsPanel
+      <RepresentationLab
         experimentId={state.experimentId}
         onExperimentChange={(experimentId) => onChange((current) => ({ ...current, experimentId }))}
+        zoomToDisagreement={state.zoomToDisagreement}
+        onZoomChange={(zoomToDisagreement) =>
+          onChange((current) => ({ ...current, zoomToDisagreement }))
+        }
       />
+
+      <FloatingOriginPanel />
 
       <section className="panel">
         <div className="field">

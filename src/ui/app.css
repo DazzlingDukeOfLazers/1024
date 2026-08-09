@@ -176,6 +176,43 @@ svg text {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
+.magnification-disclosure {
+  background: rgba(224, 178, 90, 0.12);
+  border: 1px solid rgba(224, 178, 90, 0.4);
+  border-radius: 6px;
+  color: var(--warn);
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+}
+
+.machine-detail {
+  border-left: 2px solid var(--accent);
+  margin: 0.75rem 0 1rem;
+  padding-left: 0.9rem;
+}
+
+.machine-detail h4 {
+  font-size: 0.85rem;
+  margin: 0 0 0.5rem;
+}
+
+button.row-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+button.row-toggle[aria-expanded='true'] {
+  color: var(--accent);
+}
+
 .share-bar {
   align-items: center;
   display: flex;

@@ -98,6 +98,52 @@
     "kind": "arithmetic"
   },
   {
+    "id": "tenth-times-ten",
+    "name": "(1 / 10) x 10",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "1",
+          "denominator": "10"
+        }
+      },
+      {
+        "op": "mul",
+        "value": {
+          "numerator": "10",
+          "denominator": "1"
+        }
+      }
+    ],
+    "kind": "arithmetic",
+    "note": "binary64 rounds twice and lands back on 1 exactly. The fixed-point machines do not, because a tenth was never on their grid."
+  },
+  {
+    "id": "nearly-equal",
+    "name": "Subtracting nearly equal numbers",
+    "unit": "m",
+    "steps": [
+      {
+        "op": "set",
+        "value": {
+          "numerator": "10000000000000001",
+          "denominator": "1"
+        }
+      },
+      {
+        "op": "sub",
+        "value": {
+          "numerator": "10000000000000000",
+          "denominator": "1"
+        }
+      }
+    ],
+    "kind": "arithmetic",
+    "note": "The exact answer is 1 m. 10^16 + 1 is not representable in binary64, so the difference of two nearly equal numbers is entirely made of the error in the first one."
+  },
+  {
     "id": "thirds",
     "name": "Three thirds",
     "unit": "m",

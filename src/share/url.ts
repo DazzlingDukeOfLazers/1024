@@ -55,7 +55,13 @@ interface ShareStateJSON {
     operation: string;
     countText: string;
   };
-  lab: { experimentId: string; literal: string; unit: string; displayUnit: string };
+  lab: {
+    experimentId: string;
+    literal: string;
+    unit: string;
+    displayUnit: string;
+    zoomToDisagreement: boolean;
+  };
   representations: { q128Preset: string };
 }
 
@@ -213,6 +219,10 @@ export function stateFromJSON(json: unknown): AppState {
       literal: requireString(record.lab?.literal, defaults.lab.literal),
       unit: requireString(record.lab?.unit, defaults.lab.unit),
       displayUnit: requireString(record.lab?.displayUnit, defaults.lab.displayUnit),
+      zoomToDisagreement:
+        typeof record.lab?.zoomToDisagreement === 'boolean'
+          ? record.lab.zoomToDisagreement
+          : defaults.lab.zoomToDisagreement,
     },
     representations: {
       q128Preset:

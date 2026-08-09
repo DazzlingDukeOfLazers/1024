@@ -91,6 +91,83 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+test('the lab runs an experiment and shows every machine disagreeing', async ({ page }) => {
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+
+  const rows = page.locator('section.panel').filter({
+    has: page.getByRole('heading', { name: 'Abuse the Computer' }),
+  });
+
+  await expect(readoutRow(page, 'Exact reference')).toContainText('1 × 10^3 m');
+  await expect(rows).toContainText('3,000,003 real machine operations');
+  await expect(rows).toContainText('lower bound');
+
+  // Expanding a representation splits its error into the two categories.
+  await rows.getByRole('button', { name: 'binary64' }).click();
+  await expect(readoutRow(page, 'Operand encoding')).toBeVisible();
+  await expect(readoutRow(page, 'Operation rounding')).toBeVisible();
+  await expect(readoutRow(page, 'Q512.512 meters')).toBeVisible();
+  await expect(readoutRow(page, 'Raw register')).toContainText('0x');
+});
+
+test('zoom to disagreement always discloses its magnification', async ({ page }) => {
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Zoom to disagreement' }) });
+
+  // True scale first: the machines really are on the same pixel.
+  await expect(panel).toContainText('Drawn at true scale');
+  await expect(panel).toContainText('every representation occupies the same pixel');
+  await expect(page.getByText(/magnified .* for visibility/)).toHaveCount(0);
+
+  await panel.getByRole('button', { name: 'Zoom to disagreement' }).click();
+
+  // Magnified: the disclosure is mandatory, and names the real divergence.
+  const disclosure = panel.locator('p.magnification-disclosure');
+  await expect(disclosure).toBeVisible();
+  await expect(disclosure).toContainText('magnified');
+  await expect(disclosure).toContainText('for visibility');
+  await expect(disclosure).toContainText('The widest divergence is');
+  await expect(disclosure).toContainText('lP');
+  await expect(panel).toContainText(/Drawn \d+ px apart/);
+
+  await panel.getByRole('button', { name: 'Back to true scale' }).click();
+  await expect(panel.locator('p.magnification-disclosure')).toHaveCount(0);
+});
+
+test('the timeline shows checkpoints, not a million rows', async ({ page }) => {
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+
+  const timeline = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Timeline' }) });
+
+  const rows = timeline.locator('tbody tr');
+  await expect(rows).not.toHaveCount(0);
+  expect(await rows.count()).toBeLessThan(30);
+  await expect(timeline).toContainText('iteration 1,000,000');
+  await expect(timeline).toContainText('the arithmetic is never compact, the trace always is');
+});
+
+test('an experiment where the machines agree offers nothing to zoom into', async ({ page }) => {
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: '(1 / 10) x 10' });
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Zoom to disagreement' }) });
+
+  // binary64 rounds twice and lands back on 1 exactly; the fixed-point machines
+  // do not, so there is still something to see.
+  await expect(panel.getByRole('button', { name: 'Zoom to disagreement' })).toBeEnabled();
+  await expect(readoutRow(page, 'Exact reference')).toContainText('1 × 10^0 m');
+});
+
 test('a large-offset disagreement view survives being sent as a link', async ({ page }) => {
   // The acceptance criterion from docs/IMPLEMENTATION_PLAN.md, end to end.
   await openLab(page);
@@ -444,14 +521,18 @@ test('the runner shows the representations disagreeing', async ({ page }) => {
 
   const panel = page
     .locator('section.panel')
-    .filter({ has: page.getByRole('heading', { name: 'Representation drift' }) });
+    .filter({ has: page.getByRole('heading', { name: 'Abuse the Computer' }) });
   const row = (name: string) =>
     panel.locator('tr').filter({ has: page.getByRole('rowheader', { name, exact: true }) });
 
-  // 0.1 + 0.2 is the default experiment.
+  // 0.1 + 0.2 is the default experiment. Exactly three tenths in the reference,
+  // and not that in binary64.
   await expect(row('Exact reference')).toContainText('3 × 10^-1 m');
-  await expect(row('binary64')).toContainText('operations');
-  await expect(row('Q128.128 @ m')).toContainText('operations');
+  await expect(row('binary64')).toContainText('4.441 × 10^-17 m');
+
+  // The fixed-point machines disagree too, and differently.
+  await expect(row('Q128.128 @ m')).toBeVisible();
+  await expect(row('Planck grid (256-bit)')).toBeVisible();
 
   // The exact reference is truth, not a machine with error.
   await expect(row('Exact reference')).toContainText('truth');
