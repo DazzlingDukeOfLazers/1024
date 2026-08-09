@@ -15,9 +15,13 @@
 import { type Rational } from '../../core/rational/rational';
 import { log10RationalForDisplay } from '../../core/rational/log10';
 import { type Viewport } from '../../camera/camera';
-import { type LogCamera, atlasXFromLog10 } from '../../camera/logCamera';
+import { type LogCamera, atlasXFromLog10, frameDecades } from '../../camera/logCamera';
 import { type ScaleObject } from '../../catalog/schema';
-import { requireLength } from '../../catalog/catalog';
+import { CATALOG, requireLength } from '../../catalog/catalog';
+
+const CATALOG_OBJECTS = () => CATALOG.byScale();
+
+export const ATLAS_VIEWPORT: Viewport = { widthPx: 960, heightPx: 240 };
 
 export interface AtlasEntry {
   readonly object: ScaleObject;
@@ -152,4 +156,12 @@ export function clusterNearest(
     }
   }
   return best;
+}
+
+/** Every catalog object with a length, positioned once. */
+export const ATLAS_ENTRIES: readonly AtlasEntry[] = atlasEntries(CATALOG_OBJECTS());
+
+/** A camera framing the whole catalog, from the Planck length outwards. */
+export function fullRangeCamera(viewport: Viewport = ATLAS_VIEWPORT): LogCamera {
+  return frameDecades(ATLAS_ENTRIES[0]!.log10, ATLAS_ENTRIES.at(-1)!.log10, viewport);
 }

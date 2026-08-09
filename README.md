@@ -45,14 +45,21 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–7 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+Current state: Milestones 0–8 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
 core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
 error meter, the Planck grid, and the per-representation ErrorLedger), the
 binary64 inspector, the experiment runner, the catalog and comparator, the linear
-SVG ruler and the logarithmic Atlas are implemented and tested. The built-in
-experiments run — including a million real millimetre additions per machine, in
-about a second and a half, with a trace of twenty-odd samples. Milestone 8 is
-shareable state.
+SVG ruler, the logarithmic Atlas and shareable state are implemented and tested.
+The built-in experiments run — including a million real millimetre additions per
+machine, in about a second and a half, with a trace of twenty-odd samples.
+Milestone 9 is the Representation Lab UI.
+
+**Share this view** produces a versioned link that restores the lens, the
+selection, the comparison, the experiment, the Q128.128 machine base unit and
+both cameras. Exact values cross as strings, so a camera parked at
+`10^20 m + 1 mm` comes back as the identical rational. The payload lives in the
+URL fragment, which browsers never send to a server — "no backend required" is
+structural rather than a promise.
 
 Four of the five lenses are live: the Scale Atlas, the Metric Ruler, the
 Comparator, and the Representation Lab, which holds deliberately ugly debug

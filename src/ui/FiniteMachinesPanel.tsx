@@ -12,6 +12,7 @@ import { type Rational, isZero } from '../core/rational/rational';
 import {
   Q128_128_PRESETS,
   type Q128_128Config,
+  type Q128_128PresetName,
   encodeMeters as encodeQ128,
   isExactlyRepresentable,
   physicalLsbMeters,
@@ -48,13 +49,25 @@ function ExactnessTag({ exact }: { exact: boolean }) {
   );
 }
 
-export function FiniteMachinesPanel({ length }: { length: Quantity<'length'> }) {
+export interface FiniteMachinesPanelProps {
+  length: Quantity<'length'>;
+  /**
+   * Which Q128.128 machine the error meter is fed from. This selects a
+   * *machine*, not a display unit (docs/NUMERICS.md §5), so it belongs to the
+   * shareable state.
+   */
+  preset: Q128_128PresetName;
+  onPresetChange: (preset: Q128_128PresetName) => void;
+}
+
+export function FiniteMachinesPanel({ length, preset, onPresetChange }: FiniteMachinesPanelProps) {
   const planck = encodePlanck(length.value);
   const planckAxis = summarizeLength();
 
   // One quantization error pushed through a fresh Q512.512 meter, to show that
   // the meter is itself finite. Milestone 4 wires these into the runner.
-  const q128AtM = encodeQ128(Q128_128_PRESETS.m, length.value);
+  const selectedConfig = Q128_128_PRESETS[preset];
+  const q128AtM = encodeQ128(selectedConfig, length.value);
   const meterReading =
     q128AtM.quantizationErrorMeters === undefined
       ? undefined
@@ -79,7 +92,10 @@ export function FiniteMachinesPanel({ length }: { length: Quantity<'length'> }) 
               const exact = isExactlyRepresentable(config, length.value);
               const lsbMeters = physicalLsbMeters(config);
               return (
-                <tr key={config.baseUnitLabel}>
+                <tr
+                  key={config.baseUnitLabel}
+                  className={config.baseUnitLabel === preset ? 'selected' : undefined}
+                >
                   <th scope="row">Q128.128 @ {config.baseUnitLabel}</th>
                   <td className="mono">
                     {meters(lsbMeters)}
@@ -160,6 +176,20 @@ export function FiniteMachinesPanel({ length }: { length: Quantity<'length'> }) 
 
       <section className="panel">
         <h3>Q512.512 error meter</h3>
+        <div className="field">
+          <label htmlFor="q128-preset">Fed from</label>
+          <select
+            id="q128-preset"
+            value={preset}
+            onChange={(event) => onPresetChange(event.target.value as Q128_128PresetName)}
+          >
+            {Object.keys(Q128_128_PRESETS).map((name) => (
+              <option key={name} value={name}>
+                Q128.128 @ {name}
+              </option>
+            ))}
+          </select>
+        </div>
         <table className="readout">
           <tbody>
             <tr>

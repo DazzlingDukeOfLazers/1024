@@ -143,11 +143,16 @@ function FloatingOriginReadout() {
   );
 }
 
-export function ExperimentsPanel() {
-  const [experimentId, setExperimentId] = useState(BUILT_IN_EXPERIMENTS[0]?.id ?? '');
-  const [result, setResult] = useState<ExperimentResult | undefined>(() =>
-    BUILT_IN_EXPERIMENTS[0] === undefined ? undefined : runExperiment(BUILT_IN_EXPERIMENTS[0]),
-  );
+export interface ExperimentsPanelProps {
+  experimentId: string;
+  onExperimentChange: (id: string) => void;
+}
+
+export function ExperimentsPanel({ experimentId, onExperimentChange }: ExperimentsPanelProps) {
+  const [result, setResult] = useState<ExperimentResult | undefined>(() => {
+    const initial = BUILT_IN_EXPERIMENTS.find((entry) => entry.id === experimentId);
+    return initial === undefined ? undefined : runExperiment(initial);
+  });
   const [running, setRunning] = useState(false);
 
   const run = (id: string): void => {
@@ -171,7 +176,7 @@ export function ExperimentsPanel() {
             id="experiment"
             value={experimentId}
             onChange={(event) => {
-              setExperimentId(event.target.value);
+              onExperimentChange(event.target.value);
               run(event.target.value);
             }}
           >

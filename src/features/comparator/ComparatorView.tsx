@@ -5,7 +5,7 @@
  * presents a measurement with the confidence of a definition.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { type Rational, ONE, isZero } from '../../core/rational/rational';
 import { parseRationalExact } from '../../core/rational/parse';
 import { fromUnit } from '../../core/quantities/quantity';
@@ -15,6 +15,7 @@ import {
   type ComparisonOperation,
   type ComparisonResult,
   type Subject,
+  type SubjectChoice,
   difference,
   endToEnd,
   howManyFit,
@@ -25,6 +26,7 @@ import {
   wholeItemsToSpan,
 } from './compare';
 import { ComparisonStrip } from './ComparisonStrip';
+import { type ComparatorState } from '../../share/appState';
 
 /** Exactly defined lengths the user can compare an object against. */
 const UNIT_SUBJECTS = ['nm', 'µm', 'mm', 'm', 'km', 'au', 'ly'];
@@ -35,8 +37,6 @@ const OPERATION_LABELS: Record<ComparisonOperation, string> = {
   difference: 'A − B',
   'end-to-end': 'N × A, end to end',
 };
-
-type SubjectChoice = { kind: 'object'; id: string } | { kind: 'unit'; symbol: string };
 
 function encodeChoice(choice: SubjectChoice): string {
   return choice.kind === 'object' ? `object:${choice.id}` : `unit:${choice.symbol}`;
@@ -179,18 +179,18 @@ function Answer({ result }: { result: ComparisonResult }) {
 }
 
 export interface ComparatorViewProps {
-  /** An object selected in another lens; becomes subject A on arrival. */
-  initialObjectId?: string | undefined;
+  state: ComparatorState;
+  onChange: (update: (current: ComparatorState) => ComparatorState) => void;
 }
 
-export function ComparatorView({ initialObjectId }: ComparatorViewProps = {}) {
-  const [a, setA] = useState<SubjectChoice>({
-    kind: 'object',
-    id: initialObjectId ?? 'red-blood-cell',
-  });
-  const [b, setB] = useState<SubjectChoice>({ kind: 'unit', symbol: 'mm' });
-  const [operation, setOperation] = useState<ComparisonOperation>('how-many-fit');
-  const [countText, setCountText] = useState('123');
+export function ComparatorView({ state, onChange }: ComparatorViewProps) {
+  const { a, b, operation, countText } = state;
+  const setA = (next: SubjectChoice): void => onChange((current) => ({ ...current, a: next }));
+  const setB = (next: SubjectChoice): void => onChange((current) => ({ ...current, b: next }));
+  const setOperation = (next: ComparisonOperation): void =>
+    onChange((current) => ({ ...current, operation: next }));
+  const setCountText = (next: string): void =>
+    onChange((current) => ({ ...current, countText: next }));
 
   const outcome = useMemo(() => {
     try {

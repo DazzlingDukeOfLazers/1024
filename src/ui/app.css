@@ -176,6 +176,47 @@ svg text {
   font-family: ui-sans-serif, system-ui, sans-serif;
 }
 
+.share-bar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.share-bar button {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.share-bar input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  flex: 1;
+  font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+  font-size: 0.75rem;
+  min-width: 16rem;
+  padding: 0.3rem 0.5rem;
+}
+
+.share-hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+table.readout tr.selected th,
+table.readout tr.selected td {
+  background: rgba(127, 209, 193, 0.08);
+}
+
 .selection-banner {
   align-items: center;
   background: var(--panel);

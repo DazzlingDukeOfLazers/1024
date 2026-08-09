@@ -91,6 +91,80 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+test('a large-offset disagreement view survives being sent as a link', async ({ page }) => {
+  // The acceptance criterion from docs/IMPLEMENTATION_PLAN.md, end to end.
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: 'Large offset eats the millimeter' });
+  await page.getByLabel('Value').fill('1e20');
+  await page.getByLabel('Fed from').selectOption('mm');
+
+  // Park the ruler somewhere only exact arithmetic could describe.
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Metric Ruler' })
+    .click();
+  await page.getByLabel('Preset').selectOption('far-origin');
+  await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
+
+  await page.getByRole('button', { name: 'Share this view' }).click();
+  const url = await page.getByLabel('Share URL').inputValue();
+
+  // A fragment, so no server is ever involved.
+  expect(url).toContain('#1.');
+  expect(url).not.toContain('?');
+
+  // Open the link as a stranger would.
+  await page.goto(url);
+
+  await expect(page.locator('svg.ruler')).toBeVisible();
+  await expect(page.getByLabel('Preset')).toHaveValue('far-origin');
+  await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
+  await expect(readoutRow(page, 'Across the view')).toContainText('9.6 mm');
+
+  // And the rest of the view came with it.
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Representation Lab' })
+    .click();
+  await expect(page.getByLabel('Experiment')).toHaveValue('large-offset');
+  await expect(page.getByLabel('Value')).toHaveValue('1e20');
+  await expect(page.getByLabel('Fed from')).toHaveValue('mm');
+});
+
+test('a shared link carries a hand-panned camera back exactly', async ({ page }) => {
+  await openRuler(page);
+  await page.getByLabel('Preset').selectOption('far-origin');
+
+  const box = await page.locator('svg.ruler').boundingBox();
+  if (box === null) throw new Error('ruler has no box');
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + 300, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 437, y, { steps: 9 });
+  await page.mouse.up();
+
+  const centre = await readoutRow(page, 'Centre').textContent();
+  await page.getByRole('button', { name: 'Share this view' }).click();
+  const url = await page.getByLabel('Share URL').inputValue();
+
+  await page.goto(url);
+  // A camera panned by an arbitrary number of pixels out at 1e20 m comes back
+  // as the identical rational, not as something that rounds to the same double.
+  await expect(readoutRow(page, 'Centre')).toHaveText(centre ?? '');
+});
+
+test('a malformed link says so instead of silently loading something else', async ({ page }) => {
+  await page.goto('/#1.bm90LWpzb24');
+  await expect(page.getByRole('status')).toContainText('Could not restore that link');
+  // And it falls back to a usable app rather than a blank page.
+  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible();
+});
+
+test('a link from a future schema is refused rather than guessed at', async ({ page }) => {
+  await page.goto('/#99.abcdef');
+  await expect(page.getByRole('status')).toContainText('Unsupported share schema version 99');
+});
+
 test('the atlas spans the catalog on one logarithmic axis', async ({ page }) => {
   await page.goto('/');
 

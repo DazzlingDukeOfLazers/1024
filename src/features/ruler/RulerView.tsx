@@ -9,17 +9,13 @@
  * "1 mm beside a 1e20 m origin" preset work at all.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { type Rational, ZERO, mul, rational } from '../../core/rational/rational';
-import { parseDecimalExact } from '../../core/rational/parse';
-import { fromUnit, quantity } from '../../core/quantities/quantity';
+import { quantity } from '../../core/quantities/quantity';
 import { formatEngineering } from '../../core/units/format';
 import {
   type LinearCamera,
-  type Viewport,
-  createCamera,
   fromScreenX,
-  frameLength,
   lengthInPixels,
   metersPerPixel,
   panByPixels,
@@ -30,79 +26,12 @@ import {
 import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camera/grid';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
+import { type RulerState } from '../../share/appState';
+import { RULER_VIEWPORT, rulerPresets } from './presets';
 
-const VIEWPORT: Viewport = { widthPx: 960, heightPx: 260 };
+const VIEWPORT = RULER_VIEWPORT;
 const BASELINE = 210;
 const ROW_Y = 120;
-
-interface Preset {
-  id: string;
-  label: string;
-  description: string;
-  camera: LinearCamera;
-  /** Object laid out end to end across the view, if any. */
-  repeatObjectId?: string;
-}
-
-function presets(focusObjectId?: string): Preset[] {
-  const coconut = requireLength(CATALOG.require('coconut')).value.value;
-  const millimetre = fromUnit(rational(1n), 'mm').value;
-
-  // A selection made in the Atlas arrives here as a preset of its own, framed
-  // on the object, so the jump between lenses lands somewhere useful.
-  const focused: Preset[] = [];
-  const focusObject = focusObjectId === undefined ? undefined : CATALOG.get(focusObjectId);
-  if (focusObject !== undefined) {
-    const size = requireLength(focusObject).value.value;
-    focused.push({
-      id: 'selection',
-      label: `Selected: ${focusObject.name}`,
-      description: `Framed on the selection from the Atlas. ${
-        formatEngineering(quantity('length', size)).text
-      } across.`,
-      camera: frameLength(ZERO, size, VIEWPORT, 0.6),
-      repeatObjectId: focusObject.id,
-    });
-  }
-
-  return [
-    ...focused,
-    {
-      id: 'rbc-across-mm',
-      label: 'Red blood cells across a millimetre',
-      description:
-        'About 133 of them. Zoom out and they collapse into a strip; the count never changes.',
-      camera: frameLength(ZERO, millimetre, VIEWPORT, 0.8),
-      repeatObjectId: 'red-blood-cell',
-    },
-    {
-      id: 'coconuts',
-      label: '123 coconuts',
-      description: 'Twenty-four metres of them, drawn to scale.',
-      camera: frameLength(
-        mul(coconut, rational(123n, 2n)),
-        mul(coconut, rational(123n)),
-        VIEWPORT,
-        0.85,
-      ),
-      repeatObjectId: 'coconut',
-    },
-    {
-      id: 'far-origin',
-      label: 'A millimetre at a 1e20 m origin',
-      description:
-        'The camera centre is 100 quintillion metres from zero, and a millimetre is still 100 px wide. ' +
-        'Converting the positions to doubles first would have lost it entirely.',
-      camera: createCamera(parseDecimalExact('1e20'), -5),
-    },
-    {
-      id: 'human-scale',
-      label: 'Human scale',
-      description: 'A door, a human and a coconut, to scale.',
-      camera: frameLength(rational(1n), rational(4n), VIEWPORT, 0.8),
-    },
-  ];
-}
 
 interface PlacedObject {
   id: string;
@@ -122,23 +51,32 @@ interface RepeatedRow {
 }
 
 export interface RulerViewProps {
+  state: RulerState;
+  onChange: (update: (current: RulerState) => RulerState) => void;
   /** An object selected in another lens, framed on arrival. */
   focusObjectId?: string | undefined;
 }
 
-export function RulerView({ focusObjectId }: RulerViewProps = {}) {
-  const allPresets = presets(focusObjectId);
-  const [presetId, setPresetId] = useState(allPresets[0]!.id);
+export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
+  const allPresets = rulerPresets(focusObjectId);
+  const presetId = state.presetId;
   const preset = allPresets.find((entry) => entry.id === presetId) ?? allPresets[0]!;
 
-  const [camera, setCamera] = useState<LinearCamera>(preset.camera);
+  const camera = state.camera;
+  // The camera lives in app state so it can be shared. The updater form means
+  // an event handler never has to read the current camera through a ref.
+  const setCamera = (next: LinearCamera | ((current: LinearCamera) => LinearCamera)): void => {
+    onChange((current) => ({
+      presetId: current.presetId,
+      camera: typeof next === 'function' ? next(current.camera) : next,
+    }));
+  };
   const dragState = useRef<{ x: number } | undefined>(undefined);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const selectPreset = (id: string): void => {
     const next = allPresets.find((entry) => entry.id === id) ?? allPresets[0]!;
-    setPresetId(id);
-    setCamera(next.camera);
+    onChange(() => ({ presetId: id, camera: next.camera }));
   };
 
   const step = chooseGridStep(camera);
@@ -217,12 +155,17 @@ export function RulerView({ focusObjectId }: RulerViewProps = {}) {
       event.preventDefault();
       const x = localX(element, event.clientX);
       const delta = event.deltaY * 0.002;
-      setCamera((current) => zoomAt(current, delta, x, VIEWPORT));
+      // `onChange` directly rather than the `setCamera` wrapper, so the effect
+      // depends only on a stable prop and attaches the listener once.
+      onChange((current) => ({
+        presetId: current.presetId,
+        camera: zoomAt(current.camera, delta, x, VIEWPORT),
+      }));
     };
 
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [onChange]);
 
   return (
     <>
@@ -240,7 +183,10 @@ export function RulerView({ focusObjectId }: RulerViewProps = {}) {
               </option>
             ))}
           </select>
-          <button type="button" onClick={() => setCamera(preset.camera)}>
+          <button
+            type="button"
+            onClick={() => onChange(() => ({ presetId, camera: preset.camera }))}
+          >
             Reset view
           </button>
         </div>

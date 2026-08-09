@@ -10,38 +10,61 @@
  * stays small, because 62 decades of physical range is 62 units in log space.
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { quantity } from '../../core/quantities/quantity';
 import { formatEngineering } from '../../core/units/format';
 import { type Viewport } from '../../camera/camera';
 import {
   type LogCamera,
   decadeTicks,
-  frameDecades,
   log10FromAtlasX,
   panLogByPixels,
   zoomLogAt,
 } from '../../camera/logCamera';
 import { CATALOG } from '../../catalog/catalog';
-import { atlasEntries, clusterLabel, clusterNearest, clusteredCount, declutter } from './atlas';
+import { type AtlasState } from '../../share/appState';
+import {
+  ATLAS_ENTRIES,
+  ATLAS_VIEWPORT,
+  clusterLabel,
+  clusterNearest,
+  clusteredCount,
+  declutter,
+  fullRangeCamera,
+} from './atlas';
 
-const VIEWPORT: Viewport = { widthPx: 960, heightPx: 240 };
+const VIEWPORT: Viewport = ATLAS_VIEWPORT;
 const AXIS_Y = 186;
 const MARKER_Y = 150;
 const LABEL_TOP = 34;
 const LABEL_ROW_HEIGHT = 17;
 
-const ENTRIES = atlasEntries(CATALOG.byScale());
-const FULL_RANGE = frameDecades(ENTRIES[0]!.log10, ENTRIES.at(-1)!.log10, VIEWPORT);
+const ENTRIES = ATLAS_ENTRIES;
+const FULL_RANGE = fullRangeCamera(VIEWPORT);
 
 export interface AtlasViewProps {
+  state: AtlasState;
+  onChange: (update: (current: AtlasState) => AtlasState) => void;
   selectedId: string | undefined;
   onSelect: (id: string | undefined) => void;
   onOpenInRuler: (id: string) => void;
 }
 
-export function AtlasView({ selectedId, onSelect, onOpenInRuler }: AtlasViewProps) {
-  const [camera, setCamera] = useState<LogCamera>(FULL_RANGE);
+export function AtlasView({
+  state,
+  onChange,
+  selectedId,
+  onSelect,
+  onOpenInRuler,
+}: AtlasViewProps) {
+  const camera = state.camera;
+  // The camera lives in app state so it can be shared. The updater form means
+  // an event handler never has to read the current camera through a ref.
+  const setCamera = (next: LogCamera | ((current: LogCamera) => LogCamera)): void => {
+    onChange((current) => ({
+      camera: typeof next === 'function' ? next(current.camera) : next,
+    }));
+  };
   const svgRef = useRef<SVGSVGElement>(null);
   const dragState = useRef<{ x: number; moved: boolean } | undefined>(undefined);
 
@@ -65,11 +88,13 @@ export function AtlasView({ selectedId, onSelect, onOpenInRuler }: AtlasViewProp
       event.preventDefault();
       const x = localX(element, event.clientX);
       const factor = Math.pow(2, -event.deltaY * 0.002);
-      setCamera((current) => zoomLogAt(current, factor, x, VIEWPORT));
+      // `onChange` directly rather than the `setCamera` wrapper, so the effect
+      // depends only on a stable prop and attaches the listener once.
+      onChange((current) => ({ camera: zoomLogAt(current.camera, factor, x, VIEWPORT) }));
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
-  }, []);
+  }, [onChange]);
 
   return (
     <>

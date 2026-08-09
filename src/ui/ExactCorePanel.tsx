@@ -6,7 +6,6 @@
  * several ways without ever changing what it is.
  */
 
-import { useState } from 'react';
 import { toCompactString } from '../core/rational/json';
 import { toExactDecimalString } from '../core/rational/decimal';
 import { log10RationalForDisplay, orderOfMagnitude10 } from '../core/rational/log10';
@@ -76,8 +75,17 @@ function readoutRows(q: Quantity): Row[] {
   return rows;
 }
 
-export function ExactCorePanel({ quantity }: { quantity: Quantity }) {
-  const [displayUnit, setDisplayUnit] = useState('mm');
+export interface ExactCorePanelProps {
+  quantity: Quantity;
+  displayUnit: string;
+  onDisplayUnitChange: (unit: string) => void;
+}
+
+export function ExactCorePanel({
+  quantity,
+  displayUnit,
+  onDisplayUnitChange,
+}: ExactCorePanelProps) {
   const sameDimension = findUnit(displayUnit)?.dimension === quantity.dimension;
 
   return (
@@ -89,7 +97,7 @@ export function ExactCorePanel({ quantity }: { quantity: Quantity }) {
         <select
           id="display-unit"
           value={displayUnit}
-          onChange={(event) => setDisplayUnit(event.target.value)}
+          onChange={(event) => onDisplayUnitChange(event.target.value)}
         >
           {DISPLAY_UNITS.map((symbol) => (
             <option key={symbol} value={symbol}>

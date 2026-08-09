@@ -57,6 +57,12 @@ export interface Subject {
   readonly note?: string;
 }
 
+/**
+ * A user's pick for one side of a comparison: a catalog object, or an exactly
+ * defined unit literal. Serializable, because share state has to carry it.
+ */
+export type SubjectChoice = { kind: 'object'; id: string } | { kind: 'unit'; symbol: string };
+
 export function subjectFromCatalog(object: ScaleObject, quantityKey?: string): Subject {
   let entry: CatalogQuantity;
   if (quantityKey === undefined) {

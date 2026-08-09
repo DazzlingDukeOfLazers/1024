@@ -6,13 +6,14 @@
  * with the experiment runner in milestone 4/9.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { parseDecimalExact } from '../core/rational/parse';
 import { type Quantity, fromUnit } from '../core/quantities/quantity';
 import { ExactCorePanel } from './ExactCorePanel';
 import { FiniteMachinesPanel } from './FiniteMachinesPanel';
 import { Binary64Panel } from './Binary64Panel';
 import { ExperimentsPanel } from './ExperimentsPanel';
+import { type LabState, type RepresentationState } from '../share/appState';
 
 const UNIT_CHOICES = [
   'pm',
@@ -35,9 +36,22 @@ function isLength(value: Quantity): value is Quantity<'length'> {
   return value.dimension === 'length';
 }
 
-export function LabView() {
-  const [literal, setLiteral] = useState('0.1');
-  const [unit, setUnit] = useState('m');
+export interface LabViewProps {
+  state: LabState;
+  onChange: (update: (current: LabState) => LabState) => void;
+  representations: RepresentationState;
+  onRepresentationsChange: (update: (current: RepresentationState) => RepresentationState) => void;
+}
+
+export function LabView({
+  state,
+  onChange,
+  representations,
+  onRepresentationsChange,
+}: LabViewProps) {
+  const { literal, unit } = state;
+  const setLiteral = (next: string): void => onChange((current) => ({ ...current, literal: next }));
+  const setUnit = (next: string): void => onChange((current) => ({ ...current, unit: next }));
 
   const parsed = useMemo(() => {
     try {
@@ -49,7 +63,10 @@ export function LabView() {
 
   return (
     <>
-      <ExperimentsPanel />
+      <ExperimentsPanel
+        experimentId={state.experimentId}
+        onExperimentChange={(experimentId) => onChange((current) => ({ ...current, experimentId }))}
+      />
 
       <section className="panel">
         <div className="field">
@@ -72,11 +89,23 @@ export function LabView() {
         {parsed.error !== undefined && <p className="error">{parsed.error}</p>}
       </section>
 
-      {parsed.quantity !== undefined && <ExactCorePanel quantity={parsed.quantity} />}
+      {parsed.quantity !== undefined && (
+        <ExactCorePanel
+          quantity={parsed.quantity}
+          displayUnit={state.displayUnit}
+          onDisplayUnitChange={(displayUnit) =>
+            onChange((current) => ({ ...current, displayUnit }))
+          }
+        />
+      )}
       {parsed.quantity !== undefined && isLength(parsed.quantity) && (
         <>
           <Binary64Panel length={parsed.quantity} />
-          <FiniteMachinesPanel length={parsed.quantity} />
+          <FiniteMachinesPanel
+            length={parsed.quantity}
+            preset={representations.q128Preset}
+            onPresetChange={(q128Preset) => onRepresentationsChange(() => ({ q128Preset }))}
+          />
         </>
       )}
     </>

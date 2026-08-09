@@ -292,10 +292,39 @@ Discovered while implementing:
 
 ## Share state
 
-- [ ] Define versioned backend-free share URL schema.
-- [ ] Encode exact Rational/BigInt state losslessly.
-- [ ] Include lens, selection/experiment, representation config, camera, and relevant display state.
-- [ ] Add Share this view action and round-trip test.
+- [x] Define versioned backend-free share URL schema.
+- [x] Encode exact Rational/BigInt state losslessly.
+- [x] Include lens, selection/experiment, representation config, camera, and relevant display state.
+- [x] Add Share this view action and round-trip test.
+
+Discovered while implementing:
+
+- [x] Sharing forced a real architectural change, and a good one: every lens is
+      now driven from `AppState` rather than keeping view state to itself. A lens
+      whose state lives inside it is a lens whose state cannot be shared.
+- [x] The payload lives in the URL *fragment*, which browsers never send to a
+      server. "No backend required" is therefore structural rather than a
+      promise — there is nowhere for the state to go.
+- [x] Malformed exact values are fatal; malformed display values fall back.
+      Silently substituting a different number is precisely the failure this
+      project exists to expose, but a link that half-works still beats a blank
+      page for an unknown lens or operation.
+- [x] Two regressions the e2e tests caught, both caused by the controlled-state
+      refactor: the Atlas → Ruler hand-off had been relying on the lens
+      remounting into a fresh default, and the comparator had been seeding
+      subject A from a prop that no longer existed. Both are now explicit
+      transitions in the app shell, which is clearer than what they replaced.
+- [x] Lens `onChange` props take an updater and are `useCallback`-stable, so the
+      non-passive wheel listeners attach once and no lens needs a ref to read
+      current state from an event handler.
+- [ ] The share payload is uncompressed. `docs/NUMERICS.md` §14 permits
+      compression; at ~500 characters it is not needed yet, and it would be a
+      dependency for no present gain.
+- [ ] Restoring reads the fragment once at module load. Back/forward between two
+      shared links will not re-restore without a `hashchange` listener.
+- [ ] Experiments are shared by id only. A user-authored experiment definition
+      would need the full serializable form (which `steps.ts` already has) in the
+      payload.
 
 ## Hardening
 
