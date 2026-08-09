@@ -932,11 +932,20 @@ says so where it does it. And the coverage assertions caught the fixture having
 no overflow case at all before the comparison ran, which is the anti-vacuity
 discipline paying for itself again.
 
-- [ ] The finite machines are deliberately outside the oracle's remit. Python's
-      unbounded integers would succeed silently exactly where Q128.128 and the
-      256-bit Planck tick are constrained by finiteness, so a Python check there
-      would be worse than none: it would look like evidence. A second
-      implementation for those wants a language with fixed-width integers.
+- [x] **That claim was wrong and is corrected.** I wrote that the finite
+      machines were outside the oracle's remit because Python's unbounded
+      integers hide finiteness. True of an oracle that never asks, and wrong
+      as a general claim: asked out loud they are the right tool, quantizing
+      onto the Q128.128 and Planck grids exactly and then reporting whether
+      the result fits the width, which is a plain integer comparison.
+      `Fraction` still does the part that is hard to get right. 1,596
+      Q128.128 cases across four base units, 399 Planck, 399 error meter,
+      straddling every boundary: below the LSB, at exactly half an LSB, and
+      past the top of each machine's range. All agreed.
+- [ ] The overflow *policy* — checked, wrapping, saturating — is still not
+      offered by the oracle, and this time for a reason that holds: it is this
+      project's design rather than a shared rule, so a second implementation
+      of it by the same author would be evidence of nothing.
 
 ## Hardening
 

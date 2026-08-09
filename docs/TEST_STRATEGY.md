@@ -203,7 +203,11 @@ Python earns this job in a narrow band and is asked nothing wider:
 - `Fraction(some_float)` is the exact value of a double, which is what `exactValue` claims to produce;
 - `math.nextafter` walks real neighbours.
 
-It is deliberately **not** asked about the finite machines. Python's integers are unbounded, so a Q128.128 register or a 256-bit Planck tick would succeed silently in Python exactly where the design constraint is finiteness. Rounding is shared ground; overflow is not — and even at the top of binary64's range Python declines, raising `OverflowError` instead of returning infinity, so the oracle applies the IEEE rule itself there and says so in a comment. On that one case it asserts a rule rather than offering a second implementation of one.
+The finite machines are covered too, which took a second look. The first version of this section said they were out of scope because Python's unbounded integers hide finiteness. That is true of an oracle that never asks and wrong as a general claim: asked out loud, unbounded integers are exactly the right tool. They quantize onto the Q128.128 and Planck grids exactly, and then report whether the result fits the width, which is a plain integer comparison — and `Fraction` still does the part that is hard to get right. The generated cases straddle every boundary: below the LSB, at exactly half an LSB where nearest-even and half-away-from-zero disagree, and past the top of each machine's range.
+
+What is genuinely out of scope is the overflow **policy** — checked, wrapping, saturating. That is this project's design rather than a shared rule, and a second implementation of it by the same author would be evidence of nothing.
+
+One more limit, stated where it applies: at the top of binary64's range Python declines, raising `OverflowError` rather than returning infinity, so the oracle applies the IEEE rule itself there. On that one case it asserts a rule rather than offering a second implementation of one, and the code says so at the point it does it.
 
 Generated cases include the inputs that separate a correct implementation from a plausible one: values exactly half an ulp above a representable double, where ties-to-even and ties-away-from-zero disagree; subnormals down to 10^-310; the largest finite double and the first value past it.
 

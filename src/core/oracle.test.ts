@@ -14,10 +14,17 @@
  * `python tools/oracle.py` and read the diff — a change means one of the two
  * implementations moved.
  *
- * Python is asked only about the band where its semantics genuinely match:
- * rounding and exact arithmetic. It is deliberately not asked about the finite
- * machines, where its unbounded integers would silently succeed exactly where
- * the design constraint is finiteness.
+ * The finite machines are checked here too, which took a second look. I had
+ * written them off on the grounds that Python's unbounded integers hide
+ * finiteness — true of an oracle that never asks, and wrong as a general claim.
+ * Asked out loud they are the right tool: they quantize onto a Q128.128 or
+ * 256-bit Planck grid exactly and then report whether the result fits the width,
+ * which is a plain integer comparison. `Fraction` still does the part that is
+ * hard to get right.
+ *
+ * What is still not offered is the overflow *policy* — checked, wrapping,
+ * saturating. That is this project's design rather than a shared rule, and a
+ * second implementation of it by the same author would be evidence of nothing.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -43,6 +50,9 @@ import {
   isNegativeZero,
   neighbors,
 } from './representations/binary64';
+import { Q128_128_PRESETS, encodeMeters as encodeQ128 } from './representations/q128_128';
+import { encodeMeters as encodePlanck } from './representations/planck';
+import { Q512_512, encode as encodeFixedPoint } from './representations/fixedPoint';
 
 const r = ([numerator, denominator]: string[]): Rational =>
   rational(BigInt(numerator!), BigInt(denominator!));
@@ -173,6 +183,77 @@ describe('binary64 encoding agrees with correctly rounded conversion', () => {
       return gap !== undefined && equals(mul(add(error, error), rational(1n)), gap);
     });
     expect(tiesFound.length, 'no tie in the fixture').toBeGreaterThan(0);
+  });
+});
+
+describe('the finite machines quantize where Python says they do', () => {
+  it('was given cases to check, on both sides of every boundary', () => {
+    expect(oracle.q128.length).toBeGreaterThan(FLOOR);
+    expect(oracle.planck.length).toBeGreaterThan(FLOOR);
+    expect(oracle.errorMeter.length).toBeGreaterThan(FLOOR);
+    // Both outcomes must appear or only one branch is under test.
+    expect(oracle.q128.some((entry) => entry.fits)).toBe(true);
+    expect(oracle.q128.some((entry) => !entry.fits)).toBe(true);
+    expect(oracle.planck.some((entry) => !entry.fits)).toBe(true);
+  });
+
+  it('stores the same raw register at every base unit, or refuses', () => {
+    // The width question is asked explicitly on the Python side, so this is a
+    // real comparison rather than an unbounded integer agreeing with itself.
+    for (const entry of oracle.q128) {
+      const config = Q128_128_PRESETS[entry.baseUnit as keyof typeof Q128_128_PRESETS];
+      const value = r(entry.value);
+      const write = encodeQ128(config, value);
+      const where = `${entry.value.join('/')} @ ${entry.baseUnit}`;
+
+      if (!entry.fits) {
+        expect(write.status, `${where} should be refused`).toBe('rejected');
+        expect(write.state, where).toBeUndefined();
+        continue;
+      }
+
+      expect(write.status, where).toBe('stored');
+      expect(write.state?.raw.toString(), `${where} raw`).toBe(entry.raw);
+      expect(write.decodedMeters, `${where} decoded`).toEqual(r(entry.decoded!));
+      expect(write.quantizationErrorMeters, `${where} quantization`).toEqual(
+        r(entry.quantizationError!),
+      );
+    }
+  });
+
+  it('counts the same Planck ticks', () => {
+    for (const entry of oracle.planck) {
+      const value = r(entry.value);
+      const write = encodePlanck(value);
+      const where = entry.value.join('/');
+
+      if (!entry.fits) {
+        expect(write.status, `${where} should be refused`).toBe('rejected');
+        continue;
+      }
+      expect(write.state?.ticks.toString(), `${where} ticks`).toBe(entry.ticks);
+      expect(write.decoded, `${where} decoded`).toEqual(r(entry.decoded));
+    }
+  });
+
+  it('fills the Q512.512 error meter to the same raw value', () => {
+    for (const entry of oracle.errorMeter) {
+      if (!entry.fits) continue;
+      const value = r(entry.value);
+      const write = encodeFixedPoint(Q512_512, value, 'nearest-even', 'checked');
+      const where = entry.value.join('/');
+      expect(write.state?.raw.toString(), `${where} raw`).toBe(entry.raw);
+      expect(write.decoded, `${where} decoded`).toEqual(r(entry.decoded!));
+    }
+  });
+
+  it('agrees on ties, which is the whole reason to check quantization', () => {
+    // Exactly half an LSB is the only input that separates nearest-even from
+    // half-away-from-zero, and the fixture is generated to contain some.
+    const halfLsb = oracle.q128.filter(
+      (entry) => entry.fits && entry.quantizationError !== undefined,
+    );
+    expect(halfLsb.length).toBeGreaterThan(FLOOR);
   });
 });
 

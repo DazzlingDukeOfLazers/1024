@@ -17,10 +17,15 @@ Python earns the job in a narrow band and no wider:
   * `math.nextafter` walks real neighbours, which is what `successor` and
     `predecessor` claim to do.
 
-Python is a *poor* oracle for the rest of the project, and deliberately is not
-asked: its ints are unbounded, so a Q128.128 register or a 256-bit Planck tick
-would silently succeed in Python exactly where the real design constraint is
-finiteness. Rounding is shared ground; overflow is not.
+The finite machines are here too, which took a second look. Python's unbounded
+ints do hide finiteness — but only from an oracle that never asks. Asked out
+loud, they are the right tool: they quantize onto a Q128.128 or 256-bit Planck
+grid exactly, and then report whether the answer fits the width, which is a plain
+integer comparison. `Fraction` is still doing the part that is hard to get right.
+
+The overflow *policy* — checked, wrapping, saturating — is not offered here,
+because that is this project's design rather than a shared rule, and a second
+implementation of it by the same author is not evidence of anything.
 
 Output is committed as `fixtures/oracle.json` so the comparison runs in CI with
 no Python installed. Regenerate deliberately:
@@ -235,6 +240,49 @@ def neighbours(value):
     return entry
 
 
+def round_nearest_even(value):
+    """The rounding rule every machine here uses, in exact integer arithmetic."""
+    floor = value.numerator // value.denominator
+    remainder = value - floor
+    if remainder < Fraction(1, 2):
+        return floor
+    if remainder > Fraction(1, 2):
+        return floor + 1
+    return floor if floor % 2 == 0 else floor + 1
+
+
+# Metres per machine unit for the four Q128.128 presets, and the CODATA 2018
+# Planck length the 256-bit tick register counts in.
+Q128_BASE_UNITS = {
+    'mm': Fraction(10) ** -3,
+    'm': Fraction(1),
+    'km': Fraction(10) ** 3,
+    'Mm': Fraction(10) ** 6,
+}
+PLANCK_LENGTH = Fraction(1616255, 10**41)
+
+
+def signed_fits(raw, width):
+    return -(2 ** (width - 1)) <= raw < 2 ** (width - 1)
+
+
+def fixed_point(value, base_unit, fraction_bits, width_bits):
+    """Quantize an exact value onto a finite fixed-point grid.
+
+    The unbounded integers are the point rather than the problem: they let the
+    oracle compute the quantization exactly and then ask, explicitly, whether the
+    answer fits the width. A check that never asked would be worse than none.
+    """
+    machine_units = value / base_unit
+    raw = round_nearest_even(machine_units * 2**fraction_bits)
+    entry = {'raw': str(raw), 'fits': signed_fits(raw, width_bits)}
+    if entry['fits']:
+        decoded = Fraction(raw, 2**fraction_bits) * base_unit
+        entry['decoded'] = frac(decoded)
+        entry['quantizationError'] = frac(decoded - value)
+    return entry
+
+
 def main():
     rng = random.Random(SEED)
     values = curated() + ties(60, rng) + random_rationals(240, rng)
@@ -274,6 +322,48 @@ def main():
         if near is not None:
             neighbourhoods.append({'value': frac(value), **near})
 
+    # The finite machines. Python's ints are unbounded, so the oracle has to ask
+    # the width question out loud — see `fixed_point`. Values are chosen to
+    # straddle every boundary that matters: below the LSB, at half an LSB, and
+    # past the top of each machine's range.
+    machine_values = values + [
+        Fraction(2) ** 127,  # inside Q128.128 @ m, outside @ mm
+        Fraction(2) ** 128,  # outside @ m
+        Fraction(2) ** -129,  # below the @ m LSB
+        Fraction(1, 2) * Fraction(2) ** -128,  # exactly half an LSB @ m
+        Fraction(3, 2) * Fraction(2) ** -128,  # one and a half: ties the other way
+        Fraction(10) ** 40,
+        -(Fraction(10) ** 40),
+        PLANCK_LENGTH / 2,  # half a tick: a tie on the Planck grid
+        PLANCK_LENGTH * Fraction(3, 2),
+    ]
+
+    q128 = []
+    for label, base in Q128_BASE_UNITS.items():
+        for value in machine_values:
+            q128.append(
+                {
+                    'baseUnit': label,
+                    'value': frac(value),
+                    **fixed_point(value, base, 128, 256),
+                }
+            )
+
+    planck = [
+        {
+            'value': frac(value),
+            'ticks': str(round_nearest_even(value / PLANCK_LENGTH)),
+            'fits': signed_fits(round_nearest_even(value / PLANCK_LENGTH), 256),
+            'decoded': frac(round_nearest_even(value / PLANCK_LENGTH) * PLANCK_LENGTH),
+        }
+        for value in machine_values
+    ]
+
+    meter = [
+        {'value': frac(value), **fixed_point(value, Fraction(1), 512, 1024)}
+        for value in machine_values
+    ]
+
     generator = io.open(os.path.abspath(__file__), 'rb').read()
     document = {
         'note': (
@@ -287,13 +377,17 @@ def main():
         'decimals': decimals,
         'encodings': encodings,
         'neighbourhoods': neighbourhoods,
+        'q128': q128,
+        'planck': planck,
+        'errorMeter': meter,
     }
 
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(
         json.dumps(document, indent=1, ensure_ascii=False) + '\n'
     )
     print(
-        'wrote %s: %d arithmetic, %d magnitudes, %d decimals, %d encodings, %d neighbourhoods'
+        'wrote %s: %d arithmetic, %d magnitudes, %d decimals, %d encodings, '
+        '%d neighbourhoods, %d q128, %d planck, %d error meter'
         % (
             os.path.relpath(OUT, HERE),
             len(arithmetic),
@@ -301,6 +395,9 @@ def main():
             len(decimals),
             len(encodings),
             len(neighbourhoods),
+            len(q128),
+            len(planck),
+            len(meter),
         )
     )
 
