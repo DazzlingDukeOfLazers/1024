@@ -200,9 +200,26 @@ Discovered while implementing:
       `CatalogQuantity`, so a comparator subject built from a unit literal gets
       the same sentence from the same code — and says "Exactly defined." with no
       caveat, because a millimetre is a definition, not a plausible round number.
-- [ ] Source the remaining 19 objects. A data task; the schema, ranges and
-      wording all work. Until then the app says they are unsourced, which is
-      true, but "true and unsourced" is a weaker position than "sourced".
+- [ ] **"Source the remaining 19 objects" is the wrong task, and I have deferred
+      it four times without saying why.** Most of the nineteen are
+      `representative` or `estimated`: a virus is not 100 nm, viruses are around
+      that size, and there is no measurement to cite because the value is a
+      choice about what stands in for a range. Attaching "typical of virology
+      texts" to it would be a status wearing a citation's clothes — the exact
+      thing the schema now rejects — and the app already says, in every lens,
+      that the number is a plausible figure rather than a traceable one.
+
+      The actionable subset is small and specific: values that are genuinely
+      measurements of a definite thing, where a real reference exists and the
+      figure is not convention-dependent. The B-form DNA helix diameter is one.
+      A red blood cell's 6.2–8.2 µm range is another, being a published
+      haematology reference interval rather than a chosen round number, which
+      would make it `measured` rather than `representative`.
+
+      Doing those needs real references rather than recollection, so it stays
+      open — but as "cite the four or five that are citable", not as a
+      nineteen-object chore whose completion would make the catalog less honest
+      rather than more.
 - [ ] Only one length per object. A second length (a human's width, say) needs an
       explicit `primary` field rather than `primaryLength`'s current "the one
       length there is".
@@ -814,9 +831,10 @@ evidence the test looked, not a claim about how many labels there ought to be.
 
 `docs/TEST_STRATEGY.md` states the rule.
 
-- [ ] At 420 px the ruler loses its rightmost tick label to the unit symbol. The
-      symbol could move rather than win the collision. Correct as it stands —
-      the two never overlap — but the tick label is the more useful of the pair.
+- [x] At 420 px the ruler lost its rightmost tick label to the unit symbol. The
+      symbol has moved below the baseline, where nothing else is drawn: it still
+      sits beside the axis and no longer competes with it, and the ruler shows
+      three tick labels on a phone instead of two.
 
 ## Hardening
 

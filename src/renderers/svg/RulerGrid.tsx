@@ -26,10 +26,13 @@ const UNIT_FONT_SIZE = 11;
 
 export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerGridProps) {
   /**
-   * Which major ticks get to keep their label. The unit symbol sits in the top
-   * right corner on the same line, and the last tick label was drawn straight
-   * through it — at 420 px the ruler read "µ200". The ticks themselves all stay;
-   * only a label that cannot be read is dropped.
+   * Which major ticks get to keep their label.
+   *
+   * The unit symbol used to share this line and win the collision, which cost
+   * the rightmost tick label — on a 420 px screen the ruler showed "-200" and
+   * "0" and nothing else. Of the two the tick label is the more useful, so the
+   * symbol has moved below the baseline, where nothing else is drawn. It stays
+   * beside the axis and no longer competes with it.
    */
   const labelled = new Set(
     keepNonOverlapping(
@@ -39,15 +42,6 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
         width: estimateTextWidth(tick.label ?? '', LABEL_FONT_SIZE),
         anchor: 'start' as const,
       }),
-      {
-        reserved: [
-          {
-            x: width - 4,
-            width: estimateTextWidth(unitSymbol, UNIT_FONT_SIZE),
-            anchor: 'end' as const,
-          },
-        ],
-      },
     ).map((tick) => tick.x),
   );
 
@@ -110,7 +104,7 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
       />
       <text
         x={width - 4}
-        y={baseline - MAJOR_TICK - 4}
+        y={baseline + 16}
         fontSize={UNIT_FONT_SIZE}
         fill="currentColor"
         textAnchor="end"

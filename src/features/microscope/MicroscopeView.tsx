@@ -28,6 +28,7 @@ import {
 } from './lattice';
 import { PickYourRuler } from './PickYourRuler';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
+import { estimateTextWidth } from '../../camera/labels';
 
 const UNIT_CHOICES = ['fm', 'pm', 'nm', 'µm', 'mm', 'm', 'km', 'Mm', 'Gm', 'au', 'ly'];
 
@@ -210,6 +211,7 @@ function LatticeRow({ report }: { report: LatticeReport }) {
 const NOMINAL_CHART_WIDTH = 760;
 const CHART_HEIGHT = 260;
 const CHART_PAD = 40;
+const LEGEND_FONT_SIZE = 11;
 
 function ResolutionChart({
   profiles,
@@ -295,30 +297,51 @@ function ResolutionChart({
           />
         )}
 
-        {profiles.map((profile, index) => {
+        {profiles.map((profile) => {
           const points = profile.samples
             .filter((sample) => sample.log10Gap !== undefined)
             .map((sample) => `${x(sample.log10Magnitude)},${y(sample.log10Gap!)}`)
             .join(' ');
           return (
-            <g key={profile.id}>
-              <polyline
-                points={points}
-                fill="none"
-                stroke="currentColor"
-                strokeOpacity={0.85}
-                strokeWidth={2}
-                strokeDasharray={profile.constant ? '6 4' : undefined}
+            <polyline
+              key={profile.id}
+              points={points}
+              fill="none"
+              stroke="currentColor"
+              strokeOpacity={0.85}
+              strokeWidth={2}
+              strokeDasharray={profile.constant ? '6 4' : undefined}
+            />
+          );
+        })}
+
+        {/* The legend last, over its own backing, because binary64's line rises
+            through exactly the corner the labels sit in and was crossing the
+            words out. Drawn after the lines rather than interleaved with them,
+            which is what put one label under the next profile's polyline. */}
+        {profiles.map((profile, index) => {
+          const label = `${profile.label}${profile.constant ? ' (constant)' : ' (grows)'}`;
+          const top = CHART_PAD + 3 + index * 15;
+          const textWidth = estimateTextWidth(label, LEGEND_FONT_SIZE);
+          return (
+            <g key={`legend-${profile.id}`}>
+              <rect
+                x={CHART_WIDTH - CHART_PAD - 6 - textWidth}
+                y={top}
+                width={textWidth + 8}
+                height={14}
+                fill="var(--panel)"
+                fillOpacity={0.85}
+                rx={2}
               />
               <text
                 x={CHART_WIDTH - CHART_PAD - 4}
-                y={CHART_PAD + 14 + index * 14}
-                fontSize={11}
+                y={top + 11}
+                fontSize={LEGEND_FONT_SIZE}
                 textAnchor="end"
                 fill="currentColor"
               >
-                {profile.label}
-                {profile.constant ? ' (constant)' : ' (grows)'}
+                {label}
               </text>
             </g>
           );
