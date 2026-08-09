@@ -976,6 +976,49 @@ I was going to write, and the panel now says it.
       re-auditing whenever the spec's list changes, since nothing checks the app
       against that list automatically — a test cannot read a requirement.
 
+## Wide fixed-point / digit-serial architecture track (issue #1)
+
+`docs/WIDE_INTEGER_ARCHITECTURE.md` arrived as an attachment on
+https://github.com/DazzlingDukeOfLazers/1024/issues/1. It is a new experimental
+track rather than a change to the existing one: a simulated machine that exposes
+very wide fixed-point architectural values while doing the arithmetic on a much
+smaller physical slice over multiple cycles.
+
+> Keep the bits until someone explicitly chooses to throw them away.
+> Return the leftovers.
+
+Not started. What it asks for, roughly in dependency order:
+
+- [ ] Radix-2^N digit decomposition over the existing wide values, with a
+      configurable digit width (8/16/32/64/128) so the slice-size trade can be
+      measured rather than assumed.
+- [ ] Significant-width dispatch: report declared width against the significant
+      width actually touched, and pick a path from it.
+- [ ] Zero-digit skipping, with the control cost configurable so the saving is
+      not assumed to be free.
+- [ ] `MUL_WIDE` — 1024 × 1024 → 2048, wide first and narrow later, so
+      calculation is separated from information loss.
+- [ ] `NARROW source → destination + residue`, with the policy list from §8 and
+      a visualization of full result / destination / residue.
+- [ ] `DIV_REM` holding `A = Q × B + R`, with the remainder a first-class result
+      rather than a failure, and demand-driven extra quotient digits.
+- [ ] Scenario settings (§14) so one workload runs under several policies.
+- [ ] The metrics in §20 — significant width, partial products executed against
+      skipped, modeled cycles — because the point is measurement, not intuition.
+- [ ] WebGPU compute track (§18), after the CPU simulation works.
+
+Two notes on how this lands against what exists:
+
+- §19 requires a CPU exact oracle and says "the simulator must never use its own
+  result as its correctness reference". That is already built: `tools/oracle.py`
+  and `src/core/oracle.test.ts`, differential-tested against
+  `fractions.Fraction`. The new track should extend it rather than start again,
+  and §19's list of cases — long carry chains, single-bit sparse values,
+  min/max signed, division with remainder — is a good next generation of it.
+- §23's precision statement is consistent with what the app already teaches: the
+  architecture moves where error occurs rather than removing it. The Microscope's
+  existing framing carries over.
+
 ## Hardening
 
 - [x] Playwright critical path.

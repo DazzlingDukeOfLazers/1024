@@ -25,6 +25,10 @@ Read, in order:
 7. `docs/IMPLEMENTATION_PLAN.md`
 8. `TASKS.md`
 
+Then, for the experimental architecture track only:
+
+9. `docs/WIDE_INTEGER_ARCHITECTURE.md`
+
 If implementation conflicts with these docs, prefer numerical correctness and update the docs in the same change.
 
 `docs/NUMERICS.md` is the single source of truth for representation semantics. Do not duplicate or creatively reconcile conflicting machine definitions elsewhere.

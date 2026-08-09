@@ -45,6 +45,7 @@ describe('the documentation points at files that exist', () => {
     'docs/TEST_STRATEGY.md',
     'docs/UI_SPEC.md',
     'docs/IMPLEMENTATION_PLAN.md',
+    'docs/WIDE_INTEGER_ARCHITECTURE.md',
   ];
 
   // Bare filenames — `binary64.ts`, `spacetime.ts` — are shorthand for "the
