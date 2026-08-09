@@ -28,6 +28,7 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
         tick.major ? (
           <g key={`${tick.meters.numerator}/${tick.meters.denominator}`}>
             <line
+              className="gridline"
               x1={tick.x}
               y1={0}
               x2={tick.x}
@@ -36,6 +37,7 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
               strokeOpacity={0.12}
             />
             <line
+              className="tick major"
               x1={tick.x}
               y1={baseline - MAJOR_TICK}
               x2={tick.x}
@@ -56,6 +58,7 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
         ) : (
           <line
             key={`${tick.meters.numerator}/${tick.meters.denominator}`}
+            className="tick minor"
             x1={tick.x}
             y1={baseline - MINOR_TICK}
             x2={tick.x}

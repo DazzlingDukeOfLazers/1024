@@ -478,10 +478,54 @@ Discovered while implementing:
 - [ ] Colour contrast passes axe, but the palette has never been checked against
       a colour-vision simulation.
 
+## Pixel claims are measured, not nominal
+
+The views state figures in pixels: "N px per red blood cell", "individual items
+are below a pixel here", "10 px minimum marker spacing", "N px apart". Each SVG
+drew into a fixed `viewBox` — 960 for the Ruler and Atlas, 640 for the
+comparison strip — scaled by CSS `width="100%"`, so every one of those figures
+was true at exactly one window width and false everywhere else.
+
+Playwright measured it before anything was designed, and found two real defects:
+the Ruler on a 420 px screen reported 5.76 px per red blood cell and drew 1.88,
+and the Atlas drew the same 21 markers at 420 px as at 1400 px, so its 10 px
+minimum spacing was not a minimum at all. A third test passed while being wrong:
+it compared the reported grid step against the chosen step, both in viewBox
+units, and so was self-consistently false.
+
+- [x] `useMeasuredWidth` — a `ResizeObserver` behind a callback ref. The width is
+      read during render, so it comes from state; the React compiler will not let
+      a value that shares an object with a ref reach render, which is the right
+      rule and is why this returns a tuple rather than an object.
+- [x] Ruler, Atlas and comparison strip size their `viewBox` from the measured
+      width, so one viewBox unit is one CSS pixel.
+- [x] Both wheel listeners measure the element in the handler instead of closing
+      over a width, so a resize cannot leave them zooming against a stale one.
+- [x] Grid ticks carry `class="tick major"` / `"tick minor"`, so a test can hold
+      the reported spacing against where the majors are actually drawn.
+- [x] `e2e/pixels.spec.ts`: five tests comparing every reported figure against
+      measured DOM geometry at 420, 800, 1280 and 1400 px.
+- [x] docs/UI_SPEC.md states the rule and its consequence for the camera.
+
+Three existing tests had baked in nominal-width figures ("9.6 mm across the
+view", "333", framing) and now assert width-relative truths instead, which is
+what they should always have asserted.
+
+One limit, recorded honestly: a camera is a scale, not a span, so a preset framed
+at one width shows a different fraction of the scene at another. Presets are
+framed at the measured width when chosen, but the initial camera and the
+Atlas → Ruler hand-off are built before the view has been measured, so they can
+be off by the ratio of widths — a coconut handed over at a 1206 px panel fills
+0.48 of it rather than 0.6. "Reset view" reframes at the true width. Fixing it
+properly means distinguishing a camera that was framed from one that was
+restored from a link, because reframing a shared link would break the promise
+that a link reproduces the sender's view exactly.
+
 ## Hardening
 
 - [x] Playwright critical path.
 - [x] Accessibility pass.
+- [x] Pixel claims measured against the DOM.
 - [ ] performance profiling.
 - [ ] visual regression after layout stabilizes.
 - [ ] documentation refresh.

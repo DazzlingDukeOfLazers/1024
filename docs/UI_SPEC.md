@@ -179,6 +179,19 @@ Use pleasant spacings:
 
 Target roughly 80–140 px between major divisions.
 
+A pixel means a CSS pixel on the screen in front of the reader, not a unit of
+some nominal design width. Every view that states a figure in pixels — grid
+spacing, level of detail, "below a pixel here", the Atlas's minimum marker
+spacing — measures the element it is drawn into and sizes its `viewBox` so that
+one viewBox unit is one CSS pixel. A fixed `viewBox` scaled by CSS `width="100%"`
+makes all of those statements false at every width but one, which for this
+project is the same defect as misreporting a number.
+
+Consequently the camera stores a scale (metres per pixel), never a span. Two
+readers at different window widths see the same scale and different amounts of
+the scene, and a shared link reproduces the sender's scale exactly rather than
+their window.
+
 Subdivisions fade in/out continuously where practical.
 
 Engineering-prefix boundaries should be easy to recognize:

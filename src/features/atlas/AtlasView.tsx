@@ -24,6 +24,7 @@ import {
 import { CATALOG } from '../../catalog/catalog';
 import { type AtlasState } from '../../share/appState';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
+import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 import { SemanticPanel } from './SemanticPanel';
 import {
   ATLAS_ENTRIES,
@@ -35,14 +36,13 @@ import {
   fullRangeCamera,
 } from './atlas';
 
-const VIEWPORT: Viewport = ATLAS_VIEWPORT;
+const NOMINAL: Viewport = ATLAS_VIEWPORT;
 const AXIS_Y = 186;
 const MARKER_Y = 150;
 const LABEL_TOP = 34;
 const LABEL_ROW_HEIGHT = 17;
 
 const ENTRIES = ATLAS_ENTRIES;
-const FULL_RANGE = fullRangeCamera(VIEWPORT);
 
 export interface AtlasViewProps {
   state: AtlasState;
@@ -59,6 +59,12 @@ export function AtlasView({
   onSelect,
   onOpenInRuler,
 }: AtlasViewProps) {
+  // One viewBox unit is one CSS pixel, so the 10 px minimum marker spacing is a
+  // real minimum rather than a nominal one.
+  const [measuredWidth, measure] = useMeasuredWidth(NOMINAL.widthPx);
+  const VIEWPORT = { widthPx: measuredWidth, heightPx: NOMINAL.heightPx };
+  const FULL_RANGE = fullRangeCamera(VIEWPORT);
+
   const camera = state.camera;
   // The camera lives in app state so it can be shared. The updater form means
   // an event handler never has to read the current camera through a ref.
@@ -94,11 +100,16 @@ export function AtlasView({
 
     const onWheel = (event: WheelEvent): void => {
       event.preventDefault();
-      const x = localX(element, event.clientX);
+      // Measured here rather than closed over, so a resize cannot leave the
+      // listener zooming against a width the view no longer has. One viewBox
+      // unit is one CSS pixel, so the offset needs no scaling.
+      const bounds = element.getBoundingClientRect();
+      const viewport = { widthPx: bounds.width, heightPx: NOMINAL.heightPx };
+      const x = event.clientX - bounds.left;
       const factor = Math.pow(2, -event.deltaY * 0.002);
       // `onChange` directly rather than the `setCamera` wrapper, so the effect
       // depends only on a stable prop and attaches the listener once.
-      onChange((current) => ({ camera: zoomLogAt(current.camera, factor, x, VIEWPORT) }));
+      onChange((current) => ({ camera: zoomLogAt(current.camera, factor, x, viewport) }));
     };
     element.addEventListener('wheel', onWheel, { passive: false });
     return () => element.removeEventListener('wheel', onWheel);
@@ -125,7 +136,7 @@ export function AtlasView({
 
   return (
     <>
-      <section className="panel">
+      <section className="panel" ref={measure}>
         <div className="field">
           {/* A marker is a pointer-only target, and at low zoom it may be a
               cluster standing in for several objects. The picker makes every

@@ -23,7 +23,10 @@ export interface Preset {
   readonly repeatObjectId?: string;
 }
 
-export function rulerPresets(focusObjectId?: string): Preset[] {
+export function rulerPresets(
+  focusObjectId?: string,
+  viewport: Viewport = RULER_VIEWPORT,
+): Preset[] {
   const coconut = requireLength(CATALOG.require('coconut')).value.value;
   const millimetre = fromUnit(rational(1n), 'mm').value;
 
@@ -39,7 +42,7 @@ export function rulerPresets(focusObjectId?: string): Preset[] {
       description: `Framed on the selection from the Atlas. ${
         formatEngineering(quantity('length', size)).text
       } across.`,
-      camera: frameLength(ZERO, size, RULER_VIEWPORT, 0.6),
+      camera: frameLength(ZERO, size, viewport, 0.6),
       repeatObjectId: focusObject.id,
     });
   }
@@ -51,7 +54,7 @@ export function rulerPresets(focusObjectId?: string): Preset[] {
       label: 'Red blood cells across a millimetre',
       description:
         'About 133 of them. Zoom out and they collapse into a strip; the count never changes.',
-      camera: frameLength(ZERO, millimetre, RULER_VIEWPORT, 0.8),
+      camera: frameLength(ZERO, millimetre, viewport, 0.8),
       repeatObjectId: 'red-blood-cell',
     },
     {
@@ -61,7 +64,7 @@ export function rulerPresets(focusObjectId?: string): Preset[] {
       camera: frameLength(
         mul(coconut, rational(123n, 2n)),
         mul(coconut, rational(123n)),
-        RULER_VIEWPORT,
+        viewport,
         0.85,
       ),
       repeatObjectId: 'coconut',
@@ -78,11 +81,12 @@ export function rulerPresets(focusObjectId?: string): Preset[] {
       id: 'human-scale',
       label: 'Human scale',
       description: 'A door, a human and a coconut, to scale.',
-      camera: frameLength(rational(1n), rational(4n), RULER_VIEWPORT, 0.8),
+      camera: frameLength(rational(1n), rational(4n), viewport, 0.8),
     },
   ];
 }
 
+/** Starting camera, framed at the nominal width; the view reframes once measured. */
 export function defaultRulerCamera(): LinearCamera {
   return rulerPresets()[0]!.camera;
 }

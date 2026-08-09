@@ -29,8 +29,8 @@ import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
 import { type RulerState } from '../../share/appState';
 import { RULER_VIEWPORT, rulerPresets } from './presets';
+import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
-const VIEWPORT = RULER_VIEWPORT;
 const BASELINE = 210;
 const ROW_Y = 120;
 
@@ -59,7 +59,10 @@ export interface RulerViewProps {
 }
 
 export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
-  const allPresets = rulerPresets(focusObjectId);
+  // One viewBox unit is one CSS pixel, so every pixel figure below is real.
+  const [measuredWidth, measure] = useMeasuredWidth(RULER_VIEWPORT.widthPx);
+  const VIEWPORT = { widthPx: measuredWidth, heightPx: RULER_VIEWPORT.heightPx };
+  const allPresets = rulerPresets(focusObjectId, VIEWPORT);
   const presetId = state.presetId;
   const preset = allPresets.find((entry) => entry.id === presetId) ?? allPresets[0]!;
 
@@ -154,13 +157,18 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
 
     const onWheel = (event: WheelEvent): void => {
       event.preventDefault();
-      const x = localX(element, event.clientX);
+      // Measured here rather than closed over, so a resize cannot leave the
+      // listener zooming against a width the view no longer has. One viewBox
+      // unit is one CSS pixel, so the offset needs no scaling.
+      const bounds = element.getBoundingClientRect();
+      const viewport = { widthPx: bounds.width, heightPx: RULER_VIEWPORT.heightPx };
+      const x = event.clientX - bounds.left;
       const delta = event.deltaY * 0.002;
       // `onChange` directly rather than the `setCamera` wrapper, so the effect
       // depends only on a stable prop and attaches the listener once.
       onChange((current) => ({
         presetId: current.presetId,
-        camera: zoomAt(current.camera, delta, x, VIEWPORT),
+        camera: zoomAt(current.camera, delta, x, viewport),
       }));
     };
 
@@ -187,7 +195,7 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
 
   return (
     <>
-      <section className="panel">
+      <section className="panel" ref={measure}>
         <div className="field">
           <label htmlFor="ruler-preset">Preset</label>
           <select

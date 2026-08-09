@@ -5,6 +5,24 @@ const readoutRow = (page: Page, header: string) =>
     .locator('table.readout tr')
     .filter({ has: page.getByRole('rowheader', { name: header, exact: true }) });
 
+/**
+ * How wide the ruler is actually drawn. The view measures itself, so the span
+ * it reports is its scale times this — a fixed figure like "9.6 mm across" is
+ * only true at one width and is not what these tests should be pinning.
+ */
+const rulerWidth = async (page: Page): Promise<number> => {
+  const box = await page.locator('svg.ruler').boundingBox();
+  if (box === null) throw new Error('ruler has no box');
+  return box.width;
+};
+
+/** The millimetre figure from an "Across the view" style readout. */
+const millimetresIn = (text: string): number => {
+  const [, value, prefix] = /([\d.]+)\s*(µ|m|c|k)?m\b/.exec(text) ?? [];
+  const scale: Record<string, number> = { µ: 1e-3, m: 1, c: 10, k: 1e6 };
+  return Number(value) * (prefix === undefined ? 1000 : (scale[prefix] ?? 1));
+};
+
 /** The app lands on the Atlas, so lab tests navigate there first. */
 const openLab = async (page: Page) => {
   await page.goto('/');
@@ -341,7 +359,10 @@ test('a large-offset disagreement view survives being sent as a link', async ({ 
   await expect(page.locator('svg.ruler')).toBeVisible();
   await expect(page.getByLabel('Preset')).toHaveValue('far-origin');
   await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
-  await expect(readoutRow(page, 'Across the view')).toContainText('9.6 mm');
+  // Still millimetre-scale across, at the preset's 10 µm per pixel. The figure
+  // is the scale times the width the view is drawn at, not a fixed number.
+  const across = millimetresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
+  expect(across).toBeCloseTo(0.01 * (await rulerWidth(page)), 1);
 
   // And the rest of the view came with it.
   await page
@@ -545,7 +566,14 @@ test('the atlas can hand an object to the ruler', async ({ page }) => {
   await expect(page.locator('svg.ruler')).toBeVisible();
   await expect(page.getByLabel('Preset')).toHaveValue('selection');
   await expect(page.getByText('Framed on the selection from the Atlas')).toBeVisible();
-  await expect(readoutRow(page, 'Across the view')).toContainText('333');
+
+  // "Framed on the selection" has to mean the selection fills the frame, which
+  // is a fact about the drawing rather than about any particular width.
+  const coconut = await page.locator('svg.ruler ellipse, svg.ruler rect').nth(1).boundingBox();
+  expect(coconut).not.toBeNull();
+  const fraction = coconut!.width / (await rulerWidth(page));
+  expect(fraction).toBeGreaterThan(0.4);
+  expect(fraction).toBeLessThan(0.75);
 });
 
 const openRuler = async (page: Page) => {
@@ -592,8 +620,11 @@ test('the ruler resolves a millimetre beside a 1e20 m origin', async ({ page }) 
 
   // The camera centre really is out at 1e20 m...
   await expect(readoutRow(page, 'Centre')).toContainText('100 Em');
-  // ...and the view across it is only centimetres wide.
-  await expect(readoutRow(page, 'Across the view')).toContainText('9.6 mm');
+  // ...and the view across it is only millimetres wide: 10 µm per pixel, times
+  // however many pixels the view was actually given.
+  const across = millimetresIn((await readoutRow(page, 'Across the view').textContent()) ?? '');
+  expect(across).toBeCloseTo(0.01 * (await rulerWidth(page)), 1);
+  expect(across).toBeLessThan(100);
   await expect(readoutRow(page, 'Grid step')).toContainText('labelled in mm');
 
   // The grid still has labelled ticks out there, which is the whole point:

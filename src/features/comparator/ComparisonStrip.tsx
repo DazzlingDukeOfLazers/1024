@@ -15,11 +15,11 @@ import { toNumberForDisplay } from '../../core/rational/log10';
 import { ratio as quantityRatio } from '../../core/quantities/quantity';
 import { formatEngineering } from '../../core/units/format';
 import { type ComparisonResult } from './compare';
+import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
-const WIDTH = 640;
+const NOMINAL_WIDTH = 640;
 const HEIGHT = 96;
 const MARGIN = 8;
-const TRACK = WIDTH - MARGIN * 2;
 
 /** Below this many pixels an item is drawn as part of a strip, not on its own. */
 const MIN_ITEM_PIXELS = 3;
@@ -30,11 +30,16 @@ const MAX_DRAWN_ITEMS = 200;
  * Convert an exact fraction of the track into pixels. The rational stays exact
  * until it is already bounded by the viewport, so nothing huge reaches `number`.
  */
-function toPixels(fraction: Rational): number {
-  return toNumberForDisplay(mul(fraction, rational(BigInt(TRACK))));
+function toPixels(fraction: Rational, track: number): number {
+  return toNumberForDisplay(mul(fraction, rational(BigInt(Math.round(track)))));
 }
 
 export function ComparisonStrip({ result }: { result: ComparisonResult }) {
+  // Measured, so "below a pixel" means a pixel on this screen rather than a
+  // pixel on a nominal 640-wide one.
+  const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
+  const track = width - MARGIN * 2;
+
   const { a, b } = result;
 
   // Everything is drawn relative to the larger of the two subjects.
@@ -47,7 +52,7 @@ export function ComparisonStrip({ result }: { result: ComparisonResult }) {
   }
 
   const smallFraction = quantityRatio(smaller.value, larger.value);
-  const smallPixels = toPixels(smallFraction);
+  const smallPixels = toPixels(smallFraction, track);
   const itemsAcross = isZero(smallFraction)
     ? 0
     : toNumberForDisplay(div(rational(1n), smallFraction));
@@ -56,9 +61,9 @@ export function ComparisonStrip({ result }: { result: ComparisonResult }) {
   const drawnCount = Math.max(1, Math.min(Math.floor(itemsAcross), MAX_DRAWN_ITEMS));
 
   return (
-    <>
+    <div ref={measure}>
       <svg
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         width="100%"
         role="img"
         aria-label={`${smaller.label} compared with ${larger.label}`}
@@ -66,7 +71,7 @@ export function ComparisonStrip({ result }: { result: ComparisonResult }) {
         <rect
           x={MARGIN}
           y={16}
-          width={TRACK}
+          width={track}
           height={20}
           rx={3}
           fill="none"
@@ -94,7 +99,7 @@ export function ComparisonStrip({ result }: { result: ComparisonResult }) {
             <rect
               x={MARGIN}
               y={52}
-              width={TRACK}
+              width={track}
               height={20}
               fill="currentColor"
               fillOpacity={0.25}
@@ -118,6 +123,6 @@ export function ComparisonStrip({ result }: { result: ComparisonResult }) {
           : 'Drawn as an aggregate strip. The count is unchanged — only the rendering collapsed,' +
             ' because individual items would be smaller than a pixel.'}
       </p>
-    </>
+    </div>
   );
 }
