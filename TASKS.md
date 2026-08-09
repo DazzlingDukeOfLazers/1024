@@ -987,7 +987,15 @@ smaller physical slice over multiple cycles.
 > Keep the bits until someone explicitly chooses to throw them away.
 > Return the leftovers.
 
-Not started. What it asks for, roughly in dependency order:
+**Only that one file was taken from the zip.** The attachment also carries an
+older baseline of the other twelve documents, which would have removed the
+configurable Q128.128 base unit, the per-representation `ErrorLedger`, the
+floating-origin experiment, share state and the exact-safe camera log10 — all
+shipped and tested. Confirmed with the author as a stale base rather than a
+decision, so it was not applied. Do not apply it later either: check against this
+note before treating that zip as a spec update.
+
+What it asks for, roughly in dependency order:
 
 - [ ] Radix-2^N digit decomposition over the existing wide values, with a
       configurable digit width (8/16/32/64/128) so the slice-size trade can be
