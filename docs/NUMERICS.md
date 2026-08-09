@@ -505,6 +505,19 @@ Examples:
 
 Display formatting is not storage and is not the Q128.128 machine's base unit.
 
+## A rendering must not be shown under a label that claims more than it delivers
+
+Every formatter returns `{ text, exact }`. `exact` is false whenever the digits are a reading of the value rather than the value — `400/3` rendered as `133.333333333`, or an exact power of two rendered to four significant figures.
+
+The flag is optional to *use*, which is how it gets dropped, so the rule is about the label rather than the call site:
+
+- Where the surrounding label asserts exactness — a row headed **Exact value**, a column headed **Exact**, a cell tagged **truth** — the rendering must carry its own `exact` flag, and where the decimal cannot be exact the exact rational goes beside it.
+- Where the label makes no such claim — a name on a marker, "Looking at 1 m", a gap in scientific notation — the surrounding prose already frames the number, and a tag on every cell is noise rather than honesty.
+
+In dense tables mark only what is rounded, and let an unmarked value mean exact. Marking both ways in a five-column timeline buys nothing and costs legibility.
+
+The failure this prevents is specific and was live in two lenses: the Comparator printed `133.333333333` under **Exact value**, and the Representation Lab's timeline prints its exact reference to four significant figures under a column headed **Exact**. In both the flag was computed correctly and thrown away at the point of display.
+
 Support at least:
 
 - engineering;

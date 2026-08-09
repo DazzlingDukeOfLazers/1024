@@ -326,6 +326,41 @@ test('zoom to disagreement always discloses its magnification', async ({ page })
   await expect(panel.locator('p.magnification-disclosure')).toHaveCount(0);
 });
 
+test('a rounded figure under a heading that says exact is marked as rounded', async ({ page }) => {
+  await openLab(page);
+  // 1/3 + 1/3 + 1/3: the exact reference after one step is 1/3 m, which has no
+  // finite decimal, so the "Exact" column has something to be honest about.
+  await page.getByLabel('Experiment').selectOption('thirds');
+  await page.getByRole('button', { name: 'Run again' }).click();
+
+  // The timeline's "Exact" column renders to a few significant digits, so where
+  // the digits are a reading of the value rather than the value, it says so.
+  const timeline = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Timeline' }) });
+  await expect(timeline).toBeVisible();
+
+  const exactCells = timeline.locator('tbody tr td:nth-child(2)');
+  const count = await exactCells.count();
+  expect(count).toBeGreaterThan(0);
+
+  let marked = 0;
+  for (let index = 0; index < count; index += 1) {
+    const text = (await exactCells.nth(index).textContent()) ?? '';
+    const digits = /(\d)\.(\d+)/.exec(text);
+    if (digits === null) continue;
+    // Four significant digits is the formatter's default; anything shown that
+    // way is a reading, and the cell has to carry the mark.
+    if (digits[2]!.length >= 3) {
+      expect(text, text).toContain('rounded');
+      marked += 1;
+    }
+  }
+  // Otherwise this passes by finding nothing to check, which is how a test for
+  // a missing label ends up asserting that the label is missing.
+  expect(marked, 'no rounded cell to check').toBeGreaterThan(0);
+});
+
 test('the timeline shows checkpoints, not a million rows', async ({ page }) => {
   await openLab(page);
   await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });

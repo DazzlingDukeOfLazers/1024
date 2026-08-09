@@ -29,12 +29,32 @@ import { metersToPlanckLengths } from '../../core/representations/planck';
 import { relativeError } from '../../core/representations/binary64';
 import { buildDisagreementView, drawnSeparationPixels } from './disagreement';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
+import { ExactnessTag } from '../../ui/ExactnessTag';
 
 const STRIP: Viewport = { widthPx: 820, heightPx: 96 };
 const ROW_Y = 46;
 
 function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
+}
+
+/**
+ * A length under a label that claims exactness — the "Exact reference" row, the
+ * timeline's "Exact" column. Scientific notation rounds to a few significant
+ * digits, and a rounded number under a heading that says exact is the thing this
+ * project exists not to do.
+ *
+ * Marked only when it *is* rounded: an unmarked number in these two places is an
+ * exact one, and the timeline has enough columns without a tag on every cell.
+ */
+function ExactLength({ value }: { value: Rational }) {
+  const rendered = formatScientific(quantity('length', value));
+  return (
+    <>
+      {rendered.text}
+      {!rendered.exact && <ExactnessTag exact={false} />}
+    </>
+  );
 }
 
 function inPlanckLengths(value: Rational): string {
@@ -398,7 +418,9 @@ export function RepresentationLab({
               <tbody>
                 <tr>
                   <th scope="row">Exact reference</th>
-                  <td className="mono">{meters(result.exactFinal)}</td>
+                  <td className="mono">
+                    <ExactLength value={result.exactFinal} />
+                  </td>
                   <td className="mono">
                     <span className="tag tag-exact">truth</span>
                   </td>
@@ -499,7 +521,9 @@ function Timeline({ result }: { result: ExperimentResult }) {
                   ? `step ${sample.stepIndex + 1}`
                   : `iteration ${sample.iteration.toLocaleString()}`}
               </th>
-              <td className="mono">{meters(sample.exact)}</td>
+              <td className="mono">
+                <ExactLength value={sample.exact} />
+              </td>
               {result.machines.map((machine) => {
                 const entry = sample.machines[machine.id];
                 const divergence = entry?.signedDivergence;

@@ -764,9 +764,18 @@ milestone 1, so the two lenses disagreed about the same idea.
 - [x] The Comparator tags the rendering, and when the decimal cannot be exact it
       prints the exact fraction underneath — `exactly 400/3`. The heading is now
       true rather than aspirational.
-- [ ] Audit the remaining formatter calls for the same pattern. Every call site
-      that takes `.text` and drops `.exact` is a potential instance; the type
-      cannot catch it because the flag is optional to use.
+- [x] Audited the other 59 formatter calls. Two more were the same defect, both
+      in the Lab: the **Exact reference** row, and the timeline's **Exact**
+      column, which prints to four significant figures — so for `1/3 + 1/3 + 1/3`
+      it read `3.333 × 10^-1 m` under a heading claiming exactness.
+      `docs/NUMERICS.md` §15 now states the rule as a rule: the test is what the
+      *label* claims, not what the call site does, since the flag will always be
+      optional to use. In dense tables only rounded values are marked, so an
+      unmarked one means exact.
+- [ ] The remaining ~50 call sites drop the flag under labels that claim nothing
+      — a name on a marker, "Looking at 1 m", a gap in scientific notation. Left
+      alone deliberately: a tag on every cell is noise rather than honesty. Worth
+      revisiting if any of those labels ever starts making a claim.
 
 ## Hardening
 
