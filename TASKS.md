@@ -13,7 +13,9 @@ Claude Code: work top-to-bottom unless a dependency requires otherwise. Mark com
 - [x] Add a minimal app shell with navigation between placeholder lenses.
 - [x] Add ESLint + Prettier. Design docs and fixtures are Prettier-ignored so the
       specification is never reflowed.
-- [ ] Add CI (no runner chosen yet).
+- [x] Add CI. GitHub Actions runs typecheck, lint, format, unit tests, build and
+      Playwright on every push. `npm ci` honours the committed `allowScripts`
+      block, which is what lets esbuild build itself on a clean machine.
 
 ## Exact math
 
@@ -150,8 +152,9 @@ Discovered while implementing:
 - [ ] Only `set`/`add`/`sub`/`mul`/`div` exist. Repeated rotations, velocity
       integration and subtraction of nearly equal numbers (PROJECT_SPEC §7) need
       more ops and probably a vector state.
-- [ ] The runner is Worker-ready — pure, chunked, with a plain `{aborted}` signal
-      — but still runs on the main thread. Move it when the Lab UI lands.
+- [x] Moved into a Web Worker. The runner itself needed **no changes** — the
+      "worker-ready" claim held. A million steps is now a progress count rather
+      than a frozen tab, and an e2e test proves it by clicking the nav mid-run.
 - [ ] `mul`/`div` on the fixed-point machines apply an exact scalar and
       requantize, so all their error is operation rounding. If a future
       experiment needs the scalar itself held in a register, that becomes
@@ -297,9 +300,7 @@ Discovered while implementing:
       on the same pixel as the reference even when zoomed. That is correct: at
       that zoom its error genuinely is invisible. The test asserts nothing is
       ever drawn on the *wrong* side rather than demanding strict separation.
-- [ ] The runner still executes on the main thread. A million-step experiment
-      blocks for about a second and a half; the runner has been Worker-ready
-      since milestone 4 and this is the natural moment to move it.
+- [x] The runner now executes in a Web Worker, with progress and cancellation.
 - [ ] The timeline shows divergence per checkpoint but does not chart it.
       A sparkline per representation would show the drift accumulating.
 - [ ] Zoom to Disagreement is a toggle, not a continuous zoom. The spec's
@@ -409,6 +410,37 @@ Discovered while implementing:
 - [ ] Experiments are shared by id only. A user-authored experiment definition
       would need the full serializable form (which `steps.ts` already has) in the
       payload.
+
+## Worker and CI
+
+- [x] Move the experiment runner into a Web Worker.
+- [x] Report progress and support cancellation.
+- [x] Add CI running the full gate.
+
+Discovered while implementing:
+
+- [x] The runner needed no changes at all. Purity, chunked progress callbacks and
+      a plain `{aborted}` signal were enough — which is the point of having said
+      so in `docs/ARCHITECTURE.md` since milestone 4 rather than discovering it
+      late.
+- [x] Messages cross as the trace JSON the serializer already defines, so exact
+      values travel as strings rather than relying on `structuredClone` carrying
+      BigInt. That path was already tested; a second one would not be.
+- [x] Cancellation is termination, not a flag. A worker cannot *read* messages
+      while it computes — its own queue is blocked — and terminating is safe
+      precisely because the runner has no side effects to unwind.
+- [x] A real bug the e2e caught: cancelling left the panel stuck on "Running…"
+      forever. Two different things cancel a run — the user, and the effect
+      tearing down — and only the first should clear the flag.
+- [x] One localized `eslint-disable` for `react-hooks/set-state-in-effect`.
+      Starting a worker is the "synchronising with an external system" case
+      effects exist for, and the run must be marked in flight the moment it
+      starts.
+- [ ] Only the experiment runner is off-thread. Catalog indexing and bulk
+      comparison are still main-thread, and `docs/ARCHITECTURE.md` names both as
+      later candidates.
+- [ ] CI has never actually run — there is no remote push yet from this machine.
+      The workflow is correct by inspection, not by observation.
 
 ## Hardening
 

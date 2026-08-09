@@ -50,9 +50,9 @@ plan. All five lenses are live, on top of the exact quantity core, the finite
 machines (Q128.128 at a configurable base unit, the Q512.512 error meter, the
 Planck grid, and the per-representation ErrorLedger), the binary64 inspector, the
 experiment runner, the catalog and shareable state. The built-in experiments run
-— including a million real millimetre additions per machine, in about a second
-and a half, with a trace of twenty-odd samples. What remains is the Hardening
-list in `TASKS.md`.
+in a Web Worker — including a million real millimetre additions per machine, in
+about a second and a half, with progress, cancellation, and a trace of
+twenty-odd samples. What remains is the Hardening list in `TASKS.md`.
 
 **Zooming is both metric and ontology navigation.** The Atlas walks the object
 graph from the selection — `human → hand → finger → skin cell → DNA` is found by

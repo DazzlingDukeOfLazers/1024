@@ -7,17 +7,23 @@
  * its magnification always disclosed.
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type Rational, isZero } from '../../core/rational/rational';
 import { quantity } from '../../core/quantities/quantity';
 import { formatCount, formatScientific } from '../../core/units/format';
 import { type Viewport } from '../../camera/camera';
-import { BUILT_IN_EXPERIMENTS, requireExperiment } from '../../core/experiments/fixtures';
+import { BUILT_IN_EXPERIMENTS } from '../../core/experiments/fixtures';
 import {
   type ExperimentResult,
   type MachineResult,
   runExperiment,
 } from '../../core/experiments/runner';
+import {
+  ExperimentCancelled,
+  type RunHandle,
+  type RunProgress,
+  runExperimentInWorker,
+} from '../../workers/experimentClient';
 import { readAccumulator } from '../../core/representations/q512_512';
 import { metersToPlanckLengths } from '../../core/representations/planck';
 import { relativeError } from '../../core/representations/binary64';
@@ -263,25 +269,71 @@ export function RepresentationLab({
   zoomToDisagreement,
   onZoomChange,
 }: RepresentationLabProps) {
-  const [result, setResult] = useState<ExperimentResult | undefined>(() => {
-    const initial = BUILT_IN_EXPERIMENTS.find((entry) => entry.id === experimentId);
-    return initial === undefined ? undefined : runExperiment(initial);
-  });
+  const [result, setResult] = useState<ExperimentResult | undefined>(undefined);
+  const [progress, setProgress] = useState<RunProgress | undefined>(undefined);
   const [running, setRunning] = useState(false);
+  const [failure, setFailure] = useState<string | undefined>(undefined);
+  const [runToken, setRunToken] = useState(0);
   const [expanded, setExpanded] = useState<string | undefined>(undefined);
-
-  const run = (id: string): void => {
-    setRunning(true);
-    // Yield once so the button repaints before a long run blocks the thread.
-    // The runner is chunk- and Worker-ready; moving it off the main thread is a
-    // later change, not a rewrite.
-    setTimeout(() => {
-      setResult(runExperiment(requireExperiment(id)));
-      setRunning(false);
-    }, 0);
-  };
+  const handleRef = useRef<RunHandle | undefined>(undefined);
 
   const definition = BUILT_IN_EXPERIMENTS.find((entry) => entry.id === experimentId);
+
+  // A million steps is about a second and a half of solid BigInt arithmetic.
+  // On the main thread that was a frozen tab; in a worker it is a progress
+  // count, and changing experiment mid-run cancels the old one by terminating
+  // it — safe, because the runner has no side effects to unwind.
+  useEffect(() => {
+    if (definition === undefined) return undefined;
+
+    // Starting a worker is exactly the "synchronising with an external system"
+    // case effects exist for, and the run has to be marked in flight the moment
+    // it starts. The one extra render pass that costs is worth the tab not
+    // freezing for a second and a half.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRunning(true);
+    setProgress(undefined);
+    setFailure(undefined);
+
+    let handle: RunHandle;
+    try {
+      handle = runExperimentInWorker(definition, {
+        chunkSize: 100_000,
+        onProgress: setProgress,
+      });
+    } catch {
+      // No worker available: still give an answer rather than a blank panel.
+      setResult(runExperiment(definition));
+      setRunning(false);
+      return undefined;
+    }
+
+    handleRef.current = handle;
+
+    // Two different things cancel a run: the user clicking Cancel, and this
+    // effect tearing down because the experiment changed. The first must clear
+    // the running flag; the second must not, because a newer run has already
+    // set it. Without the distinction the panel sticks on "Running…" forever.
+    let superseded = false;
+
+    handle.result
+      .then((next) => {
+        if (superseded) return;
+        setResult(next);
+        setRunning(false);
+      })
+      .catch((reason: unknown) => {
+        if (superseded) return;
+        setRunning(false);
+        if (reason instanceof ExperimentCancelled) return;
+        setFailure(reason instanceof Error ? reason.message : String(reason));
+      });
+
+    return () => {
+      superseded = true;
+      handle.cancel();
+    };
+  }, [definition, runToken]);
   const intervalAccounted =
     result !== undefined && Object.values(result.accounting).includes('interval');
 
@@ -294,10 +346,7 @@ export function RepresentationLab({
           <select
             id="experiment"
             value={experimentId}
-            onChange={(event) => {
-              onExperimentChange(event.target.value);
-              run(event.target.value);
-            }}
+            onChange={(event) => onExperimentChange(event.target.value)}
           >
             {BUILT_IN_EXPERIMENTS.map((experiment) => (
               <option key={experiment.id} value={experiment.id}>
@@ -305,10 +354,27 @@ export function RepresentationLab({
               </option>
             ))}
           </select>
-          <button type="button" onClick={() => run(experimentId)} disabled={running}>
+          <button
+            type="button"
+            onClick={() => setRunToken((token) => token + 1)}
+            disabled={running}
+          >
             {running ? 'Running…' : 'Run again'}
           </button>
+          {running && (
+            <button type="button" onClick={() => handleRef.current?.cancel()}>
+              Cancel
+            </button>
+          )}
+          {running && (
+            <span className="share-hint" role="status">
+              {progress === undefined
+                ? 'starting…'
+                : `${progress.iteration.toLocaleString()} of ${progress.count.toLocaleString()} iterations`}
+            </span>
+          )}
         </div>
+        {failure !== undefined && <p className="error">{failure}</p>}
         {definition?.note !== undefined && <p className="lens-question">{definition.note}</p>}
 
         {result !== undefined && (

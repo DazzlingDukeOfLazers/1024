@@ -218,6 +218,42 @@ test('the lab runs an experiment and shows every machine disagreeing', async ({ 
   await expect(readoutRow(page, 'Raw register')).toContainText('0x');
 });
 
+test('a long experiment runs off the main thread', async ({ page }) => {
+  await openLab(page);
+
+  const panel = page.locator('section.panel').filter({
+    has: page.getByRole('heading', { name: 'Abuse the Computer' }),
+  });
+
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+
+  // A million steps is well over a second of solid BigInt arithmetic. If it
+  // were running here, this click could not be answered until it finished.
+  await expect(panel.getByRole('button', { name: 'Cancel' })).toBeVisible({ timeout: 2000 });
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Scale Atlas' })
+    .click({ timeout: 1000 });
+  await expect(page.getByRole('img', { name: 'Scale atlas' })).toBeVisible({ timeout: 1000 });
+});
+
+test('a running experiment reports progress and can be cancelled', async ({ page }) => {
+  await openLab(page);
+
+  const panel = page.locator('section.panel').filter({
+    has: page.getByRole('heading', { name: 'Abuse the Computer' }),
+  });
+
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+  await expect(panel.getByRole('status')).toContainText(/starting|iterations/);
+
+  await panel.getByRole('button', { name: 'Cancel' }).click();
+
+  // Cancelling settles rather than leaving the panel stuck on "Running…".
+  await expect(panel.getByRole('button', { name: 'Run again' })).toBeEnabled();
+  await expect(panel.getByRole('button', { name: 'Cancel' })).toHaveCount(0);
+});
+
 test('zoom to disagreement always discloses its magnification', async ({ page }) => {
   await openLab(page);
   await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
