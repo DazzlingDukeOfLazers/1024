@@ -67,6 +67,12 @@ interface ScaleObject {
 
 The concrete code may evolve, but keep the following principles.
 
+### Implemented deviation: value literals
+
+The loader accepts an exact value written **either** as `{ "numerator", "denominator" }` **or** as a plain string — `"7.5"`, `"1.616255e-35"`, `"3/20"`. Both parse to the same exact rational.
+
+Hand-authoring `7.5 µm` as a fraction of metres is a transcription bug waiting to happen, and nothing about exactness depends on which form is written. Fixture authors should also prefer a natural unit (`"unit": "µm"`, `"representative": "7.5"`) over restating everything in metres; the loader converts exactly.
+
 ## Principles
 
 ### Separate identity from visuals
@@ -185,3 +191,11 @@ Suggested set:
 Use 20–30 objects first, not 500.
 
 The first objective is to prove navigation and comparison behavior.
+
+## Provenance status of the v0 fixture
+
+`fixtures/objects.json` holds 24 objects spanning ~10^-35 m to ~10^27 m.
+
+Only two are exact: the astronomical unit and the light-year, both defined constants. The Planck length carries its CODATA 2018 declaration and published uncertainty. **Every other entry is marked `source: "demonstration value"`** — curated, plausible, deliberately round, and not traceable to a citation. That is what this section already permits while the data pipeline is being built, and the marking is what makes it honest rather than sloppy.
+
+Replacing them is a data task, not a code task: the schema, the range handling and the exact/approximate wording all work already. A test asserts that no object outside the two definitions claims to be exact.

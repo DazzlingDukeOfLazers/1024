@@ -164,6 +164,18 @@ table.readout th {
   width: 14rem;
 }
 
+.answer {
+  align-items: center;
+  display: flex;
+  font-size: 1.5rem;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+}
+
+svg text {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
 .mono {
   font-family: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
   overflow-wrap: anywhere;

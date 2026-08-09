@@ -45,17 +45,21 @@ npx playwright install chromium   # once
 npm run test:e2e
 ```
 
-Current state: Milestones 0–4 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
+Current state: Milestones 0–5 of `docs/IMPLEMENTATION_PLAN.md`. The exact quantity
 core, the finite machines (Q128.128 at a configurable base unit, the Q512.512
 error meter, the Planck grid, and the per-representation ErrorLedger), the
-binary64 inspector and the experiment runner are implemented and tested. The
-built-in experiments run — including a million real millimetre additions per
-machine, in about a second and a half, with a trace of twenty-odd samples.
-Milestone 5 is the catalog and comparator.
+binary64 inspector, the experiment runner and the catalog and comparator are
+implemented and tested. The built-in experiments run — including a million real
+millimetre additions per machine, in about a second and a half, with a trace of
+twenty-odd samples. Milestone 6 is the linear SVG ruler.
 
-The five lenses are placeholders except for the Representation Lab, which holds
-deliberately ugly debug panels that exercise the core in a browser. The lab UI
-from `docs/UI_SPEC.md` arrives with the experiment runner.
+Two of the five lenses are live: the Comparator, and the Representation Lab,
+which holds deliberately ugly debug panels that exercise the numeric core in a
+browser. The Atlas, Ruler and Microscope are still placeholders.
+
+The 24 catalog objects span about 10^-35 m to 10^27 m. Two are exact
+definitions; the rest are marked `demonstration value` and are not yet sourced —
+see `docs/DATA_MODEL.md`.
 
 ## Start here
 

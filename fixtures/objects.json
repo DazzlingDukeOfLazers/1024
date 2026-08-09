@@ -1,0 +1,377 @@
+[
+  {
+    "id": "planck-length",
+    "name": "Planck length",
+    "categories": ["physics", "reference", "subatomic"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "1.616255e-35",
+        "range": { "min": "1.616237e-35", "max": "1.616273e-35" },
+        "approximation": "measured",
+        "source": "CODATA 2018",
+        "note": "Range is the published standard uncertainty. The Planck machine's grid is conditioned on this declaration; see docs/NUMERICS.md section 3."
+      }
+    }
+  },
+  {
+    "id": "proton",
+    "name": "Proton",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "fm",
+        "representative": "1.68",
+        "range": { "min": "1.6", "max": "1.76" },
+        "approximation": "measured",
+        "source": "demonstration value",
+        "note": "Twice the charge radius. A proton has no sharp edge; this is a scattering-derived figure."
+      }
+    }
+  },
+  {
+    "id": "hydrogen-atom",
+    "name": "Hydrogen atom",
+    "categories": ["physics", "chemistry", "atomic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "pm",
+        "representative": "106",
+        "range": { "min": "106", "max": "240" },
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "Twice the Bohr radius. The upper bound is the van der Waals diameter — an atom's size depends on what you mean by size."
+      }
+    }
+  },
+  {
+    "id": "dna-helix",
+    "name": "DNA double helix",
+    "aliases": ["DNA"],
+    "categories": ["biology", "molecular"],
+    "quantities": {
+      "width": {
+        "dimension": "length",
+        "unit": "nm",
+        "representative": "2",
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "Width of the B-form helix."
+      }
+    }
+  },
+  {
+    "id": "virus",
+    "name": "Virus (representative)",
+    "categories": ["biology", "microscopic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "nm",
+        "representative": "100",
+        "range": { "min": "20", "max": "300" },
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "Viruses vary enormously; this stands in for the common range, not for any particular one."
+      }
+    }
+  },
+  {
+    "id": "bacterium",
+    "name": "Bacterium",
+    "aliases": ["E. coli"],
+    "categories": ["biology", "microscopic"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "µm",
+        "representative": "2",
+        "range": { "min": "0.5", "max": "5" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "red-blood-cell",
+    "name": "Red blood cell",
+    "aliases": ["RBC", "erythrocyte"],
+    "categories": ["biology", "cell", "microscopic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "µm",
+        "representative": "7.5",
+        "range": { "min": "6.2", "max": "8.2" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    },
+    "visuals": [{ "provider": "bundled", "path": "fallback/red-blood-cell.svg" }]
+  },
+  {
+    "id": "human-hair",
+    "name": "Human hair",
+    "categories": ["biology", "human-scale", "microscopic"],
+    "quantities": {
+      "width": {
+        "dimension": "length",
+        "unit": "µm",
+        "representative": "70",
+        "range": { "min": "17", "max": "180" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "grain-of-sand",
+    "name": "Grain of sand",
+    "categories": ["geology", "everyday"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "mm",
+        "representative": "0.5",
+        "range": { "min": "0.0625", "max": "2" },
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "The range is the Wentworth grade for sand; below it is silt, above it is gravel."
+      }
+    }
+  },
+  {
+    "id": "ant",
+    "name": "Ant",
+    "categories": ["biology", "everyday"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "mm",
+        "representative": "5",
+        "range": { "min": "1", "max": "25" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "coconut",
+    "name": "Coconut",
+    "categories": ["botany", "fruit", "food", "everyday"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "0.20",
+        "range": { "min": "0.15", "max": "0.30" },
+        "approximation": "representative",
+        "source": "PROJECT_SPEC.md section 16"
+      }
+    },
+    "visuals": [{ "provider": "bundled", "path": "fallback/coconut.svg" }]
+  },
+  {
+    "id": "human",
+    "name": "Human",
+    "categories": ["biology", "human-scale"],
+    "quantities": {
+      "height": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "1.7",
+        "range": { "min": "1.4", "max": "2.0" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    },
+    "visuals": [{ "provider": "bundled", "path": "fallback/human.svg" }]
+  },
+  {
+    "id": "door",
+    "name": "Door",
+    "categories": ["architecture", "everyday", "human-scale"],
+    "quantities": {
+      "height": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "2.0",
+        "range": { "min": "1.98", "max": "2.1" },
+        "approximation": "representative",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "house",
+    "name": "House",
+    "categories": ["architecture", "human-scale"],
+    "quantities": {
+      "width": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "10",
+        "range": { "min": "6", "max": "20" },
+        "approximation": "estimated",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "skyscraper",
+    "name": "Skyscraper",
+    "categories": ["architecture"],
+    "quantities": {
+      "height": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "300",
+        "range": { "min": "150", "max": "830" },
+        "approximation": "estimated",
+        "source": "demonstration value",
+        "note": "The upper bound is roughly the tallest built."
+      }
+    }
+  },
+  {
+    "id": "city",
+    "name": "City (Chicago-scale extent)",
+    "categories": ["geography", "human-scale"],
+    "quantities": {
+      "width": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "40",
+        "range": { "min": "20", "max": "60" },
+        "approximation": "estimated",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "moon",
+    "name": "Moon",
+    "categories": ["astronomy", "planetary"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "3474.8",
+        "approximation": "measured",
+        "source": "demonstration value"
+      }
+    }
+  },
+  {
+    "id": "earth",
+    "name": "Earth",
+    "categories": ["astronomy", "planetary"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "12742",
+        "range": { "min": "12714", "max": "12756" },
+        "approximation": "measured",
+        "source": "demonstration value",
+        "note": "Mean diameter; the range spans polar to equatorial."
+      }
+    }
+  },
+  {
+    "id": "sun",
+    "name": "Sun",
+    "categories": ["astronomy", "stellar"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "1391400",
+        "approximation": "measured",
+        "source": "demonstration value",
+        "note": "Twice the IAU nominal solar radius. A star has no surface in the way a planet does."
+      }
+    }
+  },
+  {
+    "id": "astronomical-unit",
+    "name": "Astronomical unit",
+    "aliases": ["AU", "Earth-Sun distance"],
+    "categories": ["astronomy", "reference"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "au",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "IAU 2012 definition",
+        "note": "Exactly 149 597 870 700 m by definition — a defined constant, not a measurement."
+      }
+    }
+  },
+  {
+    "id": "solar-system",
+    "name": "Solar System (Neptune's orbit)",
+    "categories": ["astronomy"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "au",
+        "representative": "60.2",
+        "approximation": "representative",
+        "source": "demonstration value",
+        "note": "Where the Solar System ends depends on what you count; this uses Neptune's orbit."
+      }
+    }
+  },
+  {
+    "id": "light-year",
+    "name": "Light-year",
+    "categories": ["astronomy", "reference"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "IAU: the speed of light times a Julian year",
+        "note": "Exactly 9 460 730 472 580 800 m. Both factors are exact, so this is too."
+      }
+    }
+  },
+  {
+    "id": "milky-way",
+    "name": "Milky Way",
+    "categories": ["astronomy", "galactic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "100000",
+        "range": { "min": "87000", "max": "200000" },
+        "approximation": "estimated",
+        "source": "demonstration value",
+        "note": "A galaxy has no edge; estimates depend on which population you trace."
+      }
+    }
+  },
+  {
+    "id": "observable-universe",
+    "name": "Observable universe",
+    "categories": ["astronomy", "cosmological", "reference"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "93e9",
+        "range": { "min": "91e9", "max": "95e9" },
+        "approximation": "estimated",
+        "source": "demonstration value",
+        "note": "Comoving diameter — much larger than light travel time alone would suggest, because space expanded while the light was in transit."
+      }
+    }
+  }
+]

@@ -159,20 +159,49 @@ Discovered while implementing:
 
 ## Catalog
 
-- [ ] Define runtime schema and validation.
-- [ ] Load sample fixtures.
-- [ ] Add 20–30 initial objects.
-- [ ] Preserve representative range/approximation labels.
-- [ ] Keep visuals optional.
+- [x] Define runtime schema and validation.
+- [x] Load sample fixtures.
+- [x] Add 20–30 initial objects.
+- [x] Preserve representative range/approximation labels.
+- [x] Keep visuals optional.
+
+Discovered while implementing:
+
+- [x] The loader accepts values as strings as well as `{numerator, denominator}`,
+      and fixtures declare a natural unit. `docs/DATA_MODEL.md` updated.
+- [x] `au` and `ly` added to the unit registry — both are exactly defined, so
+      they are conversions rather than catalog measurements.
+- [ ] **22 of the 24 objects carry `source: "demonstration value"`.** They are
+      curated and plausible, not sourced. Replacing them is a data task; the
+      schema, ranges and exact/approximate wording already work. A test asserts
+      nothing outside the two definitions claims to be exact.
+- [ ] Only one length per object. A second length (a human's width, say) needs an
+      explicit `primary` field rather than `primaryLength`'s current "the one
+      length there is".
+- [ ] `relations` is validated but empty. Progressive semantic detail
+      (milestone 11) is what will fill it.
 
 ## Comparator
 
-- [ ] Object search/select.
-- [ ] Ratio.
-- [ ] End-to-end count.
-- [ ] Arbitrary multiplier (`123 × coconut`).
-- [ ] Exact vs approximate wording.
-- [ ] Simple SVG visual result.
+- [x] Object search/select.
+- [x] Ratio.
+- [x] End-to-end count.
+- [x] Arbitrary multiplier (`123 × coconut`).
+- [x] Exact vs approximate wording.
+- [x] Simple SVG visual result.
+
+Discovered while implementing:
+
+- [x] Ranges propagate through every operation, inverting where they should:
+      a *larger* red blood cell means *fewer* fit across a millimetre.
+- [x] `wholeItemsToSpan` answers the question you would actually ask when laying
+      objects out — 134 cells, not 133.3.
+- [x] The strip renderer collapses to an aggregate when items fall below a pixel,
+      and says so. The count never changes; only the drawing does.
+- [ ] Search is a substring scan over 24 objects. Fine now; it needs an index
+      long before the catalog is large.
+- [ ] The comparator is length-only in practice. Area and volume need real
+      geometry, not a reused length ratio (`docs/DATA_MODEL.md`).
 
 ## Ruler
 

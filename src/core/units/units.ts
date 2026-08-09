@@ -48,6 +48,21 @@ const FIXED_UNITS: readonly UnitDefinition[] = [
   { symbol: 'h', name: 'hour', dimension: 'time', toCanonical: rational(3600n) },
   { symbol: 'd', name: 'day', dimension: 'time', toCanonical: rational(86400n) },
   { symbol: 'a', name: 'Julian year', dimension: 'time', toCanonical: rational(31557600n) },
+  // Both are exactly defined, so they belong here rather than in the catalog.
+  // The astronomical unit is a defined constant (IAU 2012); the light-year is
+  // the speed of light times a Julian year, and both of those are exact.
+  {
+    symbol: 'au',
+    name: 'astronomical unit',
+    dimension: 'length',
+    toCanonical: rational(149597870700n),
+  },
+  {
+    symbol: 'ly',
+    name: 'light-year',
+    dimension: 'length',
+    toCanonical: rational(9460730472580800n),
+  },
 ];
 
 const FIXED_BY_SYMBOL = new Map(FIXED_UNITS.map((unit) => [unit.symbol, unit]));

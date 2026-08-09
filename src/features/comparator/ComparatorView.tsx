@@ -1,0 +1,273 @@
+/**
+ * The Comparator lens.
+ *
+ * docs/UI_SPEC.md §3. Two subjects, an operation, and an answer that never
+ * presents a measurement with the confidence of a definition.
+ */
+
+import { useMemo, useState } from 'react';
+import { type Rational, ONE, isZero } from '../../core/rational/rational';
+import { parseRationalExact } from '../../core/rational/parse';
+import { fromUnit } from '../../core/quantities/quantity';
+import { formatCount, formatEngineering } from '../../core/units/format';
+import { CATALOG } from '../../catalog/catalog';
+import {
+  type ComparisonOperation,
+  type ComparisonResult,
+  type Subject,
+  difference,
+  endToEnd,
+  howManyFit,
+  ratio,
+  relativeSpread,
+  subjectFromCatalog,
+  subjectFromQuantity,
+  wholeItemsToSpan,
+} from './compare';
+import { ComparisonStrip } from './ComparisonStrip';
+
+/** Exactly defined lengths the user can compare an object against. */
+const UNIT_SUBJECTS = ['nm', 'µm', 'mm', 'm', 'km', 'au', 'ly'];
+
+const OPERATION_LABELS: Record<ComparisonOperation, string> = {
+  'how-many-fit': 'how many A fit across B',
+  ratio: 'A ÷ B',
+  difference: 'A − B',
+  'end-to-end': 'N × A, end to end',
+};
+
+type SubjectChoice = { kind: 'object'; id: string } | { kind: 'unit'; symbol: string };
+
+function encodeChoice(choice: SubjectChoice): string {
+  return choice.kind === 'object' ? `object:${choice.id}` : `unit:${choice.symbol}`;
+}
+
+function decodeChoice(value: string): SubjectChoice {
+  const [kind, rest] = value.split(':');
+  return kind === 'unit'
+    ? { kind: 'unit', symbol: rest ?? 'm' }
+    : { kind: 'object', id: rest ?? '' };
+}
+
+function subjectOf(choice: SubjectChoice): Subject {
+  return choice.kind === 'unit'
+    ? subjectFromQuantity(`1 ${choice.symbol}`, fromUnit(ONE, choice.symbol))
+    : subjectFromCatalog(CATALOG.require(choice.id));
+}
+
+function SubjectPicker({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: SubjectChoice;
+  onChange: (choice: SubjectChoice) => void;
+}) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select
+        id={id}
+        value={encodeChoice(value)}
+        onChange={(event) => onChange(decodeChoice(event.target.value))}
+      >
+        <optgroup label="Objects">
+          {CATALOG.byScale().map((object) => (
+            <option key={object.id} value={`object:${object.id}`}>
+              {object.name}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label="Exactly defined units">
+          {UNIT_SUBJECTS.map((symbol) => (
+            <option key={symbol} value={`unit:${symbol}`}>
+              1 {symbol}
+            </option>
+          ))}
+        </optgroup>
+      </select>
+    </div>
+  );
+}
+
+function Answer({ result }: { result: ComparisonResult }) {
+  const spread = result.kind === 'count' ? relativeSpread(result) : undefined;
+  const approximate = result.certainty === 'approximate';
+
+  // Six digits of a measured quantity is false precision; four is plenty, and
+  // when the spread is wide even that overstates it.
+  const digits = spread !== undefined ? 3 : 6;
+
+  const headline =
+    result.kind === 'count'
+      ? `${approximate ? 'about ' : ''}${formatCount(result.value, digits).text}`
+      : `${approximate ? 'about ' : ''}${formatEngineering(result.value, { significantDigits: digits }).text}`;
+
+  return (
+    <>
+      <p className="answer">
+        {headline}
+        <span className={approximate ? 'tag tag-rounded' : 'tag tag-exact'}>
+          {approximate ? 'approximate' : 'exact'}
+        </span>
+      </p>
+
+      <table className="readout">
+        <tbody>
+          <tr>
+            <th scope="row">Exact value</th>
+            <td className="mono">
+              {result.kind === 'count'
+                ? formatCount(result.value, 12).text
+                : formatEngineering(result.value, { significantDigits: 12 }).text}
+            </td>
+          </tr>
+          {result.range !== undefined && (
+            <tr>
+              <th scope="row">Range</th>
+              <td className="mono">
+                {result.kind === 'count'
+                  ? `${formatCount(result.range.min, digits).text} to ${formatCount(result.range.max, digits).text}`
+                  : `${formatEngineering(result.range.min, { significantDigits: digits }).text} to ${
+                      formatEngineering(result.range.max, { significantDigits: digits }).text
+                    }`}
+              </td>
+            </tr>
+          )}
+          <tr>
+            <th scope="row">Why approximate</th>
+            <td>
+              {approximate
+                ? `The arithmetic is exact. ${result.approximateBecause.join(' and ')} ${
+                    result.approximateBecause.length === 1 ? 'is' : 'are'
+                  } not.`
+                : 'Both inputs are exactly defined, so the answer is too.'}
+            </td>
+          </tr>
+          {[result.a, result.b]
+            .filter((subject, index, all) => all.indexOf(subject) === index)
+            .map((subject) => (
+              <tr key={subject.label}>
+                <th scope="row">{subject.label}</th>
+                <td className="mono">
+                  {formatEngineering(subject.value).text}
+                  {subject.range !== undefined && (
+                    <>
+                      {' '}
+                      <small>
+                        ({formatEngineering(subject.range.min).text} to{' '}
+                        {formatEngineering(subject.range.max).text})
+                      </small>
+                    </>
+                  )}
+                  {subject.source !== undefined && (
+                    <>
+                      <br />
+                      <small>{subject.source}</small>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </>
+  );
+}
+
+export function ComparatorView() {
+  const [a, setA] = useState<SubjectChoice>({ kind: 'object', id: 'red-blood-cell' });
+  const [b, setB] = useState<SubjectChoice>({ kind: 'unit', symbol: 'mm' });
+  const [operation, setOperation] = useState<ComparisonOperation>('how-many-fit');
+  const [countText, setCountText] = useState('123');
+
+  const outcome = useMemo(() => {
+    try {
+      const subjectA = subjectOf(a);
+      const subjectB = subjectOf(b);
+      switch (operation) {
+        case 'how-many-fit':
+          return { result: howManyFit(subjectA, subjectB), error: undefined };
+        case 'ratio':
+          return { result: ratio(subjectA, subjectB), error: undefined };
+        case 'difference':
+          return { result: difference(subjectA, subjectB), error: undefined };
+        case 'end-to-end': {
+          const count: Rational = parseRationalExact(countText);
+          return { result: endToEnd(subjectA, count), error: undefined };
+        }
+      }
+    } catch (error) {
+      return { result: undefined, error: error instanceof Error ? error.message : String(error) };
+    }
+  }, [a, b, operation, countText]);
+
+  const countResult =
+    outcome.result?.kind === 'count' && outcome.result.operation === 'how-many-fit'
+      ? outcome.result
+      : undefined;
+  const layout =
+    countResult !== undefined && !isZero(countResult.value)
+      ? wholeItemsToSpan(subjectOf(a), subjectOf(b))
+      : undefined;
+
+  return (
+    <>
+      <section className="panel">
+        <h3>Compare</h3>
+
+        <SubjectPicker id="subject-a" label="A" value={a} onChange={setA} />
+
+        <div className="field">
+          <label htmlFor="operation">Operation</label>
+          <select
+            id="operation"
+            value={operation}
+            onChange={(event) => setOperation(event.target.value as ComparisonOperation)}
+          >
+            {Object.entries(OPERATION_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+          {operation === 'end-to-end' && (
+            <>
+              <label htmlFor="count">N</label>
+              <input
+                id="count"
+                value={countText}
+                onChange={(event) => setCountText(event.target.value)}
+                size={8}
+              />
+            </>
+          )}
+        </div>
+
+        {operation !== 'end-to-end' && (
+          <SubjectPicker id="subject-b" label="B" value={b} onChange={setB} />
+        )}
+
+        {outcome.error !== undefined && <p className="error">{outcome.error}</p>}
+        {outcome.result !== undefined && <Answer result={outcome.result} />}
+
+        {layout !== undefined && (
+          <p className="lens-question">
+            Laying them out for real takes {layout.count.toLocaleString()} whole items, overshooting
+            by {formatEngineering(layout.remainder, { significantDigits: 3 }).text}.
+          </p>
+        )}
+      </section>
+
+      {outcome.result !== undefined && (
+        <section className="panel">
+          <h3>To scale</h3>
+          <ComparisonStrip result={outcome.result} />
+        </section>
+      )}
+    </>
+  );
+}

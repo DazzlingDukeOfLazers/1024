@@ -82,6 +82,95 @@ test('the finite machines trade range against resolution', async ({ page }) => {
   await expect(atM).toContainText('quantized');
 });
 
+test('how many red blood cells span a millimetre', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+
+  // The default comparison is exactly the one docs/IMPLEMENTATION_PLAN.md names.
+  const answer = page.locator('p.answer');
+  await expect(answer).toContainText('about 133');
+  await expect(answer).toContainText('approximate');
+
+  const row = (name: string) =>
+    page
+      .locator('table.readout tr')
+      .filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  // The arithmetic is exact; the cell is not, and the UI says which.
+  await expect(row('Why approximate')).toContainText('The arithmetic is exact');
+  await expect(row('Why approximate')).toContainText('Red blood cell (diameter)');
+  await expect(row('Range')).toContainText('to');
+  await expect(row('Red blood cell (diameter)')).toContainText('7.5 µm');
+});
+
+test('a comparison between two definitions is exact', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+
+  await page.getByLabel('A', { exact: true }).selectOption('unit:µm');
+
+  const answer = page.locator('p.answer');
+  await expect(answer).toContainText('1000');
+  await expect(answer).toContainText('exact');
+  await expect(answer).not.toContainText('about');
+
+  await expect(
+    page
+      .locator('table.readout tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Why approximate' }) }),
+  ).toContainText('Both inputs are exactly defined');
+});
+
+test('123 coconuts end to end', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+
+  await page.getByLabel('A', { exact: true }).selectOption('object:coconut');
+  await page.getByLabel('Operation').selectOption('end-to-end');
+  await page.getByLabel('N', { exact: true }).fill('123');
+
+  const answer = page.locator('p.answer');
+  await expect(answer).toContainText('24.6 m');
+  await expect(answer).toContainText('approximate');
+
+  // Coconuts vary, so the answer has to as well.
+  await expect(
+    page
+      .locator('table.readout tr')
+      .filter({ has: page.getByRole('rowheader', { name: 'Range' }) }),
+  ).toContainText('18.45 m to 36.9 m');
+});
+
+test('the comparison strip collapses when items fall below a pixel', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Comparator' })
+    .click();
+
+  const strip = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'To scale' }) });
+  await expect(strip.locator('svg')).toBeVisible();
+
+  // A red blood cell against a millimetre is 133 items — drawn individually.
+  await expect(strip).toContainText('Drawn to scale');
+
+  // A red blood cell against a light-year is not.
+  await page.getByLabel('B', { exact: true }).selectOption('unit:ly');
+  await expect(strip).toContainText('below a pixel');
+  await expect(strip).toContainText('The count is unchanged');
+});
+
 test('the runner shows the representations disagreeing', async ({ page }) => {
   await page.goto('/');
 
