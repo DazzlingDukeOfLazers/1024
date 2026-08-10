@@ -37,14 +37,18 @@ Decisions Daniel made when this plan was written (2026-08-09):
     row, and a GPU row that reports agreement-with-CPU or honest absence.
     Falsified: a panel that pretends agreement when the device is absent
     fails the sweep. Screenshots reviewed at 1280 and 420.
-- Phase 2.1 done: play/pause on the quotient tape. `playing` is intent,
-  `running` is derived (playing with no steps left is not running), every
-  hand-input pauses, reduced motion removes the control and keeps the
-  scrubber (`usePrefersReducedMotion`, live via matchMedia). Four e2e tests;
-  end-stop and lying-hook mutants killed.
-- Next action: Phase 2.2 — the accumulation animation (§22): step through the
-  multiply matrix's partial products — product, shifted position, accumulator
-  filling — same reduced-motion rule, sweep the new states.
+- Phase 2 complete (2.1 autoplay, 2.2 accumulation). The multiply carries an
+  opt-in trace (executed products only — §4's skipped work is never
+  animated); the matrix highlights the current product, an accumulator strip
+  fills, scrub keyed to the run and resting at the end so the panel at rest
+  is unchanged. Same intent/derived-running/pause-on-touch design as the
+  tape; both play buttons have distinct accessible names. 838 unit tests,
+  104 Playwright; strip-ignores-scrub mutant killed.
+- Next action: Phase 3 — visual-regression baselines. The UI shape is now
+  settled; pick ~10 representative states (one per lens plus the densest
+  architecture ones), `toHaveScreenshot` at 1280 and 420, commit baselines,
+  document the update procedure in docs/TEST_STRATEGY.md, keep the spec out
+  of CI (Windows-rendered fonts).
 
 ## Session protocol
 
@@ -147,7 +151,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
   `divisionStep`; honour `prefers-reduced-motion` (no autoplay, scrubber
   still works); e2e test drives it and checks it stops at the end. Not part
   of share state — a link carries a position, not a playing animation.
-- [ ] **2.2 Accumulation animation (§22).** "small product → exact shift →
+- [x] **2.2 Accumulation animation (§22).** "small product → exact shift →
   wide accumulator": step through partial products of the existing multiply
   matrix, highlighting the product, its shifted position, and the accumulator
   filling. Same reduced-motion rule. Sweep the new states.

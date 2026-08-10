@@ -42,6 +42,34 @@ export interface WideMultiplyOptions {
   readonly cyclesPerDigitInspection?: number;
   /** Modeled cost of accumulating one partial product into the wide sum. */
   readonly cyclesPerAccumulate?: number;
+  /**
+   * Record every executed partial product. §22 asks for the accumulation to be
+   * animated — small product, exact shift, wide accumulator — which needs the
+   * intermediate states rather than the answer. Off by default: at 8-bit
+   * digits a dense multiply executes 16384 products, and almost every caller
+   * wants none of them.
+   */
+  readonly trace?: boolean;
+}
+
+/**
+ * One executed partial product, and what the accumulator held after it.
+ *
+ * Skipped products do not appear: §4's point is that they are work the machine
+ * never did, and animating work that never happened would draw a different
+ * machine than the metrics count.
+ */
+export interface MultiplyStep {
+  readonly i: number;
+  readonly j: number;
+  readonly digitA: bigint;
+  readonly digitB: bigint;
+  /** `digitA × digitB`, before shifting. */
+  readonly product: bigint;
+  /** The exact destination: shifted left by `digitBits × (i + j)`. */
+  readonly shiftDigits: number;
+  /** Accumulator magnitude after this product landed. */
+  readonly accumulator: bigint;
 }
 
 /** §20. Numerical behaviour and computational work, measured separately. */
@@ -75,6 +103,8 @@ export interface WideMultiplyResult {
    */
   readonly exact: true;
   readonly metrics: WideMetrics;
+  /** Present only when the request asked for it. */
+  readonly steps?: readonly MultiplyStep[];
 }
 
 const DEFAULTS = {
@@ -100,6 +130,7 @@ export function mulWide(a: bigint, b: bigint, options: WideMultiplyOptions): Wid
     cyclesPerPartialProduct = DEFAULTS.cyclesPerPartialProduct,
     cyclesPerDigitInspection = DEFAULTS.cyclesPerDigitInspection,
     cyclesPerAccumulate = DEFAULTS.cyclesPerAccumulate,
+    trace = false,
   } = options;
 
   const negative = a < 0n !== b < 0n;
@@ -115,6 +146,7 @@ export function mulWide(a: bigint, b: bigint, options: WideMultiplyOptions): Wid
   let executed = 0;
   let inspected = 0;
   let wideTemporaryBits = 0;
+  const steps: MultiplyStep[] | undefined = trace ? [] : undefined;
 
   // §6: A × B = ΣΣ (ai × bj) × 2^(N(i+j)). Each partial product has an exact
   // destination bit position, so the accumulator only ever adds.
@@ -141,6 +173,9 @@ export function mulWide(a: bigint, b: bigint, options: WideMultiplyOptions): Wid
       accumulator += product << BigInt(digitBits * (i + j));
       executed += 1;
       wideTemporaryBits = Math.max(wideTemporaryBits, bitLength(accumulator));
+      if (steps !== undefined) {
+        steps.push({ i, j, digitA, digitB, product, shiftDigits: i + j, accumulator });
+      }
     }
   }
 
@@ -161,6 +196,7 @@ export function mulWide(a: bigint, b: bigint, options: WideMultiplyOptions): Wid
   return {
     value: negative ? -accumulator : accumulator,
     exact: true,
+    ...(steps === undefined ? {} : { steps }),
     metrics: {
       architecturalWidth: registerBits,
       destinationWidth,

@@ -148,3 +148,51 @@ describe('whether skipping pays is a measurement, not an assumption', () => {
     expect(mulWide(dense, dense, at(8)).value).toBe(mulWide(dense, dense, at(128)).value);
   });
 });
+
+describe('the accumulation trace is a record of the run, not a story about it (§22)', () => {
+  const OPTIONS = { digitBits: 64 as const, registerBits: 1024 };
+  const SPARSE_A = (1n << 700n) + (1n << 12n);
+  const SPARSE_B = (1n << 300n) + 1n;
+
+  it('replays to the answer, one exact shift at a time', () => {
+    const result = mulWide(SPARSE_A, SPARSE_B, { ...OPTIONS, trace: true });
+    let replayed = 0n;
+    for (const step of result.steps!) {
+      expect(step.product, `step ${step.i},${step.j}`).toBe(step.digitA * step.digitB);
+      expect(step.shiftDigits, `step ${step.i},${step.j}`).toBe(step.i + step.j);
+      replayed += step.product << BigInt(64 * step.shiftDigits);
+      expect(step.accumulator, `after ${step.i},${step.j}`).toBe(replayed);
+    }
+    expect(replayed).toBe(result.value);
+  });
+
+  it('records exactly the products the metrics counted', () => {
+    // Skipped products are work the machine never did; a trace that invented
+    // frames for them would animate a different machine than the one measured.
+    for (const skipZeroDigits of [true, false]) {
+      const result = mulWide(SPARSE_A, SPARSE_B, { ...OPTIONS, skipZeroDigits, trace: true });
+      expect(result.steps!.length, `skip=${String(skipZeroDigits)}`).toBe(
+        result.metrics.partialProductsExecuted,
+      );
+    }
+    // Anti-vacuity: the sparse pair must actually execute something.
+    expect(mulWide(SPARSE_A, SPARSE_B, { ...OPTIONS, trace: true }).steps!.length).toBeGreaterThan(
+      0,
+    );
+  });
+
+  it('changes nothing about the run it records', () => {
+    const plain = mulWide(SPARSE_A, SPARSE_B, OPTIONS);
+    const traced = mulWide(SPARSE_A, SPARSE_B, { ...OPTIONS, trace: true });
+    expect(traced.value).toBe(plain.value);
+    expect(traced.metrics).toEqual(plain.metrics);
+    expect(plain.steps).toBeUndefined();
+  });
+
+  it('carries the magnitude even when the product is negative', () => {
+    const result = mulWide(-SPARSE_A, SPARSE_B, { ...OPTIONS, trace: true });
+    const last = result.steps![result.steps!.length - 1]!;
+    expect(result.value).toBeLessThan(0n);
+    expect(last.accumulator, 'the accumulator is unsigned, like the digits').toBe(-result.value);
+  });
+});

@@ -1219,12 +1219,12 @@ test('the quotient tape plays itself to the end, and stops', async ({ page }) =>
   const slider = page.getByLabel('Quotient digit');
   await expect(slider).toHaveAttribute('max', '26');
 
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Play the division' }).click();
+  await expect(page.getByRole('button', { name: 'Pause the division' })).toBeVisible();
 
   // It reaches the end on its own, and stops there rather than looping.
   await expect(slider).toHaveValue('26', { timeout: 15000 });
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play the division' })).toBeVisible();
   await expect(readoutRow(page, 'A = Q × B + R')).toContainText('holds');
 });
 
@@ -1234,11 +1234,11 @@ test('scrubbing by hand pauses the animation', async ({ page }) => {
   await page.getByLabel('A', { exact: true }).fill('1000');
   await page.getByLabel('B', { exact: true }).fill('7');
 
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Play the division' }).click();
+  await expect(page.getByRole('button', { name: 'Pause the division' })).toBeVisible();
   await page.getByLabel('Quotient digit').fill('3');
   // The user's hand wins: touching the scrubber pauses rather than fighting it.
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Play the division' })).toBeVisible();
 });
 
 test('play at the end starts the run over', async ({ page }) => {
@@ -1249,7 +1249,7 @@ test('play at the end starts the run over', async ({ page }) => {
   const slider = page.getByLabel('Quotient digit');
   await slider.fill('26');
 
-  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await page.getByRole('button', { name: 'Play the division' }).click();
   // It went back to the beginning rather than sitting at the end...
   await expect.poll(async () => Number(await slider.inputValue())).toBeLessThan(26);
   // ...and finishes the run again.
@@ -1263,7 +1263,8 @@ test('reduced motion removes the autoplay and keeps the scrubber', async ({ page
   await page.goto('/');
   await page.getByRole('button', { name: 'Architecture Lab' }).click();
 
-  await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(0);
+  // Both animations: the division tape and the accumulation.
+  await expect(page.getByRole('button', { name: /^Play the/ })).toHaveCount(0);
   const slider = page.getByLabel('Quotient digit');
   await slider.fill('300');
   const tape = page
@@ -1271,6 +1272,56 @@ test('reduced motion removes the autoplay and keeps the scrubber', async ({ page
     .filter({ has: page.getByRole('heading', { name: 'One quotient digit at a time' }) })
     .locator('svg');
   await expect(tape).toContainText('step 300 of 717');
+});
+
+test('the accumulation replays the multiply, product by product', async ({ page }) => {
+  // The default sparse operands execute exactly 4 partial products, so every
+  // step is legible: two set digits times two set digits.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  const scrub = page.getByLabel('Partial product', { exact: true });
+  await expect(scrub).toHaveAttribute('max', '4');
+
+  // At rest the panel shows the finished product, as it always did.
+  await expect(readoutRow(page, 'Accumulation')).toContainText(
+    'all 4 executed products accumulated',
+  );
+
+  await scrub.fill('0');
+  await expect(readoutRow(page, 'Accumulation')).toContainText('the accumulator is empty');
+
+  await scrub.fill('2');
+  await expect(readoutRow(page, 'Accumulation')).toContainText('step 2 of 4');
+  await expect(readoutRow(page, 'Accumulation')).toContainText('shifted');
+
+  await page.getByRole('button', { name: 'Play the accumulation' }).click();
+  await expect(scrub).toHaveValue('4', { timeout: 15000 });
+  await expect(page.getByRole('button', { name: 'Play the accumulation' })).toBeVisible();
+  await expect(readoutRow(page, 'Accumulation')).toContainText(
+    'all 4 executed products accumulated',
+  );
+});
+
+test('the accumulator strip fills as the products land', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  const scrub = page.getByLabel('Partial product', { exact: true });
+  const strip = page.locator('svg[aria-label^="accumulator"]');
+
+  const bitsShown = async (): Promise<number> => {
+    const label = await strip.getAttribute('aria-label');
+    // "accumulator: N of 32 digits carry information" — count active digits.
+    const match = /accumulator: (\d+) of/.exec(label ?? '');
+    return match === null ? -1 : Number(match[1]);
+  };
+
+  await scrub.fill('0');
+  const empty = await bitsShown();
+  await scrub.fill('4');
+  const full = await bitsShown();
+  expect(empty).toBe(0);
+  // Anti-vacuity: the finished accumulator must actually carry something.
+  expect(full).toBeGreaterThan(0);
 });
 
 test('the reciprocal method says it has no digits to step through', async ({ page }) => {

@@ -293,10 +293,13 @@ function MultiplyMatrix({
   a,
   b,
   skipZeroDigits,
+  highlight,
 }: {
   a: DigitProfile;
   b: DigitProfile;
   skipZeroDigits: boolean;
+  /** The partial product the accumulation animation is on, if it is mid-run. */
+  highlight?: { readonly i: number; readonly j: number } | undefined;
 }) {
   const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
   const size = a.digits.length;
@@ -317,6 +320,7 @@ function MultiplyMatrix({
         {a.digits.map((digitA, i) =>
           b.digits.map((digitB, j) => {
             const executed = !skipZeroDigits || (digitA !== 0n && digitB !== 0n);
+            const current = highlight !== undefined && highlight.i === i && highlight.j === j;
             return (
               <rect
                 key={`${i}-${j}`}
@@ -326,6 +330,8 @@ function MultiplyMatrix({
                 height={Math.max(cell - 1, 1)}
                 fill="currentColor"
                 fillOpacity={executed ? 0.7 : 0.06}
+                stroke={current ? 'currentColor' : 'none'}
+                strokeWidth={current ? 2 : 0}
               />
             );
           }),
@@ -575,6 +581,8 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
       digitBits: state.digitBits,
       registerBits: REGISTER_BITS,
       skipZeroDigits: state.skipZeroDigits,
+      // For §22's accumulation animation, which needs the run, not the answer.
+      trace: true,
     });
     // §7's example is `Q128.128 × Q128.128`, so the operands are read as
     // Q512.512 — the same 1024-bit register, half of it fraction. The product
@@ -671,6 +679,44 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
     }, stepMs);
     return () => window.clearInterval(timer);
   }, [running, playableSteps, onChange]);
+
+  /**
+   * §22's accumulation animation: a scrubber over the multiply's executed
+   * partial products, resting at the end so the panel shows the finished
+   * product it always showed. Same design as the tape: intent vs derived
+   * running, and the scrub keyed to the run it belongs to, so new operands
+   * land at the end rather than mid-way through a run that no longer exists.
+   * Local rather than shared state: a link carries the operands; the
+   * animation is how you watch them, not what they are.
+   */
+  const productSteps = computed?.product.steps ?? [];
+  const [accumScrub, setAccumScrub] = useState<
+    { readonly key: unknown; readonly step: number } | undefined
+  >(undefined);
+  const accumPosition =
+    accumScrub !== undefined && accumScrub.key === computed
+      ? Math.min(accumScrub.step, productSteps.length)
+      : productSteps.length;
+  const [accumPlaying, setAccumPlaying] = useState(false);
+  const accumRunning =
+    accumPlaying && productSteps.length > 0 && accumPosition < productSteps.length;
+
+  useEffect(() => {
+    if (!accumRunning) return undefined;
+    // A run is about eight seconds whatever the count. At 8-bit digits a dense
+    // multiply has 16384 steps, far more than frames — so the tick advances by
+    // a stride. Skipping frames is presentation; the trace stays whole.
+    const stride = Math.max(1, Math.ceil(productSteps.length / 500));
+    const stepMs = Math.min(300, Math.max(16, Math.floor(8000 / (productSteps.length / stride))));
+    const timer = window.setInterval(() => {
+      setAccumScrub((previous) => {
+        const current =
+          previous !== undefined && previous.key === computed ? previous.step : productSteps.length;
+        return { key: computed, step: Math.min(current + stride, productSteps.length) };
+      });
+    }, stepMs);
+    return () => window.clearInterval(timer);
+  }, [accumRunning, productSteps.length, computed]);
 
   /**
    * §21's comparison, under whichever scenario is selected. The two workloads
@@ -821,9 +867,70 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
               a={computed.profileA}
               b={computed.profileB}
               skipZeroDigits={state.skipZeroDigits}
+              highlight={
+                accumPosition > 0 && accumPosition < productSteps.length
+                  ? productSteps[accumPosition - 1]
+                  : undefined
+              }
+            />
+            <div className="field">
+              <label htmlFor="wide-accum-step">Partial product</label>
+              <input
+                id="wide-accum-step"
+                type="range"
+                min={0}
+                max={productSteps.length}
+                value={accumPosition}
+                onChange={(event) => {
+                  setAccumPlaying(false);
+                  setAccumScrub({ key: computed, step: Number(event.target.value) });
+                }}
+              />
+              {!reducedMotion && (
+                <button
+                  type="button"
+                  aria-label={accumRunning ? 'Pause the accumulation' : 'Play the accumulation'}
+                  onClick={() => {
+                    if (accumRunning) {
+                      setAccumPlaying(false);
+                      return;
+                    }
+                    if (accumPosition >= productSteps.length) {
+                      setAccumScrub({ key: computed, step: 0 });
+                    }
+                    setAccumPlaying(true);
+                  }}
+                >
+                  {accumRunning ? 'Pause' : 'Play'}
+                </button>
+              )}
+            </div>
+            <ChunkRow
+              label="accumulator"
+              report={profile(
+                accumPosition === 0 ? 0n : productSteps[accumPosition - 1]!.accumulator,
+                64,
+                REGISTER_BITS * 2,
+              )}
             />
             <table className="readout">
               <tbody>
+                <tr>
+                  <th scope="row">Accumulation</th>
+                  <td className="mono">
+                    {accumPosition === 0 && 'before the first product — the accumulator is empty'}
+                    {accumPosition > 0 &&
+                      accumPosition < productSteps.length &&
+                      (() => {
+                        const step = productSteps[accumPosition - 1]!;
+                        return `step ${accumPosition} of ${productSteps.length}: a${step.i} × b${step.j}, shifted ${step.shiftDigits} digits`;
+                      })()}
+                    {accumPosition === productSteps.length &&
+                      productSteps.length > 0 &&
+                      `all ${productSteps.length} executed products accumulated`}
+                    {productSteps.length === 0 && 'nothing to execute — a zero operand'}
+                  </td>
+                </tr>
                 <tr>
                   <th scope="row">Possible</th>
                   <td className="mono">{computed.product.metrics.partialProductsPossible}</td>
@@ -1013,6 +1120,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                         {!reducedMotion && (
                           <button
                             type="button"
+                            aria-label={running ? 'Pause the division' : 'Play the division'}
                             onClick={() => {
                               if (running) {
                                 setPlaying(false);

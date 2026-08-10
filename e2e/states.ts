@@ -149,6 +149,17 @@ for (const algorithm of [
   });
 }
 
+// Mid-accumulation: the matrix highlight, the partially filled strip and the
+// step narration all exist only between the endpoints, which no other state
+// visits.
+STATES.push({
+  name: 'architecture/accumulation-midway',
+  reach: async (page) => {
+    await lens('Architecture Lab')(page);
+    await page.getByLabel('Partial product', { exact: true }).fill('2');
+  },
+});
+
 // The scenario selector governs the comparison panel as well as the narrowing
 // readout, and `Trap on any inexact result` is the state where a row has no
 // markers to draw and falls back to text. That is a first-run path, which is
