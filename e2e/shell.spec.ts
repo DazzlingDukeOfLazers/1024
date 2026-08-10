@@ -1209,6 +1209,70 @@ test('the compute lanes carry all the way across, and say what was not verified'
   await expect(readoutRow(page, 'GPU')).toContainText('nothing on this page has been GPU-verified');
 });
 
+test('the quotient tape plays itself to the end, and stops', async ({ page }) => {
+  // Small operands so the run is seconds, not minutes: 1000 ÷ 7 at 16 fraction
+  // bits is 26 quotient digits.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('A', { exact: true }).fill('1000');
+  await page.getByLabel('B', { exact: true }).fill('7');
+  const slider = page.getByLabel('Quotient digit');
+  await expect(slider).toHaveAttribute('max', '26');
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+
+  // It reaches the end on its own, and stops there rather than looping.
+  await expect(slider).toHaveValue('26', { timeout: 15000 });
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+  await expect(readoutRow(page, 'A = Q × B + R')).toContainText('holds');
+});
+
+test('scrubbing by hand pauses the animation', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('A', { exact: true }).fill('1000');
+  await page.getByLabel('B', { exact: true }).fill('7');
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByLabel('Quotient digit').fill('3');
+  // The user's hand wins: touching the scrubber pauses rather than fighting it.
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible();
+});
+
+test('play at the end starts the run over', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('A', { exact: true }).fill('1000');
+  await page.getByLabel('B', { exact: true }).fill('7');
+  const slider = page.getByLabel('Quotient digit');
+  await slider.fill('26');
+
+  await page.getByRole('button', { name: 'Play', exact: true }).click();
+  // It went back to the beginning rather than sitting at the end...
+  await expect.poll(async () => Number(await slider.inputValue())).toBeLessThan(26);
+  // ...and finishes the run again.
+  await expect(slider).toHaveValue('26', { timeout: 15000 });
+});
+
+test('reduced motion removes the autoplay and keeps the scrubber', async ({ page }) => {
+  // The project rule: reduced motion removes autonomous motion, not
+  // reachability. The tape still scrubs by hand; it just never plays itself.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+
+  await expect(page.getByRole('button', { name: 'Play', exact: true })).toHaveCount(0);
+  const slider = page.getByLabel('Quotient digit');
+  await slider.fill('300');
+  const tape = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'One quotient digit at a time' }) })
+    .locator('svg');
+  await expect(tape).toContainText('step 300 of 717');
+});
+
 test('the reciprocal method says it has no digits to step through', async ({ page }) => {
   // A method that estimates the whole quotient at once has no serial digits, so
   // the panel drops the tape rather than drawing an animation of something the

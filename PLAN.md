@@ -37,7 +37,14 @@ Decisions Daniel made when this plan was written (2026-08-09):
     row, and a GPU row that reports agreement-with-CPU or honest absence.
     Falsified: a panel that pretends agreement when the device is absent
     fails the sweep. Screenshots reviewed at 1280 and 420.
-- Next action: Phase 2.1 — autoplay for the quotient tape.
+- Phase 2.1 done: play/pause on the quotient tape. `playing` is intent,
+  `running` is derived (playing with no steps left is not running), every
+  hand-input pauses, reduced motion removes the control and keeps the
+  scrubber (`usePrefersReducedMotion`, live via matchMedia). Four e2e tests;
+  end-stop and lying-hook mutants killed.
+- Next action: Phase 2.2 — the accumulation animation (§22): step through the
+  multiply matrix's partial products — product, shifted position, accumulator
+  filling — same reduced-motion rule, sweep the new states.
 
 ## Session protocol
 
@@ -86,6 +93,11 @@ Decisions Daniel made when this plan was written (2026-08-09):
 - Mutation testing: `python tools/mutate.py --file … --old … --new … --label …
   --test <vitest targets>`. Per-mutant timeout, revert in a `finally`,
   NO-MATCH counts as a failure.
+- Ad-hoc mutation of e2e-tested code (mutate.py only drives vitest) must
+  restore with read-the-backup-first. The one-expression idiom
+  `io.open(p,'w').write(io.open(bak).read())` **truncates the target before
+  the read can fail** — it emptied a source file when the backup was missing.
+  Read the backup into a variable, then write; guard on the backup existing.
 - Dev server for the browser pane (rarely needed): `.claude/launch.json` in
   `personal-git/` defines `scale-atlas`.
 
@@ -131,7 +143,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
 
 ## Phase 2 — §22 finish (before baselines, because it changes shape)
 
-- [ ] **2.1 Autoplay for the quotient tape.** Play/pause control stepping
+- [x] **2.1 Autoplay for the quotient tape.** Play/pause control stepping
   `divisionStep`; honour `prefers-reduced-motion` (no autoplay, scrubber
   still works); e2e test drives it and checks it stops at the end. Not part
   of share state — a link carries a position, not a playing animation.

@@ -17,7 +17,7 @@
  * the SVGs measure themselves, so one viewBox unit is one CSS pixel.
  */
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   DIGIT_WIDTHS,
   type DigitProfile,
@@ -44,6 +44,7 @@ import { SCENARIOS, SCENARIO_NAMES } from '../../core/wide/scenario';
 import { ComputeLanes } from './ComputeLanes';
 import { type ArchitectureState } from '../../share/appState';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
+import { usePrefersReducedMotion } from '../../ui/usePrefersReducedMotion';
 
 const REGISTER_BITS = 1024;
 /** Half the register, so the operands read as Q512.512 — §7's example scaled up. */
@@ -637,6 +638,41 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
   }, [parsed, state.divisionAlgorithm]);
 
   /**
+   * §22's "animate quotient digits": a timer over `divisionStep`.
+   *
+   * `playing` is intent; `running` is what is actually happening, derived —
+   * playing with no steps left is not running, so the end of the run stops the
+   * animation without a synchronous setState from an effect, which the React
+   * compiler rightly refuses. Every control that moves the position by hand
+   * (scrubber, operands, algorithm) also pauses: an animation that resumed
+   * itself because the user touched the slider would be motion nobody asked
+   * for. Reduced motion removes the play control entirely and keeps the
+   * scrubber — a scrubber is not motion, a timer driving one is.
+   *
+   * Deliberately not part of the share state: a link carries a position, not a
+   * playing animation.
+   */
+  const [playing, setPlaying] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
+  const playableSteps = division?.result?.steps?.length ?? 0;
+  const divisionPosition = Math.min(state.divisionStep, playableSteps);
+  const running = playing && playableSteps > 0 && divisionPosition < playableSteps;
+
+  useEffect(() => {
+    if (!running) return undefined;
+    // Whatever the step count, a full run should take about fifteen seconds —
+    // 717 steps at the default operands lands near 20 ms a step.
+    const stepMs = Math.min(80, Math.max(16, Math.floor(15000 / playableSteps)));
+    const timer = window.setInterval(() => {
+      onChange((currentState) => ({
+        ...currentState,
+        divisionStep: Math.min(currentState.divisionStep + 1, playableSteps),
+      }));
+    }, stepMs);
+    return () => window.clearInterval(timer);
+  }, [running, playableSteps, onChange]);
+
+  /**
    * §21's comparison, under whichever scenario is selected. The two workloads
    * differ only in where they start, which is the entire experiment: everything
    * else — the operand, the count, the reference — is held fixed.
@@ -691,6 +727,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
             value={state.aLiteral}
             onChange={(event) => {
               const aLiteral = event.target.value;
+              setPlaying(false);
               onChange((current) => ({ ...current, aLiteral }));
             }}
           />
@@ -700,6 +737,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
             value={state.bLiteral}
             onChange={(event) => {
               const bLiteral = event.target.value;
+              setPlaying(false);
               onChange((current) => ({ ...current, bLiteral }));
             }}
           />
@@ -891,7 +929,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
               const steps = division.result.steps ?? [];
               // A shared link can carry a position from a different pair of
               // operands, so the stored step is a request rather than a fact.
-              const position = Math.min(state.divisionStep, steps.length);
+              const position = divisionPosition;
               const current = position === 0 ? undefined : steps[position - 1];
               const divisorMagnitude =
                 parsed.b === undefined ? 0n : parsed.b < 0n ? -parsed.b : parsed.b;
@@ -928,7 +966,9 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                         // The higher radices produce fewer steps, so a position
                         // held from the previous algorithm can be past the end.
                         // Clamping on read covers it, but resetting is the
-                        // honest thing: it is a different run.
+                        // honest thing: it is a different run. And a different
+                        // run does not inherit the old one's animation.
+                        setPlaying(false);
                         onChange((currentState) => ({
                           ...currentState,
                           divisionAlgorithm,
@@ -963,9 +1003,34 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                           value={position}
                           onChange={(event) => {
                             const divisionStep = Number(event.target.value);
+                            // Scrubbing by hand pauses: an animation that
+                            // resumed itself under the user's finger would be
+                            // motion nobody asked for.
+                            setPlaying(false);
                             onChange((currentState) => ({ ...currentState, divisionStep }));
                           }}
                         />
+                        {!reducedMotion && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (running) {
+                                setPlaying(false);
+                                return;
+                              }
+                              if (position >= steps.length) {
+                                // Play at the end starts the run over.
+                                onChange((currentState) => ({
+                                  ...currentState,
+                                  divisionStep: 0,
+                                }));
+                              }
+                              setPlaying(true);
+                            }}
+                          >
+                            {running ? 'Pause' : 'Play'}
+                          </button>
+                        )}
                       </div>
                       <QuotientTape steps={steps} position={position} divisor={divisorMagnitude} />
                     </>

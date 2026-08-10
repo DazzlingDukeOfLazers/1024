@@ -1285,6 +1285,26 @@ Follow-ups deliberately not taken:
       baseline is what the GPU runs today, so the model matches the machine;
       revisit if a sparse GPU path ever exists.
 
+## An expression that destroys before it can fail
+
+The autoplay work's falsification pass truncated `usePrefersReducedMotion.ts`
+to zero bytes. Not the mutation — the *restore*:
+
+    io.open(p, 'w').write(io.open(p + '.bak').read())
+
+evaluates `io.open(p, 'w')` first, which truncates the target, and only then
+evaluates the read — which threw, because an earlier quoting failure meant the
+backup never existed. The file was gone before the error could say so. Two
+follow-on commands then reported nonsense ("no match" against an empty file, a
+mutant "survived" against a build that could not start) before the truncation
+was noticed by reading the grep that returned nothing.
+
+`tools/mutate.py` was never affected — it holds the original in memory and has
+no read at restore time. The rule for ad-hoc restores, now in PLAN.md: read the
+backup into a variable first, write second, and guard on the backup existing.
+Order of evaluation is a safety property when one side of an expression is
+destructive.
+
 ## Hardening
 
 - [x] Playwright critical path.
