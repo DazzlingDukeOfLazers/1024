@@ -128,6 +128,24 @@ for (const [name, position, b] of [
   });
 }
 
+// Every division algorithm, because the tape shades a cell by what the digit is
+// worth and that path does nothing at all at radix 2 — every digit there is a
+// zero or a one.
+for (const algorithm of [
+  'restoring-radix-4',
+  'restoring-radix-8',
+  'non-restoring-radix-2',
+] as const) {
+  STATES.push({
+    name: `architecture/${algorithm}`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('Algorithm').selectOption(algorithm);
+      await page.getByLabel('Quotient digit').fill('120');
+    },
+  });
+}
+
 // The scenario selector governs the comparison panel as well as the narrowing
 // readout, and `Trap on any inexact result` is the state where a row has no
 // markers to draw and falls back to text. That is a first-run path, which is

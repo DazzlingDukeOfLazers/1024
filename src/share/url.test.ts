@@ -155,6 +155,7 @@ describe('everything else in the view', () => {
       scenario: 'preserve',
       skipZeroDigits: false,
       divisionStep: 412,
+      divisionAlgorithm: 'restoring-radix-8',
     },
     representations: { q128Preset: 'mm' },
   };
@@ -175,6 +176,17 @@ describe('everything else in the view', () => {
       architecture: { ...state.architecture, divisionStep: undefined },
     } as unknown as AppState;
     expect(roundTrip(withoutStep).architecture.divisionStep).toBe(0);
+  });
+
+  it('falls back on an algorithm this build does not have', () => {
+    // A link written by a build with a division algorithm this one lacks is
+    // still a link: it lands on the default rather than refusing, and the panel
+    // shows a run it can actually produce.
+    const unknown = {
+      ...state,
+      architecture: { ...state.architecture, divisionAlgorithm: 'srt-radix-16' },
+    } as unknown as AppState;
+    expect(roundTrip(unknown).architecture.divisionAlgorithm).toBe('restoring-radix-2');
   });
 
   it('refuses to restore a nonsense division position', () => {

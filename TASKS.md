@@ -1164,6 +1164,50 @@ and failed at the first bit of the first case. The failure was the useful part.
       cell is a texture rather than a diagram, and the window is the fix; an
       autoplay control over it is not built.
 
+## No answer to "which radix", only to "which radix for this size"
+
+§10 said not to lock the project to one division algorithm before benchmarks
+exist. There are four now — restoring and non-restoring radix-2, restoring
+radix-4 and radix-8 — and the benchmark says something I would not have guessed.
+
+On (2^512 + 12345) / 7:
+
+    algorithm              shifts  compares  subtracts  table  cyc@0  cyc@1  cyc@4
+    restoring-radix-2         513       513        168      0    681   1194   2733
+    non-restoring-radix-2     513         0        514      0   1027   1027   1027
+    restoring-radix-4         257       514        168      2    427    941   2483
+    restoring-radix-8         171       513        167      6    344    857   2396
+
+A higher radix does *not* buy fewer comparisons. Digit selection is a binary
+search over the table of multiples, so it costs one comparison per quotient bit
+whatever the radix. What it buys is iterations. What it costs is `radix - 2`
+additions of table setup before the loop starts.
+
+So the crossover is in the size of the division rather than in the cost weights.
+On 1000 / 7 the ranking inverts: radix-8 costs 25 cycles against radix-2's 24,
+because six additions of setup are not repaid by a loop that runs four times.
+And non-restoring beats all three restoring variants once a comparison costs
+four cycles, which no radix rescues them from, because none of them makes fewer
+comparisons.
+
+- [x] Radix-2^N division (§10).
+- [ ] Reciprocal-based division (§10) still open. It is the one that would change
+      the shape rather than the constants, since it turns division into the
+      multiplication this track already models.
+
+## A mutant that hangs instead of failing
+
+Mutation testing the radix loop, one mutant took the run past a ten-minute
+timeout instead of failing: dropping the `+ 1` from the binary search midpoint
+makes `middle` able to equal `low`, so the search stops making progress and the
+division never returns. It also left the working tree mutated, since the revert
+came after the run that never finished.
+
+Two things worth keeping from that. The `+ 1` now carries a comment saying it is
+load-bearing, because it reads exactly like an off-by-one to be tidied away. And
+a mutation harness needs a per-run timeout and a revert that happens whether or
+not the run completes — the version used here had neither.
+
 ## Hardening
 
 - [x] Playwright critical path.

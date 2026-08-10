@@ -32,7 +32,7 @@ import {
   type RepresentationRun,
   compareRepresentations,
 } from '../../core/wide/comparison';
-import { type DivisionStep, divRem } from '../../core/wide/divide';
+import { DIVISION_ALGORITHMS, type DivisionStep, divRem } from '../../core/wide/divide';
 import { describeWideLiteral, parseWideLiteral } from '../../core/wide/parse';
 import { isZero } from '../../core/rational/rational';
 import { log10RationalForDisplay } from '../../core/rational/log10';
@@ -393,6 +393,17 @@ function NarrowBands({ fullBits, destinationBits }: { fullBits: number; destinat
 /* §22: division, one quotient digit at a time                                  */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * How full a cell is drawn, for a quotient digit that may be worth more than one
+ * bit. At radix 2 this is 1 for a set bit and the strip reads the way it did
+ * before; at radix 8 a digit of 7 is solid and a digit of 1 is faint, which is
+ * the digit-serial machine taking bigger bites made visible rather than stated.
+ */
+function digitWeight(step: DivisionStep): number {
+  const top = (1 << step.digitBits) - 1;
+  return top === 0 ? 0 : Number(step.digit) / top;
+}
+
 /** Fraction bits the division panel asks for. §11's scaling, at a legible size. */
 const DIVISION_FRACTION_BITS = 16;
 /** How many quotient bits are shown around the current one. */
@@ -455,9 +466,9 @@ function QuotientTape({
               height={26}
               rx={2}
               fill="currentColor"
-              fillOpacity={step.bit ? 0.6 : 0.08}
+              fillOpacity={step.digit === 0n ? 0.08 : 0.08 + 0.52 * digitWeight(step)}
               stroke="currentColor"
-              strokeOpacity={last ? 0.95 : step.bit ? 0.5 : 0.18}
+              strokeOpacity={last ? 0.95 : step.digit === 0n ? 0.18 : 0.5}
               strokeWidth={last ? 2 : 1}
             />
           );
@@ -613,6 +624,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
           dividend: parsed.a,
           divisor: parsed.b,
           fractionBits: DIVISION_FRACTION_BITS,
+          algorithm: state.divisionAlgorithm,
           trace: true,
         }),
         error: undefined,
@@ -621,7 +633,7 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
       if (!(error instanceof WideError)) throw error;
       return { result: undefined, error: error.message };
     }
-  }, [parsed]);
+  }, [parsed, state.divisionAlgorithm]);
 
   /**
    * §21's comparison, under whichever scenario is selected. The two workloads
@@ -880,6 +892,32 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
               return (
                 <>
                   <div className="field">
+                    <label htmlFor="wide-division-algorithm">Algorithm</label>
+                    <select
+                      id="wide-division-algorithm"
+                      value={state.divisionAlgorithm}
+                      onChange={(event) => {
+                        const divisionAlgorithm = event.target
+                          .value as ArchitectureState['divisionAlgorithm'];
+                        // The higher radices produce fewer steps, so a position
+                        // held from the previous algorithm can be past the end.
+                        // Clamping on read covers it, but resetting is the
+                        // honest thing: it is a different run.
+                        onChange((currentState) => ({
+                          ...currentState,
+                          divisionAlgorithm,
+                          divisionStep: 0,
+                        }));
+                      }}
+                    >
+                      {DIVISION_ALGORITHMS.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
                     <label htmlFor="wide-division-step">Quotient digit</label>
                     <input
                       id="wide-division-step"
@@ -921,6 +959,20 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                         </td>
                       </tr>
                       <tr>
+                        <th scope="row">Shifts / compares</th>
+                        <td className="mono">
+                          {division.result.metrics.shiftOperations} /{' '}
+                          {division.result.metrics.compareOperations}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Subtracts / table</th>
+                        <td className="mono">
+                          {division.result.metrics.subtractOperations} /{' '}
+                          {division.result.metrics.tableOperations}
+                        </td>
+                      </tr>
+                      <tr>
                         <th scope="row">Modeled cycles</th>
                         <td className="mono">{division.result.metrics.modeledCycles}</td>
                       </tr>
@@ -933,6 +985,13 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                     zero is the machine before it starts, where <code>0 = 0 × B + 0</code>. The
                     numerator is scaled by 2<sup>{DIVISION_FRACTION_BITS}</sup> first (§11), so the
                     last {DIVISION_FRACTION_BITS} digits are the fraction.
+                  </p>
+                  <p className="lens-question">
+                    A higher radix takes bigger bites: fewer iterations, a cell shaded by how much
+                    the digit is worth rather than by one bit, and a table of divisor multiples to
+                    build before any of it starts. It does not buy fewer comparisons. Whether it
+                    pays is a question about the size of the division — on a 513-bit one radix 8 is
+                    the cheapest here, and on a ten-bit one it is the most expensive of the four.
                   </p>
                 </>
               );

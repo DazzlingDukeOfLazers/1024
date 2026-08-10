@@ -1126,6 +1126,66 @@ test('the tape actually fills in as the quotient is produced', async ({ page }) 
   expect(await setBits(), 'well into the quotient').toBe(48);
 });
 
+test('a higher radix takes fewer iterations to reach the same answer', async ({ page }) => {
+  // §10's benchmark, in the place where someone can see it. The four algorithms
+  // agree on the quotient and disagree about the work, which is the only reason
+  // to have more than one of them.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+
+  const steps = async () => Number(await page.getByLabel('Quotient digit').getAttribute('max'));
+  const shiftsAndCompares = () => readoutRow(page, 'Shifts / compares').locator('td').innerText();
+
+  expect(await steps()).toBe(717);
+  expect(await shiftsAndCompares()).toBe('717 / 717');
+
+  await page.getByLabel('Algorithm').selectOption('restoring-radix-4');
+  expect(await steps()).toBe(359);
+  expect(await shiftsAndCompares()).toBe('359 / 718');
+
+  await page.getByLabel('Algorithm').selectOption('restoring-radix-8');
+  expect(await steps()).toBe(239);
+  expect(await shiftsAndCompares()).toBe('239 / 717');
+
+  // And the identity is still the identity, whatever the radix.
+  await page.getByLabel('Quotient digit').fill('120');
+  await expect(readoutRow(page, 'A = Q × B + R')).toContainText('holds');
+});
+
+test('a cell is shaded by what its digit is worth, not by one bit', async ({ page }) => {
+  // Anti-vacuity for the higher radices. At radix 2 every digit is a zero or a
+  // one and the weighting does nothing, so a broken weighting would look exactly
+  // like a working one in the default view.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  const tape = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'One quotient digit at a time' }) })
+    .locator('svg');
+  const shades = () =>
+    tape.evaluate((svg) =>
+      Array.from(svg.querySelectorAll('rect'))
+        .slice(0, 48)
+        .map((cell) => Number(cell.getAttribute('fill-opacity'))),
+    );
+
+  await page.getByLabel('Algorithm').selectOption('restoring-radix-8');
+  await page.getByLabel('B', { exact: true }).fill('2^64 + 3');
+  await page.getByLabel('Quotient digit').fill('239');
+  expect(new Set(await shades()).size, 'octal digits of an awkward reciprocal').toBeGreaterThan(2);
+
+  // And a case where every digit is the same and still not a full cell: an
+  // eighth of the quotient's alphabet. One seventh in octal is 0.111..., so at
+  // radix 8 dividing by seven produces a one every single step — never empty,
+  // never full.
+  await page.getByLabel('B', { exact: true }).fill('7');
+  await page.getByLabel('Quotient digit').fill('200');
+  const sevenths = await shades();
+  expect(new Set(sevenths).size).toBe(1);
+  expect(sevenths[0]!).toBeGreaterThan(0.08);
+  expect(sevenths[0]!).toBeLessThan(0.6);
+});
+
 test('a divisor of zero has no quotient and does not take the lens down', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Architecture Lab' }).click();

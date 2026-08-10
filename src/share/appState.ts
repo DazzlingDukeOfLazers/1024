@@ -21,6 +21,7 @@ import { BUILT_IN_EXPERIMENTS } from '../core/experiments/fixtures';
 import { Q128_128_PRESETS, type Q128_128PresetName } from '../core/representations/q128_128';
 import { type DigitWidth } from '../core/wide/digits';
 import { type ScenarioName } from '../core/wide/scenario';
+import { type DivisionAlgorithm } from '../core/wide/divide';
 
 export interface RulerState {
   readonly presetId: string;
@@ -79,6 +80,8 @@ export interface ArchitectureState {
    * `0 = 0 x B + 0` is the identity holding before any work has been done.
    */
   readonly divisionStep: number;
+  /** Which of §10's division algorithms the division panel runs. */
+  readonly divisionAlgorithm: DivisionAlgorithm;
 }
 
 export interface RepresentationState {
@@ -129,6 +132,7 @@ export function defaultAppState(): AppState {
       scenario: 'round',
       skipZeroDigits: true,
       divisionStep: 0,
+      divisionAlgorithm: 'restoring-radix-2',
     },
     representations: { q128Preset: 'm' },
   };

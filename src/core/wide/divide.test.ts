@@ -255,6 +255,69 @@ describe('two algorithms, benchmarked rather than chosen (§10)', () => {
     expect(run('restoring-radix-2', 1)).toBeGreaterThan(run('non-restoring-radix-2', 1));
   });
 
+  it('takes fewer iterations at a higher radix, which is what the radix is for', () => {
+    const [dividend, divisor] = [(1n << 512n) + 12345n, 7n] as const;
+    const shifts = (algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend, divisor, algorithm }).metrics.shiftOperations;
+
+    // 513 bits, taken one, two and three at a time.
+    expect(shifts('restoring-radix-2')).toBe(513);
+    expect(shifts('restoring-radix-4')).toBe(257);
+    expect(shifts('restoring-radix-8')).toBe(171);
+  });
+
+  it('does not save comparisons, and the table is not free', () => {
+    // Worth stating because the intuition is that a bigger radix is cheaper
+    // everywhere, and it is not. Digit selection is a binary search over the
+    // table, so it costs one comparison per quotient *bit* whatever the radix —
+    // the same as radix-2 — and radix-4 pays one more than radix-2 here because
+    // 513 bits do not divide into 2-bit digits without a padded top one.
+    const [dividend, divisor] = [(1n << 512n) + 12345n, 7n] as const;
+    const at = (algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend, divisor, algorithm }).metrics;
+
+    expect(at('restoring-radix-2').compareOperations).toBe(513);
+    expect(at('restoring-radix-4').compareOperations).toBe(514);
+    expect(at('restoring-radix-8').compareOperations).toBe(513);
+
+    expect(at('restoring-radix-2').tableOperations).toBe(0);
+    expect(at('restoring-radix-4').tableOperations).toBe(2);
+    expect(at('restoring-radix-8').tableOperations).toBe(6);
+  });
+
+  it('makes the radix a question about the size of the division', () => {
+    // The result I did not expect, and the reason §10 says to measure. On a
+    // 513-bit division radix-8 is the cheapest of the restoring family; on a
+    // ten-bit one it is the most expensive of all four, because six additions
+    // of table setup are not repaid by a loop that only runs four times.
+    //
+    // So there is no answer to "which radix", only an answer to "which radix
+    // for this size", and the table above is the reason a benchmark had to
+    // exist before anything was chosen.
+    const big = (algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend: (1n << 512n) + 12345n, divisor: 7n, algorithm }).metrics.modeledCycles;
+    const small = (algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend: 1000n, divisor: 7n, algorithm }).metrics.modeledCycles;
+
+    expect(big('restoring-radix-8')).toBeLessThan(big('restoring-radix-4'));
+    expect(big('restoring-radix-4')).toBeLessThan(big('restoring-radix-2'));
+
+    expect(small('restoring-radix-8')).toBeGreaterThan(small('restoring-radix-2'));
+    expect(small('restoring-radix-4')).toBeLessThan(small('restoring-radix-2'));
+  });
+
+  it('hands it to non-restoring once a comparison is expensive enough', () => {
+    // And the radix does not rescue the restoring family from that, because a
+    // higher radix does not buy fewer comparisons. Non-restoring makes none at
+    // all, so at four cycles a comparison it wins outright: 1027 against 2396.
+    const [dividend, divisor] = [(1n << 512n) + 12345n, 7n] as const;
+    const at = (algorithm: (typeof DIVISION_ALGORITHMS)[number], cyclesPerCompare: number) =>
+      divRem({ dividend, divisor, algorithm, cyclesPerCompare }).metrics.modeledCycles;
+
+    expect(at('non-restoring-radix-2', 4)).toBeLessThan(at('restoring-radix-8', 4));
+    expect(at('non-restoring-radix-2', 0)).toBeGreaterThan(at('restoring-radix-8', 0));
+  });
+
   it('refines from either, because both leave the remainder in range', () => {
     // A non-restoring run corrects at the end, so its state satisfies the
     // invariant a restoring continuation needs.
@@ -318,8 +381,13 @@ describe('the identity holds at every step, not only at the end (§22)', () => {
         }
       }
       // Anti-vacuity: a zero dividend produces no steps at all, and a suite of
-      // those would satisfy the loop above without examining anything.
-      expect(stepsSeen, 'steps examined').toBeGreaterThan(500);
+      // those would satisfy the loop above without examining anything. The floor
+      // is well under the real figures and has to clear the *smallest* of them,
+      // which is radix-8's — a higher radix takes bigger bites and so produces
+      // fewer steps for the same division. Measured over these cases: 582 at
+      // radix 2, 584 non-restoring — the extra two are its end corrections —
+      // 292 at radix 4 and 195 at radix 8.
+      expect(stepsSeen, 'steps examined').toBeGreaterThan(150);
     });
   }
 

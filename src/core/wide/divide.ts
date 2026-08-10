@@ -16,20 +16,34 @@
  * the oracle it is checked against, and nowhere here.
  *
  * §10 also says not to lock the project to one algorithm before benchmarks
- * exist. This implements restoring radix-2 and names it in the result;
- * non-restoring, radix-2^N and reciprocal-based are left open, and the shape of
- * `DivisionState` is meant to hold any of them.
+ * exist. Four are implemented and named in the result — restoring and
+ * non-restoring radix-2, and restoring radix-4 and radix-8 — so the choice is
+ * made against measurements. Reciprocal-based division is still open, and the
+ * shape of `DivisionState` is meant to hold it too.
  */
 
 import { WideError, bitLength } from './digits';
 
 /**
  * §10 lists several, and says not to lock the project to one before benchmarks
- * exist. Two are implemented; they must agree on every answer and are free to
- * disagree about the work, which is the only reason to have both.
+ * exist. Four are implemented; they must agree on every answer and are free to
+ * disagree about the work, which is the only reason to have more than one.
  */
-export const DIVISION_ALGORITHMS = ['restoring-radix-2', 'non-restoring-radix-2'] as const;
+export const DIVISION_ALGORITHMS = [
+  'restoring-radix-2',
+  'non-restoring-radix-2',
+  'restoring-radix-4',
+  'restoring-radix-8',
+] as const;
 export type DivisionAlgorithm = (typeof DIVISION_ALGORITHMS)[number];
+
+/** Bits of quotient produced per iteration, by name. */
+const RADIX_BITS: Record<DivisionAlgorithm, number> = {
+  'restoring-radix-2': 1,
+  'non-restoring-radix-2': 1,
+  'restoring-radix-4': 2,
+  'restoring-radix-8': 3,
+};
 
 export interface DivisionCosts {
   readonly cyclesPerShift?: number;
@@ -91,8 +105,10 @@ export interface DivisionStep {
   readonly remainder: bigint;
   /** The high bits of the scaled dividend consumed so far. */
   readonly consumed: bigint;
-  /** Whether this step's quotient bit came out as a one. */
-  readonly bit: boolean;
+  /** The quotient digit this step produced, in `0 .. 2^digitBits − 1`. */
+  readonly digit: bigint;
+  /** How many quotient bits this step produced. */
+  readonly digitBits: number;
 }
 
 /** §20, for division. */
@@ -102,6 +118,13 @@ export interface DivisionMetrics {
   readonly shiftOperations: number;
   readonly compareOperations: number;
   readonly subtractOperations: number;
+  /**
+   * Additions spent building the table of divisor multiples before the loop
+   * starts. Zero below radix 4, and `radix − 2` above it — separate from
+   * `subtractOperations` because it is the price of the radix rather than work
+   * the division does, and burying it there would hide the whole trade.
+   */
+  readonly tableOperations: number;
   readonly significantWidthDividend: number;
   readonly significantWidthDivisor: number;
   readonly modeledCycles: number;
@@ -146,7 +169,10 @@ function cyclesOf(metrics: Omit<DivisionMetrics, 'modeledCycles'>, costs: Requir
   return (
     metrics.shiftOperations * costs.cyclesPerShift +
     metrics.compareOperations * costs.cyclesPerCompare +
-    metrics.subtractOperations * costs.cyclesPerSubtract
+    metrics.subtractOperations * costs.cyclesPerSubtract +
+    // An addition and a subtraction cost the same thing, so the table is priced
+    // as the additions it is.
+    metrics.tableOperations * costs.cyclesPerSubtract
   );
 }
 
@@ -156,40 +182,93 @@ interface Digits {
   readonly shifts: number;
   readonly compares: number;
   readonly subtracts: number;
+  readonly tableOps: number;
 }
 
 /**
- * Bring down one bit, compare, subtract if it fits, and put it back if it does
- * not. The SHIFT / COMPARE / SUBTRACT loop §10 describes, in its plainest form.
+ * Bring down `digitBits` bits, choose the largest multiple of the divisor that
+ * fits, subtract it. The SHIFT / COMPARE / SUBTRACT loop §10 describes, with the
+ * radix left open.
+ *
+ * At `digitBits = 1` this *is* the plain restoring algorithm: the table is
+ * `[0, B]`, the search is one comparison, and the digit is a bit. The higher
+ * radices are the same loop taking bigger bites, which is the point — §10 lists
+ * radix-2^N as an alternative rather than a different machine, and writing it as
+ * a separate function would have made that a claim instead of a fact.
+ *
+ * Digit selection is a binary search over the table, so it costs exactly
+ * `digitBits` comparisons whatever the radix — the same comparisons per *bit* as
+ * radix-2. What the radix buys is iterations: one shift and at most one subtract
+ * per digit instead of per bit. What it costs is `radix − 2` additions to build
+ * the table before any of that starts. Whether that trades well is a question
+ * about the size of the division, and is measured rather than assumed.
  */
-function restoring(scaled: bigint, divisor: bigint, bits: number, trace?: DivisionStep[]): Digits {
+function restoringRadix(
+  scaled: bigint,
+  divisor: bigint,
+  bits: number,
+  digitBits: number,
+  trace?: DivisionStep[],
+): Digits {
+  const radix = 1 << digitBits;
+  const mask = BigInt(radix - 1);
+  const wide = BigInt(digitBits);
+
+  // multiples[i] = i × divisor, built by repeated addition because a machine
+  // without a wide multiplier does not get to write `i * divisor` either.
+  const multiples: bigint[] = [0n, divisor];
+  for (let i = 2; i < radix; i += 1) multiples.push(multiples[i - 1]! + divisor);
+  const tableOps = Math.max(0, radix - 2);
+
   let remainder = 0n;
   let quotient = 0n;
   let consumed = 0n;
+  let compares = 0;
   let subtracts = 0;
+  let shifts = 0;
 
-  for (let index = bits - 1; index >= 0; index -= 1) {
-    const bit = (scaled >> BigInt(index)) & 1n;
-    remainder = (remainder << 1n) | bit;
-    quotient <<= 1n;
-    if (remainder >= divisor) {
-      remainder -= divisor;
-      quotient |= 1n;
+  const digits = Math.ceil(bits / digitBits);
+  for (let step = digits - 1; step >= 0; step -= 1) {
+    const index = step * digitBits;
+    const digit = (scaled >> BigInt(index)) & mask;
+    remainder = (remainder << wide) | digit;
+    shifts += 1;
+
+    // Largest q with q × divisor ≤ remainder. `multiples[0]` is zero and the
+    // remainder is never negative here, so the search always has an answer.
+    let low = 0;
+    let high = radix - 1;
+    while (low < high) {
+      // The `+ 1` is what makes this terminate, and it reads like an off-by-one
+      // to be tidied away. With it, `middle` lands in `(low, high]`, so the
+      // `low = middle` branch strictly increases `low`; without it `middle` can
+      // equal `low` and that branch makes no progress at all. Removing it does
+      // not produce a wrong answer — it produces a division that never returns.
+      const middle = (low + high + 1) >> 1;
+      compares += 1;
+      if (multiples[middle]! <= remainder) low = middle;
+      else high = middle - 1;
+    }
+    if (low > 0) {
+      remainder -= multiples[low]!;
       subtracts += 1;
     }
+    quotient = quotient * BigInt(radix) + BigInt(low);
+
     if (trace !== undefined) {
-      consumed = (consumed << 1n) | bit;
+      consumed = (consumed << wide) | digit;
       trace.push({
         index,
         quotient,
         quotientSoFar: quotient,
         remainder,
         consumed,
-        bit: (quotient & 1n) === 1n,
+        digit: BigInt(low),
+        digitBits,
       });
     }
   }
-  return { remainder, quotient, shifts: bits, compares: bits, subtracts };
+  return { remainder, quotient, shifts, compares, subtracts, tableOps };
 }
 
 /**
@@ -235,7 +314,8 @@ function nonRestoring(
         quotientSoFar: signed,
         remainder,
         consumed,
-        bit: (quotient & 1n) === 1n,
+        digit: quotient & 1n,
+        digitBits: 1,
       });
     }
   }
@@ -263,6 +343,7 @@ function nonRestoring(
     // A sign test rather than a magnitude comparison, which is the saving.
     compares: 0,
     subtracts: addsAndSubtracts + corrections,
+    tableOps: 0,
   };
 }
 
@@ -289,10 +370,10 @@ export function divRem(request: DivRemRequest): DivRemResult {
 
   const bits = bitLength(scaled);
   const steps = wantTrace ? [] : undefined;
-  const { remainder, quotient, shifts, compares, subtracts } =
-    algorithm === 'restoring-radix-2'
-      ? restoring(scaled, divisorMagnitude, bits, steps)
-      : nonRestoring(scaled, divisorMagnitude, bits, steps);
+  const { remainder, quotient, shifts, compares, subtracts, tableOps } =
+    algorithm === 'non-restoring-radix-2'
+      ? nonRestoring(scaled, divisorMagnitude, bits, steps)
+      : restoringRadix(scaled, divisorMagnitude, bits, RADIX_BITS[algorithm], steps);
 
   const partial = {
     algorithm,
@@ -300,6 +381,7 @@ export function divRem(request: DivRemRequest): DivRemResult {
     shiftOperations: shifts,
     compareOperations: compares,
     subtractOperations: subtracts,
+    tableOperations: tableOps,
     significantWidthDividend: bitLength(scaled),
     significantWidthDivisor: bitLength(divisorMagnitude),
   };
@@ -368,6 +450,9 @@ export function refine(previous: DivRemResult, additionalFractionBits: number): 
     shiftOperations: state.metrics.shiftOperations + shifts,
     compareOperations: state.metrics.compareOperations + compares,
     subtractOperations: state.metrics.subtractOperations + subtracts,
+    // The continuation is radix-2, so it builds no table of its own; the one
+    // the leading digits paid for is still what was paid.
+    tableOperations: state.metrics.tableOperations,
     significantWidthDividend: state.metrics.significantWidthDividend,
     significantWidthDivisor: state.metrics.significantWidthDivisor,
   };

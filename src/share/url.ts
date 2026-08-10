@@ -25,15 +25,20 @@ import {
 import { type AppState, defaultAppState, isQ128PresetName } from './appState';
 import { DIGIT_WIDTHS, type DigitWidth } from '../core/wide/digits';
 import { SCENARIOS, type ScenarioName } from '../core/wide/scenario';
+import { DIVISION_ALGORITHMS, type DivisionAlgorithm } from '../core/wide/divide';
+import { ShareEncodingError, decodeBase64Url, encodeBase64Url } from './base64url';
 
 function isDigitWidth(value: unknown): value is DigitWidth {
   return typeof value === 'number' && (DIGIT_WIDTHS as readonly number[]).includes(value);
 }
 
+function isDivisionAlgorithm(value: unknown): value is DivisionAlgorithm {
+  return DIVISION_ALGORITHMS.some((name) => name === value);
+}
+
 function isScenarioName(value: unknown): value is ScenarioName {
   return typeof value === 'string' && Object.hasOwn(SCENARIOS, value);
 }
-import { ShareEncodingError, decodeBase64Url, encodeBase64Url } from './base64url';
 
 export const SHARE_SCHEMA_VERSION = 1;
 
@@ -80,6 +85,7 @@ interface ShareStateJSON {
     scenario: string;
     skipZeroDigits: boolean;
     divisionStep?: number;
+    divisionAlgorithm?: string;
   };
   representations: { q128Preset: string };
 }
@@ -272,6 +278,9 @@ export function stateFromJSON(json: unknown): AppState {
         0,
         Math.floor(requireFiniteNumber(record.architecture?.divisionStep, 0)),
       ),
+      divisionAlgorithm: isDivisionAlgorithm(record.architecture?.divisionAlgorithm)
+        ? record.architecture.divisionAlgorithm
+        : defaults.architecture.divisionAlgorithm,
     },
     representations: {
       q128Preset:
