@@ -44,11 +44,15 @@ Decisions Daniel made when this plan was written (2026-08-09):
   is unchanged. Same intent/derived-running/pause-on-touch design as the
   tape; both play buttons have distinct accessible names. 838 unit tests,
   104 Playwright; strip-ignores-scrub mutant killed.
-- Next action: Phase 3 — visual-regression baselines. The UI shape is now
-  settled; pick ~10 representative states (one per lens plus the densest
-  architecture ones), `toHaveScreenshot` at 1280 and 420, commit baselines,
-  document the update procedure in docs/TEST_STRATEGY.md, keep the spec out
-  of CI (Windows-rendered fonts).
+- Phase 3 complete: `e2e/visual.spec.ts`, 10 curated states × 2 widths, 20
+  baselines (3.3 MB) committed. Passes twice unchanged; a 0.05rem table
+  padding change fails 20 of 21. Skips on CI (Windows-rendered fonts);
+  procedure documented in docs/TEST_STRATEGY.md. A guard test asserts every
+  curated name still exists in `states.ts`.
+- Next action: Phase 4 — the polish batch, starting with the skip link
+  (TASKS ~line 580). **Note:** any intended visual change from here needs
+  `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
+  images before committing.
 
 ## Session protocol
 
@@ -158,7 +162,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
 
 ## Phase 3 — visual-regression baselines (curated)
 
-- [ ] After Phase 2: pick ~10 representative states (one per lens plus the
+- [x] After Phase 2: pick ~10 representative states (one per lens plus the
   densest architecture ones), `toHaveScreenshot` at 1280 and 420, commit the
   baselines. Document the update procedure in `docs/TEST_STRATEGY.md`
   (`--update-snapshots` and when it is legitimate). Baselines are

@@ -246,11 +246,41 @@ The same reasoning applies to a matcher pattern that can never match: `keepNonOv
 
 # Visual regression
 
-Once UI stabilizes, add screenshots for:
+`e2e/visual.spec.ts`, added once the UI shape settled and not before. The
+instruction below — do not lock too early — was followed for a concrete reason:
+the views were switched to measuring their own width, and then the Architecture
+Lab grew four panels and two animations. Baselines taken during that would have
+been re-recorded every session, which teaches everyone to run
+`--update-snapshots` without looking, and that is the failure mode that makes a
+visual suite worse than none.
 
-- atlas at several decades;
-- ruler at m/mm/µm scales;
-- collapsed vs individual RBC rendering;
-- representation-lab disagreement view.
+**What it covers.** Ten curated states at 1280 and 420: one per lens, plus the
+dense and mid-accumulation Architecture Lab views. Not the full state sweep —
+the geometry rules in `conformance.spec.ts` already catch overlap, clipping and
+off-edge labels *everywhere*, and what pixels add on top is the unintended
+change: a panel that moved because something else grew. Twenty PNGs, about
+3.3 MB.
 
-Do not lock visual snapshots too early.
+The curated list is hand-maintained, so a test asserts every name in it is
+still a real state in `e2e/states.ts`. Renaming a state would otherwise drop it
+from the baseline set silently.
+
+**Updating after an intended change:**
+
+```
+npx playwright test e2e/visual --update-snapshots
+```
+
+Then read the diff images in `test-results/` before committing. A baseline
+updated without looking is a test deleted without saying so.
+
+**Not on CI.** These are Windows-rendered. Fonts differ on Linux, so every
+glyph moves and every baseline fails for a reason unrelated to the change under
+test. The spec skips when `CI` is set; CI keeps the geometry rules, which are
+portable because they assert relationships rather than pixels.
+
+**Sensitivity.** `maxDiffPixelRatio: 0.002` — sub-pixel text rendering varies
+by a hair between runs, and a hard zero would flake and train people to ignore
+the suite. Verified in both directions: the baselines pass twice in a row
+unchanged, and changing one table's cell padding by 0.05rem fails twenty of the
+twenty-one tests.

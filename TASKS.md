@@ -1313,7 +1313,9 @@ destructive.
 - [x] End-to-end tests run against the production bundle.
 - [x] performance profiling.
 - [x] documentation refresh, with the checkable claims under test.
-- [ ] visual regression. Still deferred, and now for a concrete reason rather
-      than a general one: the views were switched to measuring their own width
-      this week, so a screenshot taken today locks in a layout that has just
-      moved. Revisit once nothing has changed shape for a while.
+- [x] visual regression. `e2e/visual.spec.ts`: ten curated states at two
+      widths, locked once §22's animations finished moving the Architecture
+      Lab. Not the full sweep — the geometry rules already cover every state,
+      and pixels only add the *unintended* change. Windows-rendered, so it
+      skips on CI; procedure and sensitivity evidence in
+      `docs/TEST_STRATEGY.md`.
