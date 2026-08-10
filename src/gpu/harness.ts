@@ -15,9 +15,28 @@
  */
 
 import { LIMBS_PER_VALUE } from '../core/limbs/limbs';
-import { ADD_WGSL, BITLEN_WGSL, DIVREM_WGSL, MUL_WGSL, SHL_WGSL, SHR_WGSL, SUB_WGSL } from './wgsl';
+import {
+  ADD_LANES_WGSL,
+  ADD_WGSL,
+  BITLEN_WGSL,
+  DIVREM_WGSL,
+  MUL_WGSL,
+  SHL_WGSL,
+  SHR_WGSL,
+  SUB_WGSL,
+} from './wgsl';
 
 export type LimbOp = 'add' | 'sub' | 'bitlen' | 'shl' | 'shr' | 'mulWide' | 'divRem';
+
+/**
+ * A second organization for the same operation, not a second operation.
+ *
+ * §17 lists several ways to map one wide scalar onto a GPU. `addLanes` is one
+ * lane per limb with a parallel carry scan; `add` is one thread owning all
+ * thirty-two. They must agree bit for bit on every input, and neither is the
+ * reference — the CPU machine is (§19).
+ */
+export type LimbOrganization = 'add' | 'addLanes';
 
 interface OpShape {
   readonly source: string;
@@ -29,8 +48,9 @@ interface OpShape {
   readonly outWords: number;
 }
 
-const SHAPES: Record<LimbOp, OpShape> = {
+const SHAPES: Record<LimbOp | LimbOrganization, OpShape> = {
   add: { source: ADD_WGSL, takesB: true, takesShift: false, outWords: 33 },
+  addLanes: { source: ADD_LANES_WGSL, takesB: true, takesShift: false, outWords: 33 },
   sub: { source: SUB_WGSL, takesB: true, takesShift: false, outWords: 33 },
   bitlen: { source: BITLEN_WGSL, takesB: false, takesShift: false, outWords: 1 },
   shl: { source: SHL_WGSL, takesB: false, takesShift: true, outWords: 32 },
@@ -42,7 +62,12 @@ const SHAPES: Record<LimbOp, OpShape> = {
 export interface GpuLimbMachine {
   readonly description: string;
   /** Raw kernel output; the shape is the op's contract, documented in wgsl.ts. */
-  run(op: LimbOp, a: Uint32Array, b?: Uint32Array, shift?: number): Promise<Uint32Array>;
+  run(
+    op: LimbOp | LimbOrganization,
+    a: Uint32Array,
+    b?: Uint32Array,
+    shift?: number,
+  ): Promise<Uint32Array>;
   destroy(): void;
 }
 
@@ -64,8 +89,8 @@ export async function createGpuLimbMachine(): Promise<GpuLimbMachine | undefined
     [info.vendor, info.architecture, info.description].filter((part) => part !== '').join(' · ') ||
     'unnamed adapter';
 
-  const pipelines = new Map<LimbOp, GPUComputePipeline>();
-  const pipelineFor = (op: LimbOp): GPUComputePipeline => {
+  const pipelines = new Map<LimbOp | LimbOrganization, GPUComputePipeline>();
+  const pipelineFor = (op: LimbOp | LimbOrganization): GPUComputePipeline => {
     const existing = pipelines.get(op);
     if (existing !== undefined) return existing;
     const module = device.createShaderModule({ code: SHAPES[op].source });

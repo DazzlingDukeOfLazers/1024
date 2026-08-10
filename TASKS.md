@@ -1500,10 +1500,40 @@ machine or says plainly that nothing was GPU-verified here.
 
 Follow-ups deliberately not taken:
 
-- [ ] §17's cooperating-lane organizations (one warp per scalar, one thread
-      per several limbs). Everything so far is one invocation per op —
-      correct first, parallel later, and the metrics are ready to price the
-      difference when it comes.
+- [x] §17's cooperating-lane organization, for ADD. Everything before it was one
+      invocation owning all thirty-two limbs, which is the easy half of "map one
+      logical wide scalar onto cooperating lanes" — the hard half is that a
+      carry is inherently sequential, so limb `i` cannot finish until limb `i−1`
+      has, and lanes have nothing to do while they wait.
+
+      `ADD_LANES_WGSL` gives each of 32 lanes one limb and resolves the carry by
+      a Kogge–Stone scan over generate/propagate pairs: a range generates a
+      carry if its upper part does or if the upper part propagates one the lower
+      part generated, and propagates only if every limb does. That operator is
+      associative, so five rounds of shared memory give every lane the pair for
+      everything below it, and the carry into limb `i` is the generate bit at
+      `i−1`. Generate and propagate can never both be set — a sum that wrapped
+      is at most 2^32 − 2, so it is never all ones — which is the same fact the
+      serial kernel already recorded about its two carry tests.
+
+      All 40 ADD fixtures pass bit-for-bit on the real GPU (amd · rdna-3), and
+      the check is against the CPU's expected sums rather than against the
+      serial shader: two shaders agreeing is two shaders agreeing (§19).
+
+      Falsified, which matters more here than usual because nothing typechecks
+      a shader — the fixture sweep is the only thing between a wrong scan and a
+      wrong answer. Four mutants killed: propagation dropped from the range
+      combine, one scan round short of covering 32 limbs, the carry read from
+      the wrong lane, and the propagate flag never set. §19's long-carry-chain
+      cases are what catch the last three.
+
+      **No speed claim is made.** Thirty-two lanes doing five rounds of shared
+      memory traffic to replace a 32-iteration loop is unlikely to win at this
+      width, nothing here times anything, and a timing number from one machine
+      would not be evidence anyway.
+- [ ] The other two §17 organizations — one subgroup per wide scalar, one thread
+      owning several limbs — and the same treatment for SUB, whose borrow scan
+      is the same shape. ADD was the one where the difficulty lives.
 - [ ] The panel visualizes ADD only. Op selector (SUB/MUL/DIV_REM views) is a
       question for Daniel in PLAN.md.
 - [ ] Zero-limb skipping in mulLimbs, to mirror §4 at limb level. The dense

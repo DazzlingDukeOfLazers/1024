@@ -13,7 +13,12 @@
  */
 
 import { fromLimbs, toLimbs } from '../core/limbs/limbs';
-import { type GpuLimbMachine, type LimbOp, createGpuLimbMachine } from './harness';
+import {
+  type GpuLimbMachine,
+  type LimbOp,
+  type LimbOrganization,
+  createGpuLimbMachine,
+} from './harness';
 
 export interface GpuProbeResult {
   readonly available: boolean;
@@ -27,7 +32,7 @@ interface ComputeBridge {
    * the fixture's own field names, so the sweep compares like for like.
    */
   run(
-    op: LimbOp,
+    op: LimbOp | LimbOrganization,
     a: string,
     b?: string,
     shift?: number,
@@ -64,7 +69,7 @@ export function exposeComputeBridge(): void {
         : { available: true, description: found.description };
     },
 
-    async run(op: LimbOp, a: string, b?: string, shift?: number) {
+    async run(op: LimbOp | LimbOrganization, a: string, b?: string, shift?: number) {
       const found = await ensureMachine();
       if (found === undefined) throw new Error('no GPU limb machine here');
       const aLimbs = toLimbs(BigInt(a));
@@ -72,7 +77,11 @@ export function exposeComputeBridge(): void {
       const out = await found.run(op, aLimbs, bLimbs, shift);
 
       switch (op) {
+        // Both organizations answer in the fixture's own field names, so the
+        // sweep compares them against the same expectation without knowing
+        // which one it ran.
         case 'add':
+        case 'addLanes':
           return { sum: fromLimbs(low(out, 0, 32)).toString(), carryOut: out[32] === 1 };
         case 'sub':
           return { difference: fromLimbs(low(out, 0, 32)).toString(), borrowOut: out[32] === 1 };

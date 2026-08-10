@@ -81,11 +81,15 @@ Decisions Daniel made when this plan was written (2026-08-09):
   - The drift chart plots against log iterations (`f8e8474`), so the
     fixed-point machines come out straight at slope 1 — error proportional to
     the number of operations — and binary64 visibly does not.
-- 914 unit tests, 141 Playwright, full gate green.
-- Next action: pick from the TASKS backlog. The largest open items are §17's
-  cooperating-lane GPU organizations, the search index, and the bulk condition
-  on `how-many-fit-volume` (stated, not enforced). Keep the same disciplines.
-  One question is open for Daniel below.
+  - §17's cooperating lanes for ADD: one limb per lane, carry by Kogge–Stone
+    scan, all 40 fixtures bit-for-bit on the real GPU, four WGSL mutants
+    killed. No speed claim.
+- 914 unit tests, 141 Playwright, 235 GPU checks, full gate green.
+- Next action: pick from the TASKS backlog. Open items now: the other two §17
+  organizations (subgroup per scalar, thread per several limbs) and the same
+  scan for SUB, the search index, and the bulk condition on
+  `how-many-fit-volume` (stated, not enforced). Keep the same disciplines. One
+  question is open for Daniel below.
 
 ## Session protocol
 

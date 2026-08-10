@@ -17,9 +17,14 @@
  *  - `countLeadingZeros` is `Math.clz32` by another name.
  *
  * One workgroup, one invocation per operation: §17's "one workgroup per wide
- * scalar", with the lanes-cooperating organizations left for later. A serial
- * shader is not fast, but fast was never the claim under test — bit-for-bit
- * agreement is (§19).
+ * scalar". A serial shader is not fast, but fast was never the claim under
+ * test — bit-for-bit agreement is (§19).
+ *
+ * `ADD_LANES_WGSL` is the other half of §17: the same operation with one lane
+ * per limb and the carry resolved by a parallel scan, so the register really is
+ * mapped onto cooperating lanes rather than onto one thread that owns all
+ * thirty-two limbs. It exists to be checked against the serial kernel, not to
+ * replace it.
  */
 
 /** Shared preamble: the register width and the 32×32→64 primitive. */
@@ -64,6 +69,84 @@ fn main() {
     carry = c1 + c2;
   }
   out[32] = carry;
+}
+`;
+
+/**
+ * ADD again, with one lane per limb — §17's cooperating-lane organization.
+ *
+ * The serial kernel above walks 32 limbs in one invocation because a carry is
+ * inherently sequential: limb `i` cannot finish until limb `i-1` has. That is
+ * the whole difficulty of mapping a wide scalar onto lanes, and it has a known
+ * answer, which is why this is worth building rather than assuming.
+ *
+ * Each lane computes its own sum and two one-bit facts about it:
+ *
+ *   generate   the pair overflows on its own, whatever arrives from below
+ *   propagate  the sum is all ones, so a carry arriving from below leaves again
+ *
+ * They cannot both be true — a sum that wrapped is at most 2^32 − 2, so it is
+ * never all ones. That is the same fact the serial kernel's comment records
+ * about its two carry tests.
+ *
+ * Over a range of limbs the pair composes: a range generates a carry if its
+ * upper part does, or if the upper part propagates one the lower part
+ * generated; it propagates only if every limb in it does. That operator is
+ * associative, so a Kogge–Stone inclusive scan gives every lane the pair for
+ * everything below and including it in log2(32) = 5 rounds, and the carry into
+ * lane i is the generate bit at lane i−1.
+ *
+ * Both barriers in the loop are needed and both sit in uniform control flow:
+ * the first stops a lane overwriting a neighbour's value before that neighbour
+ * has read it, the second makes the new values visible before the next round.
+ *
+ * This is not offered as faster. Thirty-two lanes doing five rounds of shared
+ * memory traffic to replace a 32-iteration loop is very unlikely to win at this
+ * width, and no timing claim is made anywhere. What it is offered as is §17's
+ * organization actually built and checked bit-for-bit against the serial
+ * kernel and the CPU machine on every committed ADD fixture (§19).
+ */
+export const ADD_LANES_WGSL = /* wgsl */ `${COMMON}
+@group(0) @binding(0) var<storage, read> a: array<u32, 32>;
+@group(0) @binding(1) var<storage, read> b: array<u32, 32>;
+@group(0) @binding(2) var<storage, read_write> out: array<u32, 33>;
+
+var<workgroup> gen: array<u32, 32>;
+var<workgroup> prop: array<u32, 32>;
+
+@compute @workgroup_size(32)
+fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
+  let i = lid.x;
+  let sum = a[i] + b[i];
+  gen[i] = select(0u, 1u, sum < a[i]);
+  prop[i] = select(0u, 1u, sum == 0xffffffffu);
+  workgroupBarrier();
+
+  for (var offset: u32 = 1u; offset < LIMBS; offset = offset << 1u) {
+    var g = gen[i];
+    var p = prop[i];
+    if (i >= offset) {
+      let g_low = gen[i - offset];
+      let p_low = prop[i - offset];
+      g = g | (p & g_low);
+      p = p & p_low;
+    }
+    workgroupBarrier();
+    gen[i] = g;
+    prop[i] = p;
+    workgroupBarrier();
+  }
+
+  // The carry into limb i is what everything below it generated. Lane 0 has
+  // nothing below it, and reading gen[0u - 1u] would be a wrap to 4294967295.
+  var carry_in: u32 = 0u;
+  if (i > 0u) {
+    carry_in = gen[i - 1u];
+  }
+  out[i] = sum + carry_in;
+  if (i == LIMBS - 1u) {
+    out[32] = gen[i];
+  }
 }
 `;
 

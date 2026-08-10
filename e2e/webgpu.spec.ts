@@ -144,6 +144,14 @@ test('the compute panel reports agreement where a device exists', async ({ page 
   // The check is asynchronous; the assertion retries until the device answers.
   await expect(gpuRow).toContainText('ADD agrees with the CPU machine', { timeout: 20000 });
   await expect(gpuRow).toContainText('checked bit-for-bit on these operands');
+  // §17: the panel claims both organizations, so both have to have run.
+  await expect(gpuRow).toContainText('both §17 organizations');
+  await expect(gpuRow).toContainText('32 lanes owning one limb each');
+  if (process.env['SHOTS'] !== undefined) {
+    // The only way to see this row: it needs a real device, so the ordinary
+    // screenshot sweep renders the "absent" branch instead.
+    await page.screenshot({ path: 'shots/gpu-verdict.png', fullPage: true });
+  }
 });
 
 test('every limb fixture passes on the actual GPU (§18, §19)', async ({ page }) => {
@@ -200,6 +208,28 @@ test('every limb fixture passes on the actual GPU (§18, §19)', async ({ page }
       sum: entry.sum,
       carryOut: entry.carryOut,
     });
+    checked += 1;
+  });
+
+  // §17: the same operation with one lane per limb and the carry resolved by a
+  // parallel scan, against the same fixtures. A second organization is only
+  // worth having if it is checked, and the check is against the CPU's expected
+  // sums — not against the serial shader, which would make the GPU its own
+  // reference (§19).
+  const lanewise = await runBatch(
+    'addLanes',
+    limbs.add.map((entry) => ({ a: entry.a, b: entry.b })),
+  );
+  limbs.add.forEach((entry, index) => {
+    expect(lanewise[index], `addLanes ${entry.a} + ${entry.b}`).toEqual({
+      sum: entry.sum,
+      carryOut: entry.carryOut,
+    });
+    // And the two organizations agree with each other, which the fixture
+    // comparison already implies and which is the claim §17 actually makes.
+    expect(lanewise[index], `organizations disagree on ${entry.a} + ${entry.b}`).toEqual(
+      additions[index],
+    );
     checked += 1;
   });
 

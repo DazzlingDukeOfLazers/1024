@@ -160,11 +160,19 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
         return;
       }
       try {
-        const out = await machine.run('add', cpu.aLimbs, cpu.bLimbs);
-        const sameLimbs = cpu.sum.limbs.every((limb, index) => out[index] === limb);
-        const sameCarry = (out[32] === 1) === cpu.sum.carryOut;
+        // Both §17 organizations, against the CPU machine — never against each
+        // other. Two shaders agreeing is two shaders agreeing.
+        const matches = async (organization: 'add' | 'addLanes'): Promise<boolean> => {
+          const out = await machine.run(organization, cpu.aLimbs, cpu.bLimbs);
+          return (
+            cpu.sum.limbs.every((limb, index) => out[index] === limb) &&
+            (out[32] === 1) === cpu.sum.carryOut
+          );
+        };
+        const serial = await matches('add');
+        const lanes = await matches('addLanes');
         conclude(
-          sameLimbs && sameCarry
+          serial && lanes
             ? { kind: 'agrees', description: machine.description }
             : { kind: 'disagrees', description: machine.description },
         );
@@ -249,7 +257,12 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
               {gpu.kind === 'agrees' && (
                 <>
                   <span className="tag tag-exact">ADD agrees with the CPU machine</span>{' '}
-                  <small>checked bit-for-bit on these operands · {gpu.description}</small>
+                  <small>
+                    checked bit-for-bit on these operands · {gpu.description}
+                    <br />
+                    both §17 organizations: one thread owning all 32 limbs, and 32 lanes owning one
+                    limb each with the carry resolved by a parallel scan
+                  </small>
                 </>
               )}
               {gpu.kind === 'disagrees' && (
