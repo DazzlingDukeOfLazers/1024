@@ -93,7 +93,11 @@ Decisions Daniel made when this plan was written (2026-08-09):
     closing the TASKS entry**, and TASKS is what the next session reads.
   - An object with two lengths now declares which one it *is*; `primaryLength`
     was returning whichever JSON key came first. The door has a width.
-- 921 unit tests, 142 Playwright, 315 GPU checks, full gate green.
+  - A second constant set, so §3's "conditioned on the declaration" is
+    watchable rather than asserted. **Contains a citation check for review**:
+    CODATA 2022 publishes the identical Planck length, so the second set is
+    derived from the published uncertainty instead.
+- 928 unit tests, 143 Playwright, 315 GPU checks, full gate green.
 - Next action: pick from the TASKS backlog. Open items now: §17's subgroup
   organization (optional WGSL feature *and* hardware-dependent subgroup size,
   so it would be a weaker claim than the rest of this track — decide before

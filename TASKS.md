@@ -83,9 +83,40 @@ Discovered while implementing:
 - [x] Implement 256-bit Planck tick register.
 - [x] Implement SI ↔ Planck quantization.
 - [x] Keep physical-model disclaimer in UI.
-- [ ] Constants are frozen as `CODATA_2018`. Adding a second set (a later CODATA,
-      or a deliberately different nominal) would demonstrate that quantization is
-      conditioned on the declaration — worth doing once experiments are versioned.
+- [x] Constants were frozen as `CODATA_2018`, and this asked for a second set to
+      demonstrate that quantization is conditioned on the declaration. `§3` has
+      said so since milestone 3 and the panel said so in prose; it was never
+      anything a reader could watch happen.
+
+      **A later CODATA does not work, which is the first thing the measurement
+      settled.** CODATA 2022 publishes the identical Planck length —
+      1.616255(18) × 10^-35 m, digit for digit — because the adjustment did not
+      move `G`, which dominates it. Checked against the NIST value page rather
+      than assumed. Two real adjustments that agree to every published digit
+      demonstrate nothing about conditioning.
+
+      So the second set is derived, and derived from the constants' *own*
+      published uncertainty rather than from a number chosen to make a point:
+      each nominal plus one standard uncertainty, computed by exact rational
+      addition rather than typed out. It is labelled *not a recommended value*
+      everywhere it appears, because it is a declaration to compare against a
+      declaration.
+
+      The Planck panel shows both, and the same metre lands 689 ticks apart.
+      Looking at it caught the display saying the opposite of the point: at four
+      significant figures both rows printed `1.616 × 10^-35 m`, since the
+      declarations differ in the sixth — the column whose whole job is to show
+      they differ said they were the same, above tick counts that plainly were
+      not. Shown to each constant's own declared digits now.
+
+      Two mutants survived first time and both were real. `c` was written into
+      the set directly rather than passed through the derivation, so the
+      documented "an exact constant comes back unchanged" branch was
+      unreachable — it goes through the same function as the others now, and the
+      property is a property of the code rather than a claim about the set. And
+      nothing declared today uses `kind: 'relative'`, so adding a relative
+      uncertainty as if it were absolute changed no test; the field exists, so
+      the arithmetic for it is pinned.
 
 ## Binary64
 

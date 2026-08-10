@@ -13,12 +13,17 @@ import {
 } from './planck';
 import {
   CODATA_2018,
+  CODATA_2018_PLUS_1SIGMA,
+  CONSTANT_SETS,
+  type ConstantSet,
+  type DeclaredConstant,
   PLANCK_LENGTH,
+  atPlusOneSigma,
   PLANCK_TIME,
   SPEED_OF_LIGHT,
   relativeUncertainty,
 } from './constants';
-import { ONE, ZERO, abs, gt, lt, lte, mul, rational, sub } from '../rational/rational';
+import { ONE, ZERO, abs, add, gt, lt, lte, mul, rational, sub } from '../rational/rational';
 import { parseDecimalExact } from '../rational/parse';
 import { orderOfMagnitude10 } from '../rational/log10';
 import { fromUnit } from '../quantities/quantity';
@@ -143,6 +148,90 @@ describe('addMeters', () => {
     }
     const divergence = sub(decodeTicks(PLANCK_LENGTH, state), mul(millimetre, r(100n)));
     expect(divergence).toEqual(mul(perStep, r(100n)));
+  });
+});
+
+describe('the grid is conditioned on the declaration', () => {
+  const configFor = (constants: ConstantSet) => ({ ...DEFAULT_PLANCK_CONFIG, constants });
+
+  it('derives the second declaration rather than restating it', () => {
+    // Written down, `1.616255e-35 + 0.000018e-35` is a transcription risk for
+    // no gain, and the derived one cannot drift if the first is ever updated.
+    expect(CODATA_2018_PLUS_1SIGMA.planckLength.nominal).toEqual(
+      add(PLANCK_LENGTH.nominal, PLANCK_LENGTH.uncertainty!.value),
+    );
+    expect(CODATA_2018_PLUS_1SIGMA.planckTime.nominal).toEqual(
+      add(PLANCK_TIME.nominal, PLANCK_TIME.uncertainty!.value),
+    );
+  });
+
+  it('leaves an exact constant alone, because it has nothing to add', () => {
+    // `c` is a definition. A set where everything moved would suggest a
+    // definition and a measurement are the same kind of thing.
+    expect(CODATA_2018_PLUS_1SIGMA.speedOfLight).toBe(CODATA_2018.speedOfLight);
+    expect(CODATA_2018_PLUS_1SIGMA.speedOfLight.uncertainty).toBeUndefined();
+  });
+
+  it('gives the same value a different tick count on each grid', () => {
+    // The point of the second set: §3 says quantization is computed *given*
+    // the declaration, and this is that sentence happening.
+    const base = encodeMeters(ONE, configFor(CODATA_2018));
+    const wider = encodeMeters(ONE, configFor(CODATA_2018_PLUS_1SIGMA));
+
+    expect(base.state?.ticks).toBeDefined();
+    expect(wider.state?.ticks).toBeDefined();
+    // A longer Planck length means fewer of them in a metre.
+    expect(wider.state!.ticks).toBeLessThan(base.state!.ticks);
+  });
+
+  it('moves the grid by about the constant`s own relative uncertainty', () => {
+    // Not an arbitrary amount: the tick counts differ in the same proportion
+    // the constant is uncertain, ~1.1 × 10^-5, which is why this second set is
+    // derived from the published uncertainty rather than invented.
+    const base = encodeMeters(ONE, configFor(CODATA_2018)).state!.ticks;
+    const wider = encodeMeters(ONE, configFor(CODATA_2018_PLUS_1SIGMA)).state!.ticks;
+    const relative = Number(base - wider) / Number(base);
+    const declared = relativeUncertainty(PLANCK_LENGTH)!;
+    expect(relative).toBeCloseTo(Number(declared.numerator) / Number(declared.denominator), 8);
+  });
+
+  it('handles a relative uncertainty as a fraction of the nominal', () => {
+    // Nothing declared today uses `kind: 'relative'`, so this branch had no
+    // test and a mutant that added the fraction as if it were metres survived.
+    // The field exists, so the arithmetic has to be right for it.
+    const relative: DeclaredConstant = {
+      id: 'test',
+      nominal: rational(200n),
+      unit: 'm',
+      source: 'test',
+      sourceVersion: '1',
+      declaredDigits: 3,
+      uncertainty: { kind: 'relative', value: rational(1n, 100n) },
+    };
+    expect(atPlusOneSigma(relative).nominal).toEqual(rational(202n));
+
+    // And the absolute form is genuinely different arithmetic, or the mutant
+    // that conflated them would still survive.
+    const absolute: DeclaredConstant = {
+      ...relative,
+      uncertainty: { kind: 'absolute', value: rational(1n, 100n) },
+    };
+    expect(atPlusOneSigma(absolute).nominal).toEqual(rational(20001n, 100n));
+  });
+
+  it('offers exactly the sets the UI can show', () => {
+    // Anti-vacuity: a one-element list would make every comparison above a
+    // comparison with itself.
+    expect(CONSTANT_SETS).toHaveLength(2);
+    expect(CONSTANT_SETS[0]).toBe(CODATA_2018);
+    expect(new Set(CONSTANT_SETS.map((set) => set.planckLength.nominal.numerator)).size).toBe(2);
+  });
+
+  it('says the derived set is not a recommended value', () => {
+    // It is a declaration to compare against a declaration, and every view that
+    // shows it reads this string.
+    expect(CODATA_2018_PLUS_1SIGMA.planckLength.source).toContain('not a recommended value');
+    expect(CODATA_2018_PLUS_1SIGMA.planckLength.source).toContain('one standard uncertainty');
   });
 });
 

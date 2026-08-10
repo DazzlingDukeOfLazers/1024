@@ -371,6 +371,32 @@ test('the lab refuses to chart a run with no shape', async ({ page }) => {
   await expect(timeline.locator('svg.sparkline')).toHaveCount(0);
 });
 
+test('the planck grid shows what it is conditioned on', async ({ page }) => {
+  await openLab(page);
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Planck grid (256-bit integer)' }) });
+  await expect(panel).toContainText('Conditioned on which declaration?');
+
+  const row = (name: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  // The two declarations differ in the sixth significant digit, so at the
+  // default four figures both rows printed the same LSB above tick counts that
+  // plainly were not the same. Shown to the digits each was declared with.
+  await expect(row('codata-2018')).toContainText('1.616255 × 10^-35 m');
+  await expect(row('codata-2018+1σ')).toContainText('1.616273 × 10^-35 m');
+
+  // And the point of the whole panel: the same value lands on a different grid.
+  const ticks = async (name: string) => (await row(name).textContent()) ?? '';
+  const base = await ticks('codata-2018');
+  const wider = await ticks('codata-2018+1σ');
+  expect(base).not.toEqual(wider);
+  await expect(panel).toContainText('not a recommended value');
+  await expect(panel).toContainText('the 2022 adjustment publishes the identical Planck length');
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 

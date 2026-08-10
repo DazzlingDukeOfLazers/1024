@@ -14,8 +14,12 @@ import {
   type Q128_128PresetName,
   encodeMeters as encodeQ128,
 } from '../core/representations/q128_128';
-import { encodeMeters as encodePlanck, summarizeLength } from '../core/representations/planck';
-import { PLANCK_LENGTH } from '../core/representations/constants';
+import {
+  DEFAULT_PLANCK_CONFIG,
+  encodeMeters as encodePlanck,
+  summarizeLength,
+} from '../core/representations/planck';
+import { CONSTANT_SETS, PLANCK_LENGTH } from '../core/representations/constants';
 import { accumulate, createAccumulator, readAccumulator } from '../core/representations/q512_512';
 import { PickYourRuler } from '../features/microscope/PickYourRuler';
 
@@ -100,6 +104,72 @@ export function FiniteMachinesPanel({ length, preset, onPresetChange }: FiniteMa
           only as meaningful as the declared constant it is conditioned on, and that
           constant&rsquo;s own measurement uncertainty is a separate quantity — it never enters the
           error ledger.
+        </p>
+
+        {/* The sentence above is the whole basis of this machine, and it was
+            only ever a sentence. Two declarations of the same constant, the
+            same 256-bit register, the same value: the tick count moves and the
+            quantization error moves with it. */}
+        <h4>Conditioned on which declaration?</h4>
+        <table className="readout">
+          <thead>
+            <tr>
+              <th scope="col">Declaration</th>
+              <th scope="col">LSB</th>
+              <th scope="col">This value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {CONSTANT_SETS.map((set) => {
+              const encoded = encodePlanck(length.value, {
+                ...DEFAULT_PLANCK_CONFIG,
+                constants: set,
+              });
+              return (
+                <tr key={set.id}>
+                  <th scope="row">{set.id}</th>
+                  {/* At the default four significant figures both rows printed
+                      `1.616 × 10^-35 m`, because the declarations differ in the
+                      sixth — so the column whose entire job is to show that
+                      they differ said they were the same, above tick counts
+                      that plainly were not. Shown to the digits each constant
+                      was declared with, which is the precision it actually
+                      claims. */}
+                  <td className="mono">
+                    {
+                      formatScientific(quantity('length', set.planckLength.nominal), {
+                        significantDigits: set.planckLength.declaredDigits,
+                      }).text
+                    }
+                  </td>
+                  <td className="mono">
+                    {encoded.status === 'rejected' ? (
+                      <span className="error">out of range</span>
+                    ) : (
+                      <>
+                        {encoded.state?.ticks.toString()} ticks
+                        {encoded.quantizationError !== undefined && (
+                          <>
+                            <br />
+                            <small>quantization {meters(encoded.quantizationError)}</small>
+                          </>
+                        )}
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        <p className="lens-question">
+          The second row is not a recommended value: it is CODATA 2018&rsquo;s own nominal plus one
+          standard uncertainty, which is where the measurement already says the constant might be. A
+          later CODATA would have been the obvious comparison and does not work — the 2022
+          adjustment publishes the identical Planck length, digit for digit, because it did not move{' '}
+          <em>G</em>. The speed of light is the same in both, having no uncertainty to add: it is a
+          definition, not a measurement, and a set where everything moved would suggest those are
+          the same kind of thing.
         </p>
       </section>
 
