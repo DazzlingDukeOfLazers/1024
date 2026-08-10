@@ -529,9 +529,9 @@ Discovered while implementing:
 - [ ] Only the experiment runner is off-thread. Catalog indexing and bulk
       comparison are still main-thread, and `docs/ARCHITECTURE.md` names both as
       later candidates.
-- [ ] CI has never actually run — there is no remote push yet from this machine.
-      What has been done instead: a clean clone of the branch into an empty
-      directory, `npm ci` from the lockfile, then the whole pipeline in order.
+- [x] CI runs now — the work branch pushes to GitHub and `.github/workflows/ci.yml`
+      runs the whole gate on every push. Before the remote existed, the check was
+      a clean clone into an empty directory and the pipeline in order.
       258 packages, no vulnerabilities, and typecheck, lint, format, 613 unit
       tests, build and 81 Playwright tests all green from nothing. The
       `allowScripts` block did its job and esbuild built itself. That covers
@@ -1039,8 +1039,8 @@ What it asks for, roughly in dependency order:
       to save 345 subtractions, so it wins only while a comparison is literally
       free and loses at a cost of one. Which is exactly why §10 says not to pick
       one before benchmarks exist — I would have picked restoring.
-- [ ] Radix-2^N and reciprocal-based division, the other two §10 names. The
-      comparison harness is there now; these would slot into it.
+- [x] Radix-2^N and reciprocal-based division, the other two §10 names. Both
+      landed, benchmarked, and oracle-checked; §10's list is complete.
 - [x] Scenario settings (§14) so one workload runs under several policies. The
       four §14 names as values in `scenario.ts`, threaded through rather than
       ambient, and a workload runner that carries an exact rational reference so
@@ -1158,8 +1158,9 @@ what the identity holds for, and the test asserts they agree once the run ends.
 The first version of the test asserted the identity against `quotient` for both,
 and failed at the first bit of the first case. The failure was the useful part.
 
-- [ ] Radix-2^N and reciprocal-based division (§10) still open. The trace shape
-      should hold either, but neither has been tried against it.
+- [x] Radix-2^N and reciprocal-based division (§10). The trace shape held
+      radix-2^N unchanged; the reciprocal has no serial digits to trace, which
+      is a fact about the method the panel now states.
 - [ ] The quotient tape shows a 48-bit window. A run of 717 steps at 1.6 px a
       cell is a texture rather than a diagram, and the window is the fix; an
       autoplay control over it is not built.
@@ -1191,9 +1192,8 @@ four cycles, which no radix rescues them from, because none of them makes fewer
 comparisons.
 
 - [x] Radix-2^N division (§10).
-- [ ] Reciprocal-based division (§10) still open. It is the one that would change
-      the shape rather than the constants, since it turns division into the
-      multiplication this track already models.
+- [x] Reciprocal-based division (§10). It did change the shape rather than the
+      constants — its cost is decided by the multiplier, not the division.
 
 ## A mutant that hangs instead of failing
 

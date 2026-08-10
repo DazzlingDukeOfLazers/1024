@@ -1,0 +1,173 @@
+# PLAN.md — standing plan for autonomous sessions
+
+Written 2026-08-09, when Daniel switched the model to Fable and said the machine
+would run mostly unattended for a couple of days, with him occasionally
+answering questions or starting fresh sessions to pick this up. This file is the
+handoff between those sessions: a fresh session with no memory of the previous
+one reads this, the tail of `TASKS.md`, and continues.
+
+Decisions Daniel made when this plan was written (2026-08-09):
+
+- Main track: **§18 as the spine, polish interleaved** when blocked or between
+  phases.
+- Visual regression: **curated subset** (~10 states × 2 widths), locked only
+  after the §22 animation work settles the UI shape.
+- Citations: **allowed unattended**, committed clearly marked for his review,
+  with sources quoted in the commit message.
+- If GPU verification had been impossible: CPU limb machine + unverified WGSL.
+  (Moot — see Environment facts: GPU verification **works** here.)
+
+## Position
+
+> Update this section at the end of every session. Keep it to a few lines;
+> the log lives in git.
+
+- Branch `dd/exact-quantity-core`, pushed through commit `ee08454` plus this
+  plan's infrastructure commit.
+- 807 unit tests, 94 Playwright tests (95 with the WebGPU environment test),
+  all green. CI runs the gate on every push.
+- Current phase: **1** (§18 ladder), not yet started.
+- Next action: Phase 1.1 — extend `tools/oracle.py` with u32-limb fixtures.
+
+## Session protocol
+
+1. Read `CLAUDE.md` (project rules), this file, and the tail of `TASKS.md`.
+2. Run the full gate before changing anything, so a broken start is discovered
+   before it has an author: `npm run typecheck && npm run lint &&
+   npm run format:check && npm test && npx playwright test`.
+3. Work the next unchecked item in the current phase, smallest slice first.
+   The disciplines that have caught every defect so far, in one place:
+   - **Measure before designing.** Numbers in comments, commit messages and
+     tests are measured, never derived from what sounds right. The 2^12-not-10^6
+     coarsening factor and the "583" step count that was actually 582 are both
+     in the git log as warnings.
+   - **Falsify every new test** — break the code, watch the test fail, restore.
+     Use `tools/mutate.py` (never ad-hoc shell: two sessions hung and left the
+     tree mutated before it existed).
+   - **Look at the app.** `$env:SHOTS='<filter>'; npx playwright test
+     e2e/screenshots` writes PNGs to `shots/`; read them. The DOM passing is
+     not the panel being right — the trap scenario blanked an entire lens while
+     every geometric rule passed.
+   - **Anti-vacuity.** Any assertion that "nothing is wrong" must prove it
+     examined something. Empty states are the interesting ones.
+4. Gate again, commit with the project's usual commit-message discipline
+   (what was measured, what surprised, what was killed), push.
+5. Update **Position** above; check boxes below; add discoveries to `TASKS.md`.
+6. If a decision needs Daniel, add it to **Questions for Daniel** below, commit,
+   and move to the next unblocked item — never idle behind a question.
+
+## Environment facts (hard-won; do not rediscover)
+
+- Node is not on PATH by default. Prefix PowerShell commands with:
+  `$env:PATH = "C:\Users\danie\AppData\Local\Microsoft\WinGet\Packages\OpenJS.NodeJS.LTS_Microsoft.Winget.Source_8wekyb3d8bbwe\node-v24.19.0-win-x64;$env:PATH"`
+- PowerShell 5.1 `Get-Content`/`Set-Content` corrupt BOM-less UTF-8. Edit files
+  with the Edit tool or Python `io.open(..., encoding='utf-8', newline='')`.
+  The same trap applies to Python `subprocess(text=True)` — pass
+  `encoding='utf-8'` explicitly.
+- The in-app browser pane does not composite when hidden: ResizeObserver and
+  rAF never fire, so every self-measuring view sits at its fallback width and
+  the app looks broken when it is not. Screenshots via Playwright instead.
+- **WebGPU**: Playwright's bundled Chromium finds the adapter (AMD RDNA-3) but
+  `requestDevice` fails (`dxil.dll Windows Error: 87` — DXC not packaged).
+  Branded Chrome works: `test.use({ channel: 'chrome', launchOptions: { args:
+  ['--enable-unsafe-webgpu', '--enable-gpu'] } })`. Proven by
+  `e2e/webgpu.spec.ts`, which executes a carry-propagating WGSL add and checks
+  the bits. That spec skips on CI deliberately.
+- Mutation testing: `python tools/mutate.py --file … --old … --new … --label …
+  --test <vitest targets>`. Per-mutant timeout, revert in a `finally`,
+  NO-MATCH counts as a failure.
+- Dev server for the browser pane (rarely needed): `.claude/launch.json` in
+  `personal-git/` defines `scale-atlas`.
+
+## Phase 1 — §18: the WebGPU compute track
+
+The last untouched section of `docs/WIDE_INTEGER_ARCHITECTURE.md`. Read §17–§19
+before starting. The ladder mirrors how every other track here was built:
+oracle first, CPU simulation second, the real thing third, UI last.
+
+- [ ] **1.1 Python limb prototype + fixtures.** Extend `tools/oracle.py` with a
+  u32-limb model (`array of 32 × u32` = one 1024-bit value) and generate
+  fixtures for ADD, SUB, BITLEN, SHL, SHR, MUL_WIDE, DIV_REM covering §19's
+  stress list: all-zero, all-one, min/max signed, long carry chains, long
+  borrow chains, single-bit sparse, dense random (seeded, not `random()` at
+  import time), leading-zero-heavy, division exact and with remainder,
+  overflow, narrowing. Commit regenerated `fixtures/oracle.json`.
+  *Done means:* fixtures exist and the Python model agrees with Python's
+  native ints on every case — the prototype is checked against an oracle too.
+- [ ] **1.2 CPU limb machine** in `src/core/limbs/`. The kernels use only u32
+  operations (`>>> 0` semantics, explicit carries/borrows) — `bigint` appears
+  at the encode/decode boundary and in tests, never inside a kernel, because a
+  kernel that secretly uses bigint is not a simulation of anything. Checked
+  against the 1.1 fixtures AND against `core/wide` on random values. Metrics
+  per §20 (limb ops, carries taken, cycles) so it can join the benchmarks.
+  *Done means:* all fixtures pass; a mutation pass on carry/borrow logic kills
+  every mutant; oracle test sweeps the op list so new ops are automatically
+  covered.
+- [ ] **1.3 WGSL shaders + browser harness.** One WGSL kernel per op, textually
+  mirroring the 1.2 kernels. A small `src/gpu/` harness: capability detection,
+  buffer plumbing, dispatch. Playwright spec in the `e2e/webgpu.spec.ts`
+  pattern (branded Chrome + flags) runs every fixture through the GPU and
+  compares bit-for-bit; skips loudly when no adapter.
+  *Done means:* every 1.1 fixture passes on the actual GPU on this machine.
+- [ ] **1.4 Compute panel in the Architecture Lab.** §18: "the browser UI can
+  visualize the operation while the compute shader performs it." Minimal
+  first: limb lanes with carry propagation shown, CPU/GPU agreement stated per
+  §19 (never GPU-as-its-own-reference), and the §20 metrics beside the
+  digit-serial ones. Screenshot both widths, read the PNGs, sweep the new
+  states (add to `e2e/states.ts`), and leave a screenshot-backed design note
+  in **Questions for Daniel** rather than blocking on taste.
+  *Done means:* panel renders in all swept states; conformance sweep green;
+  screenshots reviewed.
+
+## Phase 2 — §22 finish (before baselines, because it changes shape)
+
+- [ ] **2.1 Autoplay for the quotient tape.** Play/pause control stepping
+  `divisionStep`; honour `prefers-reduced-motion` (no autoplay, scrubber
+  still works); e2e test drives it and checks it stops at the end. Not part
+  of share state — a link carries a position, not a playing animation.
+- [ ] **2.2 Accumulation animation (§22).** "small product → exact shift →
+  wide accumulator": step through partial products of the existing multiply
+  matrix, highlighting the product, its shifted position, and the accumulator
+  filling. Same reduced-motion rule. Sweep the new states.
+
+## Phase 3 — visual-regression baselines (curated)
+
+- [ ] After Phase 2: pick ~10 representative states (one per lens plus the
+  densest architecture ones), `toHaveScreenshot` at 1280 and 420, commit the
+  baselines. Document the update procedure in `docs/TEST_STRATEGY.md`
+  (`--update-snapshots` and when it is legitimate). Baselines are
+  Windows-rendered; gate the spec out of CI (fonts differ on Linux) with a
+  comment saying exactly that.
+
+## Phase 4 — polish batch (interleave when blocked)
+
+- [ ] Skip link (TASKS ~line 580) — first tab stop jumps to the lens panel.
+- [ ] Colour-vision check (TASKS ~line 582): simulate deuteranopia/protanopia/
+  tritanopia on the palette programmatically, fix what fails, record method.
+- [ ] The ~50 formatter call sites that drop the exactness flag under
+  non-claiming labels (TASKS ~line 806) — wire through `Rendered`.
+- [ ] Resolution-chart legend sits on its own plotted line (TASKS ~line 776).
+- [ ] 1e20 m grid labels are unreadable digit strings (TASKS ~line 898) —
+  engineering notation there.
+- [ ] `role="application"` reconsideration (TASKS ~line 577).
+
+## Phase 5 — citations (allowed unattended, marked for review)
+
+- [ ] The task as rewritten in TASKS (~line 203): cite the four or five
+  catalog objects that are genuinely citable (CODATA/IAU-class sources), fix
+  any value the source contradicts, and mark the commit `citations — for
+  Daniel's review` with the sources quoted in the message. No invented
+  precision: a range object keeps its range.
+
+## Not in scope unattended
+
+Comparator area/volume, progressive semantic detail, search indexing, share
+payload compression, Three.js, dependency upgrades, anything requiring an
+account or publishing beyond the existing GitHub remote, share-schema version
+bumps. If one of these becomes necessary, write up why and stop that thread.
+
+## Questions for Daniel
+
+> Sessions append here instead of blocking. Answer whenever you check in.
+
+- (none yet)

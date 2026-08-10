@@ -323,6 +323,9 @@ Until the v0 numerical and SVG ruler behavior is stable, do not spend time on:
 
 ## Working style for Claude Code
 
+If a session starts without specific instructions, read `PLAN.md` — the standing
+plan for autonomous sessions — and continue from its Position section.
+
 When starting a task:
 
 1. Read the relevant design docs.
