@@ -56,11 +56,22 @@ Decisions Daniel made when this plan was written (2026-08-09):
 - **Phase 4 complete** except the 1e20 m grid labels, which are queued as a
   question for Daniel rather than guessed at. 853 unit tests, 130 Playwright.
 - **All five plan phases are complete.** 866 unit tests, 131 Playwright.
-- Next action: no numbered phase remains. Pick from the TASKS backlog — the
-  largest open items are §17's cooperating-lane GPU organizations, the
-  Comparator's area/volume operations, and progressive semantic detail
-  (milestone 11) — and keep the same disciplines. One question is open for
-  Daniel below.
+- Backlog work since (Daniel opened the backlog explicitly, so the "not in
+  scope unattended" list below no longer binds):
+  - Comparator area/volume with the similarity assumption named (`147ae5f`).
+  - The Atlas listed one neighbour twice, and its "also at this size" table was
+    captioned "unrelated" while naming related objects (`60e6c1a`). Both found
+    by screenshotting `atlas/related`, neither reachable from the DOM.
+    `createCatalog` now refuses both directions of a relation.
+  - `semanticDetail` declared a camera resolution and was read as an object
+    size (`9d244e1`). Renamed to `minMeters`/`maxMeters`; still set by no
+    fixture, deliberately.
+- 884 unit tests, 134 Playwright, full gate green.
+- Next action: pick from the TASKS backlog. The largest open items are §17's
+  cooperating-lane GPU organizations, the Ruler not using the relation graph
+  (it still picks neighbours by size alone), `how-many-fit` by volume (wants a
+  real packing model), and the search index. Keep the same disciplines. One
+  question is open for Daniel below.
 
 ## Session protocol
 
