@@ -58,8 +58,17 @@ machines (Q128.128 at a configurable base unit, the Q512.512 error meter, the
 Planck grid, and the per-representation ErrorLedger), the binary64 inspector, the
 experiment runner, the catalog and shareable state. The built-in experiments run
 in a Web Worker — including a million real millimetre additions per machine, in
-about a second and a half, with progress, cancellation, and a trace of
-twenty-odd samples. What remains is the Hardening list in `TASKS.md`.
+about a second and a half, with progress, cancellation, and a trace of seventeen
+checkpoints. What remains is the Hardening list in `TASKS.md`.
+
+There is a sixth tab, the **Architecture Lab**, and it is deliberately not one of
+the five: it is the experimental track from
+`docs/WIDE_INTEGER_ARCHITECTURE.md` — radix-2^N digit decomposition, four
+division algorithms benchmarked against each other, the narrowing policies of §8,
+and the same 1024-bit register drawn as the `array<u32, 32>` a compute shader
+owns. Its WGSL kernels run on a real GPU when the browser has one, checked
+bit-for-bit against the CPU machine on every committed fixture, and say plainly
+when it does not.
 
 **Zooming is both metric and ontology navigation.** The Atlas walks the object
 graph from the selection — `human → hand → finger → skin cell → DNA` is found by
