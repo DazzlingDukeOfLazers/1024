@@ -503,8 +503,23 @@ Discovered while implementing:
       Coconut (0.20 m), so Coconut's label no longer appears at low zoom. That is
       correct decluttering, and it prompted a proper object picker, which also
       closes the "markers are pointer-only" gap from milestone 7.
-- [ ] `semanticDetail` is read by `bandFor` but no fixture sets it; the derived
-      ±2 decades is doing the work everywhere.
+- [x] `semanticDetail` is read by `bandFor` but no fixture sets it — and the
+      reason that never mattered is that the read was wrong. The field declared
+      `minMetersPerPixel`/`maxMetersPerPixel` and `bandFor` dropped those
+      straight into a `ScaleBand`, which is a window of object *sizes*: the
+      Atlas builds one from its visible extent and everything compared against
+      it is an object's own magnitude. A camera resolution is a different
+      quantity, related only through the viewport width, so a fixture that had
+      used the field would have been placed about three decades from where it
+      asked. A mutant that ignored the declared band entirely survived the whole
+      suite, which is what an unset field and an unused reader add up to.
+
+      Now `minMeters`/`maxMeters`, with tests that exercise both halves
+      independently — declaring a floor must not invent a ceiling. Still set by
+      no fixture, and that stays the honest state: the derived couple of decades
+      is where a thing is neither a dot nor larger than the view, and the
+      progressive-detail panel does better again by taking its band from the
+      camera. The field is there for an editorial opinion nobody has had yet.
 - [ ] Relations are length-only in effect. A `mass scale` projection (DATA_MODEL
       §15) needs the mass dimension first.
 - [ ] The Ruler does not use the graph yet — it still picks nearby objects by

@@ -106,9 +106,21 @@ export interface ScaleObject {
   readonly categories: readonly string[];
   readonly relations: readonly ObjectRelation[];
   readonly visuals: readonly VisualAsset[];
+  /**
+   * The band of sizes this object should be offered in, overriding the couple
+   * of decades either side of its own size that `bandFor` derives.
+   *
+   * In metres, and **not** metres per pixel, which is what this field was
+   * originally declared as. A `ScaleBand` is a window of object *sizes* — the
+   * Atlas builds one from its visible extent, and everything compared against
+   * it is an object's own magnitude. A camera resolution is a different
+   * quantity, and putting one where a size belongs is wrong by a factor of the
+   * viewport width. No fixture ever set it, so nothing ever exercised the
+   * mistake.
+   */
   readonly semanticDetail?: {
-    readonly minMetersPerPixel?: Rational;
-    readonly maxMetersPerPixel?: Rational;
+    readonly minMeters?: Rational;
+    readonly maxMeters?: Rational;
   };
 }
 
@@ -270,21 +282,15 @@ export function parseScaleObject(raw: unknown): ScaleObject {
 
   const semanticDetail = isRecord(raw.semanticDetail)
     ? {
-        ...(raw.semanticDetail.minMetersPerPixel === undefined
+        ...(raw.semanticDetail.minMeters === undefined
           ? {}
           : {
-              minMetersPerPixel: parseValue(
-                raw.semanticDetail.minMetersPerPixel,
-                `${id}.semanticDetail.minMetersPerPixel`,
-              ),
+              minMeters: parseValue(raw.semanticDetail.minMeters, `${id}.semanticDetail.minMeters`),
             }),
-        ...(raw.semanticDetail.maxMetersPerPixel === undefined
+        ...(raw.semanticDetail.maxMeters === undefined
           ? {}
           : {
-              maxMetersPerPixel: parseValue(
-                raw.semanticDetail.maxMetersPerPixel,
-                `${id}.semanticDetail.maxMetersPerPixel`,
-              ),
+              maxMeters: parseValue(raw.semanticDetail.maxMeters, `${id}.semanticDetail.maxMeters`),
             }),
       }
     : undefined;

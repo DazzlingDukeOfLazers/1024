@@ -129,6 +129,57 @@ describe('scale bands', () => {
     expect(coconut.maxLog10).toBeCloseTo(centre + 2, 9);
   });
 
+  it('honours a band the fixture declares, in metres', () => {
+    // Nothing in the catalog declares one, so this is the only thing that
+    // exercises the branch at all. The window is deliberately nowhere near the
+    // derived one — a 1 m object offered from 1 mm to 1 km — so a function that
+    // quietly ignored it would land four decades away rather than nearby.
+    const [declared] = createCatalog([
+      {
+        id: 'a',
+        name: 'a',
+        quantities: {
+          length: {
+            dimension: 'length',
+            unit: 'm',
+            representative: '1',
+            approximation: 'exact',
+            source: 'test fixture',
+          },
+        },
+        semanticDetail: { minMeters: '0.001', maxMeters: '1000' },
+      },
+    ]).objects;
+
+    const band = bandFor(declared!);
+    expect(band.minLog10).toBeCloseTo(-3, 9);
+    expect(band.maxLog10).toBeCloseTo(3, 9);
+  });
+
+  it('derives the half the fixture leaves out', () => {
+    // The two ends are independent: declaring a floor must not invent a ceiling.
+    const [halfDeclared] = createCatalog([
+      {
+        id: 'a',
+        name: 'a',
+        quantities: {
+          length: {
+            dimension: 'length',
+            unit: 'm',
+            representative: '1',
+            approximation: 'exact',
+            source: 'test fixture',
+          },
+        },
+        semanticDetail: { minMeters: '0.001' },
+      },
+    ]).objects;
+
+    const band = bandFor(halfDeclared!);
+    expect(band.minLog10).toBeCloseTo(-3, 9);
+    expect(band.maxLog10).toBeCloseTo(2, 9);
+  });
+
   it('builds a band from an exact visible extent', () => {
     const fromCamera = bandFromExtent(pow10(-9), pow10(-3));
     expect(fromCamera.minLog10).toBeCloseTo(-9, 9);

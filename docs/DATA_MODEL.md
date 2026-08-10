@@ -59,8 +59,8 @@ interface ScaleObject {
   }[];
   visuals?: VisualAsset[];
   semanticDetail?: {
-    minMetersPerPixel?: string;
-    maxMetersPerPixel?: string;
+    minMeters?: string;
+    maxMeters?: string;
   };
 }
 ```
@@ -74,6 +74,23 @@ The loader accepts an exact value written **either** as `{ "numerator", "denomin
 Hand-authoring `7.5 µm` as a fraction of metres is a transcription bug waiting to happen, and nothing about exactness depends on which form is written. Fixture authors should also prefer a natural unit (`"unit": "µm"`, `"representative": "7.5"`) over restating everything in metres; the loader converts exactly.
 
 ## Principles
+
+### Implemented deviation: `semanticDetail` is a size window, not a resolution
+
+`semanticDetail` was declared as `minMetersPerPixel`/`maxMetersPerPixel` and read
+as though it were a range of object sizes. Those are different quantities: a
+scale band is a window of sizes — the Atlas builds one from its visible extent,
+and everything tested against it is an object's own magnitude — while metres per
+pixel is a camera resolution, related to it only through the viewport width. A
+fixture that had used the field would have been placed by a factor of the
+viewport away from where it asked to be.
+
+The fields are `minMeters` and `maxMeters` now. **No fixture sets one**, and
+that is the honest state rather than an omission: the derived band — a couple of
+decades either side of the object's own size — is where a thing is neither a dot
+nor larger than the view, and the progressive-detail panel does better still by
+taking the band from the camera rather than from any declaration. The field
+exists for an editorial opinion nobody has yet had.
 
 ### Author one direction of a relation, never both
 

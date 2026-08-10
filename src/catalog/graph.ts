@@ -230,19 +230,24 @@ export function revealedIn(
  * `semanticDetail` overrides it where a fixture author has an opinion;
  * otherwise it is a couple of decades either side of the object's own size,
  * which is where a thing is neither a dot nor larger than the view.
+ *
+ * Both halves are sizes in metres. They were not: the field declared a camera
+ * resolution and this function read it as a size, so a fixture that used it
+ * would have been wrong by a factor of the viewport width. Nothing caught it
+ * because no fixture uses it — see `semanticDetail` in `schema.ts`.
  */
 export function bandFor(object: ScaleObject, spread = 2): ScaleBand {
   const centre = log10Of(object);
   const declared = object.semanticDetail;
   return {
     minLog10:
-      declared?.minMetersPerPixel === undefined
+      declared?.minMeters === undefined
         ? centre - spread
-        : log10RationalForDisplay(declared.minMetersPerPixel),
+        : log10RationalForDisplay(declared.minMeters),
     maxLog10:
-      declared?.maxMetersPerPixel === undefined
+      declared?.maxMeters === undefined
         ? centre + spread
-        : log10RationalForDisplay(declared.maxMetersPerPixel),
+        : log10RationalForDisplay(declared.maxMeters),
   };
 }
 
