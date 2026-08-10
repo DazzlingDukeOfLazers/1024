@@ -782,10 +782,17 @@ the other three. Four more, and one of them was my own unfinished work.
 never wider than the screen, and no SVG text renders below 7 px. Both are things
 a person sees in one glance and a DOM assertion never mentions.
 
-- [ ] The resolution chart's legend sits on top of its own plotted line. Legible,
-      but the line runs through the words. `labels.ts` could place it, but the
-      chart is a second axis problem rather than the one-dimensional one that
-      module solves.
+- [x] The resolution chart's legend is placed rather than assumed. `labels.ts`
+      gained `chooseClearRect`, kept deliberately separate from the
+      one-dimensional functions beside it because a legend is a block in a plane
+      rather than a label on an axis. It counts *segments crossing* each
+      candidate corner, not sample points inside it: the chart samples once a
+      decade and the legend is narrower than a decade, so a point test would
+      have called the box empty while the line ran through the words — the exact
+      defect being fixed. Falsified by forcing the old corner back.
+- [ ] Four corners is the whole search. A chart whose lines reach all four would
+      fall back to the least-crossed one and keep its translucent backing, which
+      is insurance rather than a fix. No such chart exists yet.
 
 ## The Comparator printed a rounded answer under a heading that said exact
 

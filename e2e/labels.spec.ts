@@ -139,3 +139,75 @@ test('every control stays inside its panel on a narrow screen', async ({ page })
     );
   }
 });
+
+test('no plotted line runs through the resolution chart legend', async ({ page }) => {
+  // The legend used to sit in the top-right corner under a translucent
+  // backing, which is exactly where binary64's rising line arrives — so the
+  // line crossed the words out and the backing only made them legible rather
+  // than unobstructed. Placement is measured now; this checks the result
+  // rather than the reasoning, by intersecting the rendered polylines with the
+  // rendered text boxes.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Numerical Microscope' }).click();
+  await page.getByLabel('Value', { exact: true }).fill('1');
+  await page.getByLabel('Unit', { exact: true }).selectOption('Gm');
+
+  const report = await page
+    .locator('svg[aria-label="Local resolution against magnitude"]')
+    .evaluate((svg) => {
+      const crosses = (
+        from: { x: number; y: number },
+        to: { x: number; y: number },
+        rect: { x: number; y: number; width: number; height: number },
+      ): boolean => {
+        // Sample the segment densely; cruder than a clipping test and entirely
+        // independent of the code under test, which is the point.
+        for (let t = 0; t <= 1; t += 0.01) {
+          const px = from.x + (to.x - from.x) * t;
+          const py = from.y + (to.y - from.y) * t;
+          if (
+            px >= rect.x &&
+            px <= rect.x + rect.width &&
+            py >= rect.y &&
+            py <= rect.y + rect.height
+          ) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      const legends = Array.from(svg.querySelectorAll('text'))
+        .filter((node) => /\((constant|grows)\)$/.test(node.textContent ?? ''))
+        .map((node) => ({ text: node.textContent ?? '', box: node.getBBox() }));
+
+      const lines = Array.from(svg.querySelectorAll('polyline')).map((node) =>
+        (node.getAttribute('points') ?? '')
+          .trim()
+          .split(/\s+/)
+          .map((pair) => {
+            const [x, y] = pair.split(',').map(Number);
+            return { x: x!, y: y! };
+          }),
+      );
+
+      const hits: string[] = [];
+      for (const legend of legends) {
+        for (const line of lines) {
+          for (let i = 0; i + 1 < line.length; i += 1) {
+            if (crosses(line[i]!, line[i + 1]!, legend.box)) {
+              hits.push(legend.text);
+              break;
+            }
+          }
+        }
+      }
+      return { legendCount: legends.length, lineCount: lines.length, hits };
+    });
+
+  // Anti-vacuity: a chart with no legend or no lines would satisfy the check
+  // below while proving nothing.
+  expect(report.legendCount, 'legend entries found').toBeGreaterThan(1);
+  expect(report.lineCount, 'plotted lines found').toBeGreaterThan(1);
+  expect(report.hits, report.hits.join(', ')).toEqual([]);
+});

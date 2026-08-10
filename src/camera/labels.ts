@@ -123,3 +123,103 @@ export function keepNonOverlapping<T>(
   }
   return kept;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Two dimensions: where to put a block that must not sit on the data          */
+/* -------------------------------------------------------------------------- */
+
+export interface Rect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Which candidate rectangle has the least data in it.
+ *
+ * The functions above solve a one-dimensional problem: labels along an axis,
+ * competing for the same line. A chart legend is a different problem — a block
+ * that has to sit somewhere in a plane that already has lines drawn through it
+ * — so it gets its own function rather than a strained reading of those.
+ *
+ * The count is of *segments* crossing the rectangle, not of sample points
+ * inside it. A polyline can cross a box cleanly between two samples: the
+ * resolution chart's binary64 line has a sample every decade and a legend
+ * narrower than a decade, so a point test would report the box empty while the
+ * line ran through the words. That is the bug this exists to fix, and testing
+ * points would have reproduced it.
+ *
+ * Ties go to the earliest candidate, so callers order candidates by preference.
+ */
+export function chooseClearRect(
+  candidates: readonly Rect[],
+  polylines: readonly (readonly Point[])[],
+): number {
+  if (candidates.length === 0) throw new Error('chooseClearRect needs a candidate');
+
+  let best = 0;
+  let bestCrossings = Number.POSITIVE_INFINITY;
+  candidates.forEach((rect, index) => {
+    let crossings = 0;
+    for (const line of polylines) {
+      for (let i = 0; i + 1 < line.length; i += 1) {
+        if (segmentCrossesRect(line[i]!, line[i + 1]!, rect)) crossings += 1;
+      }
+      // A single-point line still occupies space.
+      if (line.length === 1 && pointInRect(line[0]!, rect)) crossings += 1;
+    }
+    if (crossings < bestCrossings) {
+      best = index;
+      bestCrossings = crossings;
+    }
+  });
+  return best;
+}
+
+function pointInRect(point: Point, rect: Rect): boolean {
+  return (
+    point.x >= rect.x &&
+    point.x <= rect.x + rect.width &&
+    point.y >= rect.y &&
+    point.y <= rect.y + rect.height
+  );
+}
+
+/**
+ * Liang–Barsky: does the segment intersect the rectangle at all? Endpoints
+ * inside count, which is what "the line is in the box" means to a reader.
+ */
+function segmentCrossesRect(from: Point, to: Point, rect: Rect): boolean {
+  if (pointInRect(from, rect) || pointInRect(to, rect)) return true;
+
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  let enter = 0;
+  let leave = 1;
+
+  const clip = (p: number, q: number): boolean => {
+    if (p === 0) return q >= 0; // parallel to this edge: inside or nothing to do
+    const t = q / p;
+    if (p < 0) {
+      if (t > leave) return false;
+      if (t > enter) enter = t;
+    } else {
+      if (t < enter) return false;
+      if (t < leave) leave = t;
+    }
+    return true;
+  };
+
+  return (
+    clip(-dx, from.x - rect.x) &&
+    clip(dx, rect.x + rect.width - from.x) &&
+    clip(-dy, from.y - rect.y) &&
+    clip(dy, rect.y + rect.height - from.y)
+  );
+}

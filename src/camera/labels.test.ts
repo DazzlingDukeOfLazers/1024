@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type LabelBox, estimateTextWidth, keepNonOverlapping, placeInRows } from './labels';
+import {
+  type LabelBox,
+  type Rect,
+  chooseClearRect,
+  estimateTextWidth,
+  keepNonOverlapping,
+  placeInRows,
+} from './labels';
 
 const box = (x: number, text: string, anchor: LabelBox['anchor'] = 'start'): LabelBox => ({
   x,
@@ -84,5 +91,57 @@ describe('keepNonOverlapping', () => {
     const kept = keepNonOverlapping(items, (b) => b);
     for (const item of kept) expect(items).toContain(item);
     expect(kept.map((b) => b.x)).toEqual([...kept.map((b) => b.x)].sort((a, b) => a - b));
+  });
+});
+
+describe('placing a block where the data is not', () => {
+  const box = (x: number, y: number): Rect => ({ x, y, width: 100, height: 40 });
+
+  it('prefers the earliest candidate when all are clear', () => {
+    expect(chooseClearRect([box(0, 0), box(200, 0)], [])).toBe(0);
+  });
+
+  it('avoids a rectangle a line passes through', () => {
+    // A line across the top; the top box is crossed, the bottom one is not.
+    const line = [
+      { x: -10, y: 20 },
+      { x: 400, y: 20 },
+    ];
+    expect(chooseClearRect([box(0, 0), box(0, 100)], [line])).toBe(1);
+  });
+
+  it('counts a segment that crosses without a sample inside', () => {
+    // The defect this exists for: the resolution chart samples once a decade,
+    // and the legend is narrower than a decade, so a point-in-box test reports
+    // the box empty while the line runs straight through the words.
+    const line = [
+      { x: -500, y: -500 },
+      { x: 500, y: 500 },
+    ];
+    const crossed = box(0, 0); // the diagonal passes through it, no sample in it
+    const clear = box(300, 0);
+    expect(
+      line.every((point) => point.x < 0 || point.x > 100),
+      'no sample inside',
+    ).toBe(true);
+    expect(chooseClearRect([crossed, clear], [line])).toBe(1);
+  });
+
+  it('takes the least-crossed rectangle when every candidate is hit', () => {
+    const many = [
+      { x: 0, y: 10 },
+      { x: 400, y: 10 },
+    ];
+    const one = [
+      { x: 0, y: 110 },
+      { x: 50, y: 110 },
+    ];
+    // Both boxes are crossed once; ties go to the first, so make the second
+    // cleaner by giving the first two crossing lines.
+    expect(chooseClearRect([box(0, 0), box(0, 100)], [many, many, one])).toBe(1);
+  });
+
+  it('refuses to choose from nothing rather than returning a fake index', () => {
+    expect(() => chooseClearRect([], [])).toThrow();
   });
 });

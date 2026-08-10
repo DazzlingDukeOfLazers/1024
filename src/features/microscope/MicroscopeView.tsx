@@ -30,7 +30,7 @@ import {
 } from './lattice';
 import { PickYourRuler } from './PickYourRuler';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
-import { estimateTextWidth } from '../../camera/labels';
+import { type Rect, chooseClearRect, estimateTextWidth } from '../../camera/labels';
 
 const UNIT_CHOICES = ['fm', 'pm', 'nm', 'µm', 'mm', 'm', 'km', 'Mm', 'Gm', 'au', 'ly'];
 
@@ -244,6 +244,45 @@ function ResolutionChart({
   const y = (value: number) =>
     CHART_HEIGHT - CHART_PAD - ((value - minY) / (maxY - minY)) * (CHART_HEIGHT - CHART_PAD * 2);
 
+  // Where the legend goes is measured rather than assumed. It used to sit in
+  // the top right under a translucent backing, which is where binary64's line
+  // arrives — so the line ran through the words and the backing only made them
+  // legible rather than unobstructed. The four corners are offered in order of
+  // preference and the emptiest wins.
+  const plotted = profiles.map((profile) =>
+    profile.samples
+      .filter((sample) => sample.log10Gap !== undefined)
+      .map((sample) => ({ x: x(sample.log10Magnitude), y: y(sample.log10Gap!) })),
+  );
+  const legendLabels = profiles.map(
+    (profile) => `${profile.label}${profile.constant ? ' (constant)' : ' (grows)'}`,
+  );
+  const legendWidth =
+    Math.max(...legendLabels.map((label) => estimateTextWidth(label, LEGEND_FONT_SIZE))) + 8;
+  const legendHeight = profiles.length * 15 + 4;
+  const legendCorners: Rect[] = [
+    {
+      x: CHART_WIDTH - CHART_PAD - legendWidth,
+      y: CHART_PAD + 3,
+      width: legendWidth,
+      height: legendHeight,
+    },
+    { x: CHART_PAD + 6, y: CHART_PAD + 3, width: legendWidth, height: legendHeight },
+    {
+      x: CHART_WIDTH - CHART_PAD - legendWidth,
+      y: CHART_HEIGHT - CHART_PAD - legendHeight - 3,
+      width: legendWidth,
+      height: legendHeight,
+    },
+    {
+      x: CHART_PAD + 6,
+      y: CHART_HEIGHT - CHART_PAD - legendHeight - 3,
+      width: legendWidth,
+      height: legendHeight,
+    },
+  ];
+  const legend = legendCorners[chooseClearRect(legendCorners, plotted)]!;
+
   return (
     <div ref={measure}>
       <svg
@@ -317,37 +356,34 @@ function ResolutionChart({
           );
         })}
 
-        {/* The legend last, over its own backing, because binary64's line rises
-            through exactly the corner the labels sit in and was crossing the
-            words out. Drawn after the lines rather than interleaved with them,
-            which is what put one label under the next profile's polyline. */}
-        {profiles.map((profile, index) => {
-          const label = `${profile.label}${profile.constant ? ' (constant)' : ' (grows)'}`;
-          const top = CHART_PAD + 3 + index * 15;
-          const textWidth = estimateTextWidth(label, LEGEND_FONT_SIZE);
-          return (
-            <g key={`legend-${profile.id}`}>
-              <rect
-                x={CHART_WIDTH - CHART_PAD - 6 - textWidth}
-                y={top}
-                width={textWidth + 8}
-                height={14}
-                fill="var(--panel)"
-                fillOpacity={0.85}
-                rx={2}
-              />
-              <text
-                x={CHART_WIDTH - CHART_PAD - 4}
-                y={top + 11}
-                fontSize={LEGEND_FONT_SIZE}
-                textAnchor="end"
-                fill="currentColor"
-              >
-                {label}
-              </text>
-            </g>
-          );
-        })}
+        {/* The legend last, so it is never under a polyline drawn after it —
+            interleaving is what once put a label beneath the next profile's
+            line. It still carries a backing, but now as insurance rather than
+            as the fix: `chooseClearRect` put the block in a corner no line
+            reaches, and the backing only covers the axis rule if a chart ever
+            arrives with all four corners crossed. */}
+        {profiles.map((profile, index) => (
+          <g key={`legend-${profile.id}`}>
+            <rect
+              x={legend.x}
+              y={legend.y + index * 15}
+              width={legend.width}
+              height={14}
+              fill="var(--panel)"
+              fillOpacity={0.85}
+              rx={2}
+            />
+            <text
+              x={legend.x + legend.width - 4}
+              y={legend.y + index * 15 + 11}
+              fontSize={LEGEND_FONT_SIZE}
+              textAnchor="end"
+              fill="currentColor"
+            >
+              {legendLabels[index]}
+            </text>
+          </g>
+        ))}
       </svg>
     </div>
   );

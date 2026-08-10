@@ -53,8 +53,8 @@ Decisions Daniel made when this plan was written (2026-08-09):
   the ~50 formatter call sites dropping the exactness flag, the
   resolution-chart legend overlap, the 1e20 m grid labels, and the
   `role="application"` reconsideration.
-- Next action: Phase 4 — the resolution-chart legend overlap (TASKS ~line 776),
-  then the 1e20 m grid labels and the `role="application"` reconsideration.
+- Next action: Phase 4 — the 1e20 m grid labels (TASKS ~line 898), then the
+  `role="application"` reconsideration.
   **Note:** any intended visual change from here needs
   `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
   images before committing.
@@ -184,7 +184,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
   revisit only if a label started making a claim — wiring all 40 through
   `Rendered` would have made the UI worse. Re-audited (all 40 still under
   non-claiming labels) and the missing guard closed instead.
-- [ ] Resolution-chart legend sits on its own plotted line (TASKS ~line 776).
+- [x] Resolution-chart legend placed by measurement (`chooseClearRect`).
 - [ ] 1e20 m grid labels are unreadable digit strings (TASKS ~line 898) —
   engineering notation there.
 - [ ] `role="application"` reconsideration (TASKS ~line 577).
