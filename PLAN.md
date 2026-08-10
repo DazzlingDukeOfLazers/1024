@@ -78,12 +78,14 @@ Decisions Daniel made when this plan was written (2026-08-09):
     **contains citations for review**, sources quoted in the commit message.
     Also fixed a defect that shipped with the area/volume work: the "To scale"
     strip draws lengths and said nothing about it under a cubed headline.
-- 907 unit tests, 140 Playwright, full gate green.
+  - The drift chart plots against log iterations (`f8e8474`), so the
+    fixed-point machines come out straight at slope 1 — error proportional to
+    the number of operations — and binary64 visibly does not.
+- 914 unit tests, 141 Playwright, full gate green.
 - Next action: pick from the TASKS backlog. The largest open items are §17's
-  cooperating-lane GPU organizations, the search index, the sparkline's
-  checkpoint-position x axis (a log iteration axis would be truer), and the
-  bulk condition on `how-many-fit-volume` (stated, not enforced). Keep the same
-  disciplines. One question is open for Daniel below.
+  cooperating-lane GPU organizations, the search index, and the bulk condition
+  on `how-many-fit-volume` (stated, not enforced). Keep the same disciplines.
+  One question is open for Daniel below.
 
 ## Session protocol
 
