@@ -78,9 +78,20 @@ test.describe('the app still looks like itself', () => {
         );
         await expect(page).toHaveScreenshot(`${name.replace(/\//g, '--')}-${width}.png`, {
           fullPage: true,
-          // Sub-pixel text rendering varies run to run by a hair; a hard zero
-          // would make this suite flake and train people to ignore it.
-          maxDiffPixelRatio: 0.002,
+          // Zero, measured rather than assumed.
+          //
+          // This started at 0.002, guessed as headroom for sub-pixel text
+          // rendering. Then a change that rewrote *every tick label* on the
+          // ruler — twenty-four-digit strings replaced by one- and two-digit
+          // ones — came in at ratio 0.0019 and passed. Worse, at that
+          // tolerance `--update-snapshots` would not rewrite the baseline
+          // either, since Playwright already considered it a match, so the
+          // committed PNG silently disagreed with the app.
+          //
+          // Measured on this machine: repeated runs of every baseline differ by
+          // exactly zero pixels. The headroom was for a problem that does not
+          // exist here, and it was wide enough to hide a real one.
+          maxDiffPixelRatio: 0,
         });
       });
     }

@@ -13,6 +13,13 @@ import { estimateTextWidth, keepNonOverlapping } from '../../camera/labels';
 export interface RulerGridProps {
   ticks: readonly GridTick[];
   unitSymbol: string;
+  /**
+   * The shared part of the tick labels, already formatted, when the grid
+   * factored one out. Drawn at the left of the baseline where the ticks are
+   * numbered from, opposite the unit symbol, so the two halves of a reading
+   * sit at either end of the axis rather than competing for one corner.
+   */
+  offsetLabel?: string | undefined;
   width: number;
   height: number;
   /** Vertical position of the ruler baseline. */
@@ -24,7 +31,14 @@ const MINOR_TICK = 6;
 const LABEL_FONT_SIZE = 10;
 const UNIT_FONT_SIZE = 11;
 
-export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerGridProps) {
+export function RulerGrid({
+  ticks,
+  unitSymbol,
+  offsetLabel,
+  width,
+  height,
+  baseline,
+}: RulerGridProps) {
   /**
    * Which major ticks get to keep their label.
    *
@@ -117,6 +131,11 @@ export function RulerGrid({ ticks, unitSymbol, width, height, baseline }: RulerG
       >
         {unitSymbol}
       </text>
+      {offsetLabel !== undefined && (
+        <text x={0} y={baseline + 16} fontSize={UNIT_FONT_SIZE} fill="currentColor">
+          {offsetLabel}
+        </text>
+      )}
     </g>
   );
 }

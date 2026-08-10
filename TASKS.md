@@ -931,14 +931,20 @@ It found four defects on its first run, in states nothing had visited:
 rather than inferred from digits. A panel that drops the formatter's flag now
 fails the sweep instead of waiting to be seen.
 
-- [ ] At a 1e20 m origin every grid label reads `1000000000000000000000...`.
-      Measured since that note was written, and it is worse than it recorded:
-      the six labels are not visually similar, they are the *identical string*
-      `100000000000000000000000`, at x = 44, 244, 443, 643, 843, 1042. Six
-      positions carrying the same number. Still a decision rather than a defect
-      — the fix changes what the ruler asserts — but by this project's own rule
-      that labels are claims, the present state makes a false one. Options and a
-      recommendation are queued for Daniel in `PLAN.md`.
+- [x] At a 1e20 m origin the grid uses offset notation, which Daniel chose from
+      the options queued in PLAN.md. The shared part is stated once beside the
+      axis — `+1 × 10^23 mm` — and the ticks are labelled by their difference
+      from it: −6, −5, −4 … 5. `offset + label × metresPerUnit` is the tick
+      exactly, and a test asserts that on every major tick rather than trusting
+      it. Twelve labels now fit where six used to collide.
+
+      The offset is the roundest number within a span of the middle of the view,
+      not the first tick and not the first tick floored: the first changes every
+      time a tick scrolls off the edge, and the second produced
+      `99999999999999999990`, which is round arithmetically and useless to read.
+      It is also written out in full rather than to six significant figures —
+      six figures is what made the labels identical in the first place, so
+      rounding the offset would have made `offset + label` quietly false.
 
 ## An oracle that is not us
 
@@ -1342,6 +1348,32 @@ no read at restore time. The rule for ad-hoc restores, now in PLAN.md: read the
 backup into a variable first, write second, and guard on the backup existing.
 Order of evaluation is a safety property when one side of an expression is
 destructive.
+
+## A visual baseline tolerance wide enough to hide the thing it was for
+
+`e2e/visual.spec.ts` was locked with `maxDiffPixelRatio: 0.002`, guessed as
+headroom for sub-pixel text rendering, and last session I wrote in a commit
+message that the resolution-chart legend fix left the baselines unchanged.
+
+That was false, and I had a passing test as my evidence. The legend did move —
+top-right to top-left — and the diff came in under the tolerance. Then the ruler
+offset work rewrote *every tick label in the view*, twenty-four-digit strings
+replaced by one- and two-digit ones, and that passed too: 2278 pixels, ratio
+0.0019, about a hundred pixels under the line.
+
+Worse than a missed failure: at that tolerance `--update-snapshots` will not
+rewrite the baseline either, because Playwright already considers it a match. So
+the committed PNGs silently disagreed with the app they claimed to pin, and
+would have gone on disagreeing.
+
+Measured rather than guessed this time: three consecutive full runs at
+`maxDiffPixelRatio: 0` differ by exactly zero pixels on this machine. The
+headroom was for a problem that does not exist here, and it was wide enough to
+hide two real ones.
+
+- [ ] If these baselines ever move to a machine whose text rendering is not
+      deterministic, the fix is a per-run noise measurement and a tolerance set
+      from it — not a number that looks small.
 
 ## Hardening
 

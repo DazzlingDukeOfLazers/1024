@@ -211,3 +211,33 @@ test('no plotted line runs through the resolution chart legend', async ({ page }
   expect(report.lineCount, 'plotted lines found').toBeGreaterThan(1);
   expect(report.hits, report.hits.join(', ')).toEqual([]);
 });
+
+test('the far-origin ruler labels every tick differently, and says what it factored out', async ({
+  page,
+}) => {
+  // Before offset notation the six labels were the identical string
+  // `100000000000000000000000` — six positions carrying one number, which by
+  // this project's rule that a label is a claim was a false one.
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Metric Ruler' })
+    .click();
+  await page.getByLabel('Preset').selectOption('far-origin');
+
+  const labels = await page
+    .locator('svg.ruler .ruler-grid text')
+    .evaluateAll((nodes) => nodes.map((node) => node.textContent ?? ''));
+
+  // The offset is stated, once, beside the axis.
+  const offset = labels.filter((text) => text.startsWith('+'));
+  expect(offset, labels.join(' | ')).toEqual(['+1 × 10^23 mm']);
+
+  // And every tick label is its own number.
+  const ticks = labels.filter((text) => /^-?\d+$/.test(text));
+  expect(ticks.length, 'tick labels found').toBeGreaterThan(4);
+  expect(new Set(ticks).size, ticks.join(' ')).toBe(ticks.length);
+
+  // None of them is the old twenty-four-digit string.
+  for (const tick of ticks) expect(tick.length).toBeLessThan(6);
+});

@@ -60,7 +60,8 @@ Decisions Daniel made when this plan was written (2026-08-09):
   are done; pick from the TASKS backlog and keep the same disciplines.
   **Note:** any intended visual change from here needs
   `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
-  images before committing.
+  images before committing. The tolerance is now 0 — measured, three runs
+  differ by zero pixels — because 0.002 hid two real changes.
 
 ## Session protocol
 
@@ -213,32 +214,9 @@ bumps. If one of these becomes necessary, write up why and stop that thread.
 
 > Sessions append here instead of blocking. Answer whenever you check in.
 
-- **The far-origin ruler's grid labels (phase 4).** TASKS calls this a decision
-  rather than a defect, and it is, so it is not being made unilaterally — but
-  the evidence is worse than the note recorded. At the `1e20 m origin` preset
-  the six tick labels are not merely similar, they are the *identical string*:
-  `100000000000000000000000` at x = 44, 244, 443, 643, 843, 1042. Six different
-  positions labelled with the same number. By this project's own rule that
-  labels are claims, that is a false one — the label claims to say where the
-  tick is and does not.
-
-  Options, cheapest first:
-
-  1. **Offset notation** (matplotlib's convention): state the shared prefix once
-     beside the axis — `+1.0000 × 10^23 mm` — and label the ticks by their
-     difference from it (`0, 2, 4, 6…`). No information is lost: offset plus
-     tick is the exact absolute position. My recommendation.
-  2. **Label relative to the camera centre**, as the TASKS note suggested. Same
-     readability, but the absolute position stops being on screen at all, which
-     is a real change to what the ruler asserts.
-  3. **Leave it.** Defensible if the point of that preset is to *show* that
-     absolute coordinates become unreadable out there — the panel's own text
-     already says "the camera centre is 100 quintillion metres from zero". If
-     that is the intent, I would still drop the five redundant labels, since
-     one unreadable label makes the point and six make it look like a bug.
-
-  Screenshot: `$env:SHOTS='far-origin'; npx playwright test e2e/screenshots`.
-  Default if unanswered: none — this stays open rather than being guessed.
+- ~~The far-origin ruler's grid labels~~ — **answered: option 1, offset
+  notation.** Shipped: `+1 × 10^23 mm` stated once, ticks labelled −6 … 5,
+  reconstruction asserted exactly.
 
 - **Compute panel scope (2026-08-09, phase 1.4).** The lane panel visualizes
   ADD only — the §18 first op, where carry propagation is the story. Worth

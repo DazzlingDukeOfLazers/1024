@@ -6,13 +6,15 @@ import {
   TARGET_MAJOR_PIXELS,
   chooseGridStep,
   detailFor,
+  formatGridOffset,
+  gridLabelOffset,
   gridLabelUnit,
   gridTicks,
   minorStep,
 } from './grid';
 import { type Viewport, createCamera, toScreenX } from './camera';
-import { ONE, ZERO, mul, pow10, rational } from '../core/rational/rational';
-import { parseDecimalExact } from '../core/rational/parse';
+import { ONE, ZERO, add, mul, pow10, rational, sub } from '../core/rational/rational';
+import { parseDecimalExact, parseRationalExact } from '../core/rational/parse';
 import { fromUnit } from '../core/quantities/quantity';
 
 const r = rational;
@@ -103,7 +105,7 @@ describe('engineering labels', () => {
   it('writes ticks as plain numbers in that unit', () => {
     const camera = createCamera(ZERO, -3);
     const step = chooseGridStep(camera);
-    const ticks = gridTicks(camera, viewport, step, (meters) =>
+    const { ticks } = gridTicks(camera, viewport, step, (meters) =>
       toScreenX(camera, meters, viewport),
     );
 
@@ -120,7 +122,7 @@ describe('minor divisions', () => {
   it('nests inside a major without landing on it twice', () => {
     const camera = createCamera(ZERO, -3);
     const step = chooseGridStep(camera);
-    const ticks = gridTicks(camera, viewport, step, (meters) =>
+    const { ticks } = gridTicks(camera, viewport, step, (meters) =>
       toScreenX(camera, meters, viewport),
     );
 
@@ -142,14 +144,16 @@ describe('minor divisions', () => {
   it('drops minors once they would be noise', () => {
     // A very wide target makes the majors huge and the minors visible...
     const camera = createCamera(ZERO, -3);
-    const withMinors = gridTicks(camera, viewport, chooseGridStep(camera), (m) =>
+    const { ticks: withMinors } = gridTicks(camera, viewport, chooseGridStep(camera), (m) =>
       toScreenX(camera, m, viewport),
     );
     expect(withMinors.some((tick) => !tick.major)).toBe(true);
 
     // ...but a tiny target makes them sub-pixel, and then they are dropped.
     const dense = chooseGridStep(camera, 12);
-    const withoutMinors = gridTicks(camera, viewport, dense, (m) => toScreenX(camera, m, viewport));
+    const { ticks: withoutMinors } = gridTicks(camera, viewport, dense, (m) =>
+      toScreenX(camera, m, viewport),
+    );
     expect(withoutMinors.every((tick) => tick.major)).toBe(true);
   });
 
@@ -157,7 +161,7 @@ describe('minor divisions', () => {
     const camera = createCamera(ZERO, -3);
     const step = chooseGridStep(camera);
     const minor = minorStep(step, camera);
-    const ticks = gridTicks(camera, viewport, step, (m) => toScreenX(camera, m, viewport));
+    const { ticks } = gridTicks(camera, viewport, step, (m) => toScreenX(camera, m, viewport));
 
     for (const tick of ticks) {
       const multiple = mul(
@@ -199,3 +203,114 @@ describe('level of detail', () => {
 function pixelsOf(camera: ReturnType<typeof createCamera>, meters: typeof ONE): number {
   return toScreenX(camera, meters, viewport) - toScreenX(camera, ZERO, viewport);
 }
+
+describe('offset notation, for grids far from zero', () => {
+  const farCamera = (log10MetresPerPixel: number) => createCamera(pow10(20), log10MetresPerPixel);
+
+  it('leaves ordinary grids alone', () => {
+    // The common case must not change. At a metre-scale view the labels stand
+    // on their own and an offset would be noise.
+    for (const zoom of [-6, -3, 0, 3, 6]) {
+      const camera = createCamera(ZERO, zoom);
+      const { offset } = gridTicks(camera, viewport, chooseGridStep(camera), (m) =>
+        toScreenX(camera, m, viewport),
+      );
+      expect(offset, `zoom ${zoom}`).toBeUndefined();
+    }
+  });
+
+  it('factors out the shared part when six digits stop distinguishing ticks', () => {
+    const camera = farCamera(-4);
+    const { ticks, offset } = gridTicks(camera, viewport, chooseGridStep(camera), (m) =>
+      toScreenX(camera, m, viewport),
+    );
+    expect(offset).toBeDefined();
+
+    const labels = ticks.filter((tick) => tick.major).map((tick) => tick.label);
+    expect(labels.length).toBeGreaterThan(2);
+    // The defect this fixes: every label was the same string.
+    expect(new Set(labels).size, labels.join(' ')).toBe(labels.length);
+  });
+
+  it('loses nothing: offset plus label is the tick, exactly', () => {
+    // The whole justification for the notation. If this ever fails, the ruler
+    // has started lying about where its ticks are.
+    const camera = farCamera(-4);
+    const step = chooseGridStep(camera);
+    const unit = gridLabelUnit(step);
+    const { ticks, offset } = gridTicks(camera, viewport, step, (m) =>
+      toScreenX(camera, m, viewport),
+    );
+
+    let checked = 0;
+    for (const tick of ticks) {
+      if (!tick.major) continue;
+      const shown = parseRationalExact(tick.label!);
+      expect(add(offset!, mul(shown, unit.metersPerUnit)), tick.label).toEqual(tick.meters);
+      checked += 1;
+    }
+    // Anti-vacuity: a grid with no major ticks would satisfy the loop above.
+    expect(checked).toBeGreaterThan(2);
+  });
+
+  it('is a round number, so a reader can add it in their head', () => {
+    const camera = farCamera(-4);
+    const { offset } = gridTicks(camera, viewport, chooseGridStep(camera), (m) =>
+      toScreenX(camera, m, viewport),
+    );
+    expect(offset!.denominator).toBe(1n);
+    expect(offset).toEqual(pow10(20));
+  });
+
+  it('holds still while the view moves, rather than renumbering every label', () => {
+    // An offset pinned to the first tick would change the moment a tick
+    // scrolled off the edge, silently renumbering the whole axis for a pan of
+    // a few pixels. The granularity is two orders above the span, so it does
+    // not.
+    const step = chooseGridStep(farCamera(-4));
+    const offsets = new Set<string>();
+    for (let pixels = 0; pixels <= 40; pixels += 8) {
+      const camera = createCamera(add(pow10(20), mul(rational(BigInt(pixels)), pow10(-4))), -4);
+      const { offset } = gridTicks(camera, viewport, step, (m) => toScreenX(camera, m, viewport));
+      offsets.add(`${offset!.numerator}/${offset!.denominator}`);
+    }
+    expect(offsets.size, [...offsets].join(' ')).toBe(1);
+  });
+
+  it('refuses an offset it cannot justify', () => {
+    // Fewer than two ticks, or a spacing close to the magnitude, means the
+    // labels distinguish themselves and the notation would only add a step.
+    expect(gridLabelOffset([], rational(1n))).toBeUndefined();
+    expect(gridLabelOffset([pow10(20)], rational(1n))).toBeUndefined();
+    expect(gridLabelOffset([ZERO, rational(1n)], rational(1n))).toBeUndefined();
+  });
+});
+
+describe('writing the offset out', () => {
+  const mm = gridLabelUnit(chooseGridStep(createCamera(ZERO, -4)));
+
+  it('is short when the number is round', () => {
+    expect(formatGridOffset(pow10(20), mm)).toBe('+1 × 10^23 mm');
+  });
+
+  it('carries every significant digit rather than the first six', () => {
+    // The failure this guards: rounding the offset to six figures — the same
+    // six that made the tick labels identical — would make `offset + label`
+    // quietly untrue.
+    const awkward = add(pow10(20), rational(1n, 1000n));
+    const text = formatGridOffset(awkward, mm);
+    expect(text).toContain('10^23');
+    expect(text).not.toBe('+1 × 10^23 mm');
+    // 10^20 m + 1 mm is 10^23 mm + 1, so the mantissa needs all 24 digits.
+    expect(text.replace(/[^0-9]/g, '').length).toBeGreaterThan(20);
+  });
+
+  it('names the sign it means', () => {
+    // Compared by codepoint: the minus is U+2212, not a hyphen, and a test
+    // written with the wrong one of those passes or fails for reasons that
+    // have nothing to do with the code.
+    expect(formatGridOffset(pow10(20), mm).codePointAt(0)).toBe(0x2b);
+    expect(formatGridOffset(sub(ZERO, pow10(20)), mm).codePointAt(0)).toBe(0x2212);
+    expect(formatGridOffset(sub(ZERO, pow10(20)), mm)).toContain('10^23');
+  });
+});

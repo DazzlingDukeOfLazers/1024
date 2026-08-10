@@ -23,7 +23,13 @@ import {
   visibleWidthMeters,
   zoomAt,
 } from '../../camera/camera';
-import { chooseGridStep, detailFor, gridLabelUnit, gridTicks } from '../../camera/grid';
+import {
+  chooseGridStep,
+  detailFor,
+  formatGridOffset,
+  gridLabelUnit,
+  gridTicks,
+} from '../../camera/grid';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { type Pinch, pinchLog10Delta, pinchOf } from '../../camera/pinch';
 import { estimateTextWidth } from '../../camera/labels';
@@ -94,7 +100,11 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
   const step = chooseGridStep(camera);
   const unit = gridLabelUnit(step);
   const toScreen = (meters: Rational): number => toScreenX(camera, meters, VIEWPORT);
-  const ticks = gridTicks(camera, VIEWPORT, step, toScreen);
+  const grid = gridTicks(camera, VIEWPORT, step, toScreen);
+  // The shared part of the tick labels, when there is one. Shown in the same
+  // unit as the ticks, so a reader adds two numbers of the same kind rather
+  // than converting between them.
+  const offsetLabel = grid.offset === undefined ? undefined : formatGridOffset(grid.offset, unit);
 
   /* ---------------------------------------------------------------------- */
   /* Objects laid out end to end                                            */
@@ -302,8 +312,9 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           onPointerCancel={(event) => endPointer(event)}
         >
           <RulerGrid
-            ticks={ticks}
+            ticks={grid.ticks}
             unitSymbol={unit.symbol}
+            offsetLabel={offsetLabel}
             width={VIEWPORT.widthPx}
             height={VIEWPORT.heightPx}
             baseline={BASELINE}
