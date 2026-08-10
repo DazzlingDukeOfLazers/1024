@@ -318,6 +318,104 @@ describe('two algorithms, benchmarked rather than chosen (§10)', () => {
     expect(at('non-restoring-radix-2', 0)).toBeGreaterThan(at('restoring-radix-8', 0));
   });
 
+  it('pays in multiplications rather than in iterations', () => {
+    // §10 lists the reciprocal method because the architecture already has
+    // MUL_WIDE, so a divider built out of multiplies needs no new hardware. Its
+    // work is a different shape, not a smaller amount of the same shape.
+    const m = divRem({
+      dividend: (1n << 512n) + 12345n,
+      divisor: 7n,
+      algorithm: 'reciprocal-newton',
+    }).metrics;
+
+    expect(m.shiftOperations).toBe(0);
+    expect(m.subtractOperations).toBe(0);
+    expect(m.multiplyOperations).toBe(20);
+    // Twenty multiplies and eleven comparisons against five hundred iterations.
+    expect(m.compareOperations).toBe(11);
+  });
+
+  it('needs a temporary wider than the register the architecture declares', () => {
+    // The cost that does not appear as cycles. A digit-serial divider never
+    // holds more than a remainder — one bit here — while Newton holds a value
+    // about twice the quotient. On a 513-bit division that is 1026 bits, which
+    // does not fit the 1024-bit register this project is named after.
+    const loop = divRem({
+      dividend: (1n << 512n) + 12345n,
+      divisor: 7n,
+      algorithm: 'restoring-radix-8',
+    }).metrics;
+    const newton = divRem({
+      dividend: (1n << 512n) + 12345n,
+      divisor: 7n,
+      algorithm: 'reciprocal-newton',
+    }).metrics;
+
+    expect(loop.temporaryBits).toBe(1);
+    expect(newton.temporaryBits).toBe(1026);
+    expect(newton.temporaryBits).toBeGreaterThan(1024);
+  });
+
+  it('is decided by the multiplier, not by the division', () => {
+    // The result that matters, and the reason this could not be settled by
+    // reasoning. The same division costs 18194 cycles with an 8-bit multiplier
+    // and 375 with a 128-bit one — a factor of 48 — so whether trading division
+    // for multiplication pays is a question about the multiplier you have.
+    // Every loop above lands between 857 and 1194 on this input.
+    const at = (multiplyDigitBits: 8 | 128) =>
+      divRem({
+        dividend: (1n << 512n) + 12345n,
+        divisor: 7n,
+        algorithm: 'reciprocal-newton',
+        multiplyDigitBits,
+      }).metrics.modeledCycles;
+    const bestLoop = divRem({
+      dividend: (1n << 512n) + 12345n,
+      divisor: 7n,
+      algorithm: 'restoring-radix-8',
+    }).metrics.modeledCycles;
+
+    expect(at(8)).toBeGreaterThan(bestLoop * 10);
+    expect(at(128)).toBeLessThan(bestLoop / 2);
+  });
+
+  it('gets cheaper as the divisor gets wider, and the loops do not', () => {
+    // A digit-serial divider consumes every bit of the dividend whatever the
+    // divisor, so its cost barely moves. Newton's estimate is about
+    // `2^scale / B`, which is a *smaller number* for a wider divisor and so a
+    // cheaper thing to multiply by. Measured on 2^512 − 1: the loop goes 861 →
+    // 691 across the range while the reciprocal goes 861 → 264.
+    const dividend = (1n << 512n) - 1n;
+    const cycles = (bits: number, algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend, divisor: (1n << BigInt(bits)) - 1n, algorithm }).metrics.modeledCycles;
+
+    expect(cycles(2, 'reciprocal-newton')).toBe(cycles(2, 'restoring-radix-8'));
+    expect(cycles(400, 'reciprocal-newton')).toBeLessThan(cycles(400, 'restoring-radix-8') / 2);
+  });
+
+  it('is sensitive to sparsity in a way the loops are not', () => {
+    // Because its work is multiplication, and `mulWide` skips zero digits (§4).
+    // The same-size division costs the loop 857 sparse and 860 dense; it costs
+    // Newton 770 sparse and 920 dense, which flips which method wins.
+    const cycles = (dividend: bigint, algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend, divisor: 7n, algorithm }).metrics.modeledCycles;
+    const sparse = (1n << 512n) + 12345n;
+    const dense = (1n << 512n) - 1n;
+
+    expect(cycles(sparse, 'reciprocal-newton')).toBeLessThan(cycles(sparse, 'restoring-radix-8'));
+    expect(cycles(dense, 'reciprocal-newton')).toBeGreaterThan(cycles(dense, 'restoring-radix-8'));
+
+    const loopSwing = cycles(dense, 'restoring-radix-8') - cycles(sparse, 'restoring-radix-8');
+    const newtonSwing = cycles(dense, 'reciprocal-newton') - cycles(sparse, 'reciprocal-newton');
+    expect(newtonSwing).toBeGreaterThan(loopSwing * 20);
+  });
+
+  it('loses badly on a small division, where the estimate is most of the work', () => {
+    const small = (algorithm: (typeof DIVISION_ALGORITHMS)[number]) =>
+      divRem({ dividend: 1000n, divisor: 7n, algorithm }).metrics.modeledCycles;
+    expect(small('reciprocal-newton')).toBeGreaterThan(small('restoring-radix-4'));
+  });
+
   it('refines from either, because both leave the remainder in range', () => {
     // A non-restoring run corrects at the end, so its state satisfies the
     // invariant a restoring continuation needs.
@@ -365,7 +463,12 @@ describe('the identity holds at every step, not only at the end (§22)', () => {
     { dividend: 255n, divisor: 256n, fractionBits: 0 },
   ] as const;
 
-  for (const algorithm of DIVISION_ALGORITHMS) {
+  // The reciprocal method produces no quotient digits in order, so there is
+  // nothing here for it to satisfy. That is a fact about the method rather than
+  // an exemption, and it gets its own test below.
+  const DIGIT_SERIAL = DIVISION_ALGORITHMS.filter((name) => name !== 'reciprocal-newton');
+
+  for (const algorithm of DIGIT_SERIAL) {
     it(`holds under ${algorithm}`, () => {
       let stepsSeen = 0;
       for (const { dividend, divisor, fractionBits } of CASES) {
@@ -410,9 +513,26 @@ describe('the identity holds at every step, not only at the end (§22)', () => {
     expect(result.steps!.some((step) => step.remainder < 0n)).toBe(true);
   });
 
+  it('has nothing to trace when nothing is produced in order', () => {
+    // §22 asks for the quotient digits to be animated. A reciprocal divider does
+    // not have any: it estimates the whole quotient at once and corrects. Asking
+    // for a trace gets an empty one rather than invented frames, and the panel
+    // says so rather than drawing a tape that means nothing.
+    const result = divRem({
+      dividend: (1n << 200n) + 7n,
+      divisor: 11n,
+      fractionBits: 16,
+      algorithm: 'reciprocal-newton',
+      trace: true,
+    });
+    expect(result.steps).toEqual([]);
+    // And it still answers, which is the part that matters.
+    expect(result.quotient * 11n + result.remainder).toBe(((1n << 200n) + 7n) << 16n);
+  });
+
   it('ends where the untraced division ends', () => {
     // The trace must be a record of the run, not a second run beside it.
-    for (const algorithm of DIVISION_ALGORITHMS) {
+    for (const algorithm of DIGIT_SERIAL) {
       const request = { dividend: (1n << 200n) + 7n, divisor: 11n, fractionBits: 16, algorithm };
       const plain = divRem(request);
       const traced = divRem({ ...request, trace: true });

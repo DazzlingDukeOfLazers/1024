@@ -884,9 +884,24 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
               const current = position === 0 ? undefined : steps[position - 1];
               const divisorMagnitude =
                 parsed.b === undefined ? 0n : parsed.b < 0n ? -parsed.b : parsed.b;
-              const consumed = current?.consumed ?? 0n;
-              const quotient = current?.quotientSoFar ?? 0n;
-              const remainder = current?.remainder ?? 0n;
+              // With no digit trace there is no partial state to show, so the
+              // identity is the finished division rather than the run so far.
+              const serial = steps.length > 0;
+              const scaledDividend =
+                parsed.a === undefined
+                  ? 0n
+                  : (parsed.a < 0n ? -parsed.a : parsed.a) << BigInt(DIVISION_FRACTION_BITS);
+              const finalQuotient =
+                division.result.quotient < 0n
+                  ? -division.result.quotient
+                  : division.result.quotient;
+              const finalRemainder =
+                division.result.remainder < 0n
+                  ? -division.result.remainder
+                  : division.result.remainder;
+              const consumed = serial ? (current?.consumed ?? 0n) : scaledDividend;
+              const quotient = serial ? (current?.quotientSoFar ?? 0n) : finalQuotient;
+              const remainder = serial ? (current?.remainder ?? 0n) : finalRemainder;
               const holds = consumed === quotient * divisorMagnitude + remainder;
 
               return (
@@ -917,21 +932,33 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                       ))}
                     </select>
                   </div>
-                  <div className="field">
-                    <label htmlFor="wide-division-step">Quotient digit</label>
-                    <input
-                      id="wide-division-step"
-                      type="range"
-                      min={0}
-                      max={steps.length}
-                      value={position}
-                      onChange={(event) => {
-                        const divisionStep = Number(event.target.value);
-                        onChange((currentState) => ({ ...currentState, divisionStep }));
-                      }}
-                    />
-                  </div>
-                  <QuotientTape steps={steps} position={position} divisor={divisorMagnitude} />
+                  {steps.length === 0 ? (
+                    <p className="lens-question">
+                      This method produces no quotient digits in order, so there is nothing to step
+                      through. Newton–Raphson estimates the whole reciprocal, multiplies once, and
+                      corrects — §22&rsquo;s animation simply does not apply to it, and inventing
+                      frames would be drawing something the machine never does. The identity below
+                      is the finished one.
+                    </p>
+                  ) : (
+                    <>
+                      <div className="field">
+                        <label htmlFor="wide-division-step">Quotient digit</label>
+                        <input
+                          id="wide-division-step"
+                          type="range"
+                          min={0}
+                          max={steps.length}
+                          value={position}
+                          onChange={(event) => {
+                            const divisionStep = Number(event.target.value);
+                            onChange((currentState) => ({ ...currentState, divisionStep }));
+                          }}
+                        />
+                      </div>
+                      <QuotientTape steps={steps} position={position} divisor={divisorMagnitude} />
+                    </>
+                  )}
                   <table className="readout">
                     <tbody>
                       <tr>
@@ -973,6 +1000,30 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                         </td>
                       </tr>
                       <tr>
+                        <th scope="row">Multiplies</th>
+                        <td className="mono">
+                          {division.result.metrics.multiplyOperations}
+                          {division.result.metrics.multiplyOperations > 0 && (
+                            <>
+                              {' '}
+                              <small>costing {division.result.metrics.multiplyCycles}</small>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Widest temporary</th>
+                        <td className="mono">
+                          {division.result.metrics.temporaryBits} bits
+                          {division.result.metrics.temporaryBits > REGISTER_BITS && (
+                            <>
+                              {' '}
+                              <small>wider than the {REGISTER_BITS}-bit register</small>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
                         <th scope="row">Modeled cycles</th>
                         <td className="mono">{division.result.metrics.modeledCycles}</td>
                       </tr>
@@ -992,6 +1043,11 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                     build before any of it starts. It does not buy fewer comparisons. Whether it
                     pays is a question about the size of the division — on a 513-bit one radix 8 is
                     the cheapest here, and on a ten-bit one it is the most expensive of the four.
+                    The reciprocal method leaves that argument entirely: it converts the division
+                    into multiplications the architecture already has, so what it costs is decided
+                    by the multiplier rather than by the division. It also needs a temporary about
+                    twice the quotient, which on a 513-bit division does not fit the register this
+                    project is named after.
                   </p>
                 </>
               );

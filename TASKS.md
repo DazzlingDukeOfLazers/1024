@@ -1208,6 +1208,60 @@ load-bearing, because it reads exactly like an off-by-one to be tidied away. And
 a mutation harness needs a per-run timeout and a revert that happens whether or
 not the run completes — the version used here had neither.
 
+## Every division algorithm §10 lists, and no winner among them
+
+The reciprocal method is in, so §10's list is complete. It leaves the digit-serial
+family entirely: Newton-Raphson on `x -> x(2 - Bx)` converges to `1/B`, every
+operation in it is a multiplication, and the multiplies are charged by
+`mulWide`'s own cost model rather than by a number invented for the occasion.
+
+On (2^512 + 12345) / 7 it is the cheapest of the five, at 770 cycles against
+radix-8's 857 — and that ranking is worth almost nothing on its own, because:
+
+- it costs 18194 cycles with an 8-bit multiplier and 375 with a 128-bit one, so
+  whether trading division for multiplication pays is a question about the
+  multiplier rather than about the division;
+- it needs a temporary of 1026 bits, which does not fit the 1024-bit register
+  this project is named after, while every loop holds one bit;
+- it is sensitive to operand sparsity, because `mulWide` skips zero digits: the
+  same-size division costs it 770 sparse and 920 dense, which flips which method
+  wins, while the loop moves by three cycles;
+- it gets cheaper as the divisor gets wider and the loops do not: on 2^512 - 1
+  the loop goes 861 -> 691 across divisor widths while the reciprocal goes
+  861 -> 264;
+- and on 1000 / 7 it is the worst of all five.
+
+So there is no answer to "which division algorithm". §10 was right to refuse one.
+
+- [x] Radix-2^N division (§10).
+- [x] Reciprocal-based division (§10).
+- [ ] §18's WebGPU compute track is now the only untouched section.
+
+## Two things mutation testing found that a passing suite did not
+
+**A correction loop that could not be reached.** The reciprocal's downward
+correction — for an estimate that overshot — survived every mutant, because no
+input can reach it. That is provable rather than lucky: `1/B - x(2 - Bx) =
+B(1/B - x)^2 >= 0`, so a Newton step never lands above `1/B`, and truncating only
+lowers it. It is an assertion now instead of a loop, because a loop that never
+runs is a claim about behaviour that was never checked.
+
+**A correction loop that could not be bounded.** The upward one was an open
+`while`. With a converged estimate it runs once or not at all, but with a bad one
+it does not cost more cycles — it runs an astronomical number of times on values
+hundreds of bits wide and never returns. Two separate ten-minute timeouts found
+that, and each left the working tree mutated, since the revert came after a run
+that never finished.
+
+`--testTimeout` does not help: the hang is a synchronous BigInt loop and there is
+nothing for a test runner to interrupt. The fix belonged in the code rather than
+the harness — the loop is bounded at four corrections and throws beyond it, so
+the failure mode is a diagnosable error instead of a stall.
+
+- [ ] The mutation procedure is still ad-hoc shell with a revert that only runs
+      on success. Two hangs is enough; it should be a script with the revert in
+      a `finally`.
+
 ## Hardening
 
 - [x] Playwright critical path.

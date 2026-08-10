@@ -1186,6 +1186,27 @@ test('a cell is shaded by what its digit is worth, not by one bit', async ({ pag
   expect(sevenths[0]!).toBeLessThan(0.6);
 });
 
+test('the reciprocal method says it has no digits to step through', async ({ page }) => {
+  // A method that estimates the whole quotient at once has no serial digits, so
+  // the panel drops the tape rather than drawing an animation of something the
+  // machine never does — and still shows the finished identity.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('Algorithm').selectOption('reciprocal-newton');
+
+  await expect(page.getByLabel('Quotient digit')).toHaveCount(0);
+  await expect(page.getByText('produces no quotient digits in order')).toBeVisible();
+  await expect(readoutRow(page, 'A = Q × B + R')).toContainText('holds');
+
+  // Its work is multiplications, and it needs a temporary wider than the
+  // register the whole project is named after. Twenty-four rather than the
+  // twenty the unit tests measure, because the panel scales the numerator by
+  // 2^16 first (§11) and so divides a larger number.
+  await expect(readoutRow(page, 'Multiplies').locator('td')).toHaveText(/^24 costing/);
+  await expect(readoutRow(page, 'Widest temporary')).toContainText('wider than the 1024-bit');
+  await expect(page.locator('[data-lens-failed]')).toHaveCount(0);
+});
+
 test('a divisor of zero has no quotient and does not take the lens down', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Architecture Lab' }).click();

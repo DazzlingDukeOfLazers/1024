@@ -135,13 +135,16 @@ for (const algorithm of [
   'restoring-radix-4',
   'restoring-radix-8',
   'non-restoring-radix-2',
+  'reciprocal-newton',
 ] as const) {
   STATES.push({
     name: `architecture/${algorithm}`,
     reach: async (page) => {
       await lens('Architecture Lab')(page);
       await page.getByLabel('Algorithm').selectOption(algorithm);
-      await page.getByLabel('Quotient digit').fill('120');
+      // The reciprocal method has no digits to step through, so no slider.
+      const slider = page.getByLabel('Quotient digit');
+      if ((await slider.count()) > 0) await slider.fill('120');
     },
   });
 }
