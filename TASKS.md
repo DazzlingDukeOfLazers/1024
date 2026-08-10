@@ -429,8 +429,34 @@ Discovered while implementing:
       that zoom its error genuinely is invisible. The test asserts nothing is
       ever drawn on the *wrong* side rather than demanding strict separation.
 - [x] The runner now executes in a Web Worker, with progress and cancellation.
-- [ ] The timeline shows divergence per checkpoint but does not chart it.
-      A sparkline per representation would show the drift accumulating.
+- [x] The timeline shows divergence per checkpoint and now charts it too. The
+      table can say what the error *was*; only a picture says what shape it has.
+
+      Measured first, and the measurement decided almost every choice. Four of
+      the six experiments keep two checkpoints, which is a straight line
+      whatever happened in between, so nothing is charted below three and the
+      panel says why. The one run with real data keeps seventeen, and both
+      obvious charts lie about it: a linear axis pins the first fifteen to zero
+      because the Planck grid runs from 10^-37 to 10^-31 m, and a magnitude axis
+      erases binary64's signed error crossing zero three times — which is the
+      distinction `docs/NUMERICS.md` §6 exists to draw.
+
+      So: log10 magnitude for height, sign as a hollow dot, exact checkpoints
+      marked below the axis rather than at the bottom of it, because zero is not
+      a very small number.
+
+      **Each row is drawn to its own range**, and that was decided by looking.
+      It was written with one shared axis — the machines are 31 decades apart
+      and that is the lens's own lesson — and every row came out a horizontal
+      line, which is the Microscope's lattice problem exactly. Nothing is lost:
+      the table above already prints every number, and numbers work across 31
+      decades where pixel height cannot.
+- [ ] The sparkline's x is checkpoint position, not iteration count, so the
+      million-iteration run's first five checkpoints (iterations 1–5) take the
+      same width as its last five (999,996–1,000,000). The shape is therefore
+      the shape of the *trace*, not of the run, and the caption says so. A log
+      iteration axis would be truer and would need the checkpoint iteration
+      numbers, which the sample carries.
 - [ ] Zoom to Disagreement is a toggle, not a continuous zoom. The spec's
       "centre the local ruler" phrasing suggests handing the camera to the
       Ruler lens instead.
@@ -671,6 +697,13 @@ Discovered while implementing:
 - [x] The error boundary is per lens and keyed on it, so a failure clears when
       you switch away. React asked for one out loud in milestone 6 when a Ruler
       crash took the page down.
+- [x] **The sweep had been evaluating the million-iteration run mid-flight.**
+      `e2e/states.ts` selected the experiment and moved on, so every conformance
+      pass and every screenshot caught the Lab a fraction of a second in, still
+      showing the *previous* experiment's two checkpoints. The finished state —
+      the only one in the app with seventeen of them, and the only one with a
+      chart — was a path nothing walked, which is the pattern the sweep exists
+      to close. The state waits for the run now.
 - [x] A robustness test feeds every lens `0`, negatives, `1e400`, empty and
       nonsense, and asserts the boundary is never reached. The guards hold; the
       boundary is a floor, not a crutch.

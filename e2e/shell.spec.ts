@@ -305,6 +305,50 @@ test('the lab runs an experiment and shows every machine disagreeing', async ({ 
   await expect(readoutRow(page, 'Raw register')).toContainText('0x');
 });
 
+test('the lab charts the shape the timeline can only tabulate', async ({ page }) => {
+  await openLab(page);
+  await page.getByLabel('Experiment').selectOption({ label: 'Add 1 mm one million times' });
+  await page.getByRole('button', { name: 'Run again' }).waitFor({ timeout: 30_000 });
+
+  const timeline = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Timeline' }) });
+  await expect(timeline).toContainText('How the drift accumulated');
+
+  // One per machine, each carrying what it shows in words for anyone who
+  // cannot see it.
+  const sparklines = timeline.locator('svg.sparkline');
+  await expect(sparklines).toHaveCount(3);
+  await expect(sparklines.first()).toHaveAttribute(
+    'aria-label',
+    /Planck grid .*divergence between 10\^-\d+.* metres, never changing sign/,
+  );
+
+  // binary64's signed error crosses zero three times over the run. It is the
+  // reason the chart plots sign beside magnitude rather than |x|.
+  await expect(sparklines.last()).toHaveAttribute('aria-label', /changing sign 3 times/);
+  await expect(timeline).toContainText('sign flips 3×');
+
+  // Each row states its own range, because each row is drawn to its own.
+  await expect(timeline).toContainText('each row is drawn to its own range');
+  await expect(timeline).toContainText(/10\^-36\.\d to 10\^-30\.\d m/);
+});
+
+test('the lab refuses to chart a run with no shape', async ({ page }) => {
+  await openLab(page);
+  // 0.1 + 0.2 keeps two checkpoints, and two points are a straight line
+  // whatever the arithmetic did between them.
+  await expect(page.getByLabel('Experiment')).toHaveValue('decimal-0-1-plus-0-2');
+
+  const timeline = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Timeline' }) });
+
+  await expect(timeline).toContainText('This run kept 2 checkpoints');
+  await expect(timeline).not.toContainText('How the drift accumulated');
+  await expect(timeline.locator('svg.sparkline')).toHaveCount(0);
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 

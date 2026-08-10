@@ -28,6 +28,7 @@ import { readAccumulator } from '../../core/representations/q512_512';
 import { metersToPlanckLengths } from '../../core/representations/planck';
 import { relativeError } from '../../core/representations/binary64';
 import { buildDisagreementView, drawnSeparationPixels } from './disagreement';
+import { type DriftSeries, MINIMUM_POINTS, driftChart, driftRuns } from './drift';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 import { Rendered } from '../../ui/Rendered';
 import { estimateTextWidth, placeInRows } from '../../camera/labels';
@@ -571,6 +572,139 @@ function Timeline({ result }: { result: ExperimentResult }) {
         executes every addition but keeps only these samples — the arithmetic is never compact, the
         trace always is.
       </p>
+      <DriftSparklines result={result} />
     </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Drift sparklines                                                            */
+/* -------------------------------------------------------------------------- */
+
+const SPARK: Viewport = { widthPx: 260, heightPx: 44 };
+/** Where an exact checkpoint is marked. Below the axis, because it is not on it. */
+const SPARK_EXACT_Y = SPARK.heightPx - 3;
+
+function Sparkline({ series }: { series: DriftSeries }) {
+  const toY = (y: number): number => (SPARK.heightPx - 8) * (1 - y) + 4;
+  const toX = (x: number): number => x * (SPARK.widthPx - 4) + 2;
+
+  return (
+    <svg
+      viewBox={`0 0 ${SPARK.widthPx} ${SPARK.heightPx}`}
+      width={SPARK.widthPx}
+      height={SPARK.heightPx}
+      role="img"
+      aria-label={describeDrift(series)}
+      className="sparkline"
+    >
+      {driftRuns(series).map((run, index) => (
+        <polyline
+          key={index}
+          points={run.map((point) => `${toX(point.x)},${toY(point.y!)}`).join(' ')}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={1.5}
+        />
+      ))}
+      {series.points.map((point) =>
+        point.y === undefined ? (
+          // Exact. Marked on its own line below the axis rather than at the
+          // bottom of it, where it would read as "very small".
+          <rect
+            key={point.index}
+            x={toX(point.x) - 1.5}
+            y={SPARK_EXACT_Y - 1.5}
+            width={3}
+            height={3}
+            className="spark-exact"
+          />
+        ) : (
+          // Hollow for negative. Tried opacity and radius first and neither
+          // survived seventeen points in 260 px — at that spacing the only
+          // channel that reads is whether the middle of the dot is there.
+          <circle
+            key={point.index}
+            cx={toX(point.x)}
+            cy={toY(point.y)}
+            r={2.2}
+            fill={point.sign === -1 ? 'none' : 'currentColor'}
+            stroke="currentColor"
+            strokeWidth={1}
+          />
+        ),
+      )}
+    </svg>
+  );
+}
+
+/** What the picture says, for anyone who cannot see it. */
+function describeDrift(series: DriftSeries): string {
+  if (series.alwaysExact) return `${series.label}: exact at every checkpoint.`;
+  const from = `10^${series.minLog10!.toFixed(1)}`;
+  const to = `10^${series.maxLog10!.toFixed(1)}`;
+  const flips =
+    series.signChanges === 0
+      ? 'never changing sign'
+      : `changing sign ${series.signChanges} ${series.signChanges === 1 ? 'time' : 'times'}`;
+  return `${series.label}: divergence between ${from} and ${to} metres, ${flips}.`;
+}
+
+function DriftSparklines({ result }: { result: ExperimentResult }) {
+  const chart = driftChart(
+    result.machines.map((machine) => ({
+      id: machine.id,
+      label: machine.label,
+      divergences: result.samples.map((sample) => sample.machines[machine.id]?.signedDivergence),
+    })),
+  );
+
+  if (chart === undefined) {
+    return (
+      <p className="lens-question">
+        {result.samples.length < MINIMUM_POINTS
+          ? `This run kept ${result.samples.length} checkpoints, and two points are a straight line whatever happened between them. Nothing is charted.`
+          : 'Every machine was exact at every checkpoint, so there is no drift to chart. A flat line would have to be drawn at some magnitude, and there is not one.'}
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <h4>How the drift accumulated</h4>
+      <table className="readout">
+        <tbody>
+          {chart.series.map((series) => (
+            <tr key={series.id}>
+              <th scope="row">{series.label}</th>
+              <td>
+                <Sparkline series={series} />
+              </td>
+              <td className="mono">
+                {series.alwaysExact ? (
+                  <span className="tag tag-exact">exact throughout</span>
+                ) : (
+                  <small>
+                    10^{series.minLog10!.toFixed(1)} to 10^{series.maxLog10!.toFixed(1)} m
+                    {series.signChanges > 0 && `, sign flips ${series.signChanges}×`}
+                  </small>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="lens-question">
+        Height is log10 of the magnitude, and <strong>each row is drawn to its own range</strong>,
+        stated beside it. A shared axis was tried first and every row came out a horizontal line:
+        these machines are {(chart.maxLog10 - chart.minLog10).toFixed(0)} decades apart, and a row
+        whose own error spans half a decade has no shape on an axis that wide. The distance between
+        them is in the table above, in numbers, which work at this spread where pixels do not. A
+        hollow dot is a negative divergence — signed error can cancel, and plotting magnitude alone
+        would hide a machine crossing back through zero. Across is checkpoint position, not
+        iteration count, because the checkpoints are not evenly spaced. Exact checkpoints are marked
+        below the axis rather than at the bottom of it: zero has no place on a logarithmic scale.
+      </p>
+    </>
   );
 }

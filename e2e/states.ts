@@ -206,6 +206,11 @@ for (const experiment of [
     reach: async (page) => {
       await lens('Representation Lab')(page);
       await page.getByLabel('Experiment').selectOption(experiment);
+      // The million-iteration run goes to a worker, and without this every
+      // sweep and screenshot caught it a fraction of a second in, still showing
+      // the *previous* experiment's two checkpoints. The finished state — the
+      // only one with seventeen of them — was a path nothing walked.
+      await page.getByRole('button', { name: 'Run again' }).waitFor({ timeout: 30_000 });
     },
   });
 }

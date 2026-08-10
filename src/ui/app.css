@@ -404,3 +404,25 @@ svg.ruler:active {
   color: var(--warn);
   font-size: 0.85rem;
 }
+
+/* Drift sparklines.
+   Deliberately *not* scaled to fit. `max-width: 100%` was the first attempt and
+   it broke the rule every other view here obeys: one viewBox unit is one CSS
+   pixel, so a figure stated in pixels is true at every width. The conformance
+   sweep caught it at 420 px, which is the rule being blanket rather than
+   applied where someone remembered it.
+   Scaling would also have cost real legibility — seventeen checkpoints squeezed
+   into a 150 px cell put 2 px dots on top of each other. The panel scrolls
+   instead, which is what it already does for a table too wide to tell the
+   truth in. */
+.sparkline {
+  display: block;
+  color: var(--accent);
+  vertical-align: middle;
+}
+
+/* An exact checkpoint. Not on the logarithmic axis at all, so it is drawn in
+   the exactness colour on its own line below it. */
+.spark-exact {
+  fill: var(--accent);
+}
