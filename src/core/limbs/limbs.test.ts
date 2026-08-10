@@ -112,6 +112,35 @@ describe('kernels against bigint on seeded random values', () => {
     }
   });
 
+  it('records the carry each lane emitted, and only when asked', () => {
+    // The trace exists for the compute panel, so it is checked against the
+    // *definition* of a lane carry — lane i carries iff the low i+1 limbs of
+    // a and b sum past 2^(32·(i+1)) — not against the loop that produced it.
+    for (const [a, b] of pairs.slice(0, 12)) {
+      const traced = addLimbs(toLimbs(a), toLimbs(b), true);
+      expect(traced.carries).toBeDefined();
+      for (let lane = 0; lane < LIMBS_PER_VALUE; lane += 1) {
+        const width = BigInt(32 * (lane + 1));
+        const mask = (1n << width) - 1n;
+        const expected = (a & mask) + (b & mask) >= 1n << width ? 1 : 0;
+        expect(traced.carries![lane], `${a} + ${b} lane ${lane}`).toBe(expected);
+      }
+      expect(traced.carries![LIMBS_PER_VALUE - 1] === 1, `${a} + ${b} top`).toBe(traced.carryOut);
+    }
+    expect(addLimbs(toLimbs(1n), toLimbs(1n)).carries).toBeUndefined();
+  });
+
+  it('propagates one carry across the whole register', () => {
+    // The §19 long-carry-chain case, as a picture the panel will draw: all-ones
+    // plus one carries in every single lane.
+    const traced = addLimbs(toLimbs(TOP), toLimbs(1n), true);
+    expect(Array.from(traced.carries!)).toEqual(new Array(LIMBS_PER_VALUE).fill(1));
+    expect(traced.carryOut).toBe(true);
+    // And the no-carry mirror, so the trace is not just always-ones.
+    const calm = addLimbs(toLimbs(1n), toLimbs(2n), true);
+    expect(Array.from(calm.carries!)).toEqual(new Array(LIMBS_PER_VALUE).fill(0));
+  });
+
   it('subtracts', () => {
     for (const [a, b] of pairs) {
       const difference = subLimbs(toLimbs(a), toLimbs(b));

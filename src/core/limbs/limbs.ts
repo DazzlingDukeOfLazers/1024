@@ -92,14 +92,23 @@ export interface LimbSum {
   readonly limbs: Uint32Array;
   /** The 1025th bit: the addition wrapped the register. */
   readonly carryOut: boolean;
+  /**
+   * Present when traced: the carry each lane emitted, one entry per limb, so
+   * `carries[31] === 1` is `carryOut`. §18 asks for the operation to be
+   * visualized, and a visualization must draw the machine's own record — a
+   * UI-side re-derivation of the carries would be a second implementation
+   * that could quietly disagree with the one it claims to depict.
+   */
+  readonly carries?: Uint8Array;
   readonly metrics: LimbMetrics;
 }
 
-export function addLimbs(a: Uint32Array, b: Uint32Array): LimbSum {
+export function addLimbs(a: Uint32Array, b: Uint32Array, trace = false): LimbSum {
   requireWidth(a, 'ADD left operand');
   requireWidth(b, 'ADD right operand');
   const t = tally();
   const out = new Uint32Array(LIMBS_PER_VALUE);
+  const carries = trace ? new Uint8Array(LIMBS_PER_VALUE) : undefined;
   let carry = 0;
   for (let i = 0; i < LIMBS_PER_VALUE; i += 1) {
     // The WGSL idiom, exactly: u32 addition wraps silently, and a wrapped sum
@@ -112,10 +121,16 @@ export function addLimbs(a: Uint32Array, b: Uint32Array): LimbSum {
     const c2 = sum2 < sum1 ? 1 : 0;
     out[i] = sum2;
     carry = c1 + c2;
+    if (carries !== undefined) carries[i] = carry;
     t.add32 += 2;
     t.compare32 += 2;
   }
-  return { limbs: out, carryOut: carry === 1, metrics: finish(t) };
+  return {
+    limbs: out,
+    carryOut: carry === 1,
+    ...(carries === undefined ? {} : { carries }),
+    metrics: finish(t),
+  };
 }
 
 export interface LimbDifference {

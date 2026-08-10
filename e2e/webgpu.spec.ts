@@ -134,6 +134,18 @@ test('a carry propagates through a WGSL compute shader', async ({ page }) => {
   expect(report).toEqual({ result: [0, 4] });
 });
 
+test('the compute panel reports agreement where a device exists', async ({ page }) => {
+  test.skip(process.env['CI'] !== undefined, 'GPU verification runs on the dev box only');
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  const gpuRow = page
+    .locator('table.readout tr')
+    .filter({ has: page.getByRole('rowheader', { name: 'GPU', exact: true }) });
+  // The check is asynchronous; the assertion retries until the device answers.
+  await expect(gpuRow).toContainText('ADD agrees with the CPU machine', { timeout: 20000 });
+  await expect(gpuRow).toContainText('checked bit-for-bit on these operands');
+});
+
 test('every limb fixture passes on the actual GPU (§18, §19)', async ({ page }) => {
   test.skip(process.env['CI'] !== undefined, 'GPU verification runs on the dev box only');
   // Serial WGSL division on 202 cases takes real wall clock; give it room.

@@ -1186,6 +1186,29 @@ test('a cell is shaded by what its digit is worth, not by one bit', async ({ pag
   expect(sevenths[0]!).toBeLessThan(0.6);
 });
 
+test('the compute lanes carry all the way across, and say what was not verified', async ({
+  page,
+}) => {
+  // All-ones plus one: §19's longest carry chain, drawn lane by lane. And this
+  // suite runs in Playwright's bundled Chromium, where the adapter exists but
+  // device creation fails on a missing dxil.dll — so this test pins the honest
+  // path: the panel must say nothing was GPU-verified, not pretend.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('A', { exact: true }).fill('2^1024 - 1');
+  await page.getByLabel('B', { exact: true }).fill('1');
+
+  await expect(readoutRow(page, 'Lanes that carried')).toContainText('32 of 32');
+  await expect(readoutRow(page, 'Lanes that carried')).toContainText('longest chain 32');
+  await expect(readoutRow(page, 'A + B')).toContainText('wrapped');
+
+  // Two machines, one product, in the live app rather than only in a test.
+  await expect(readoutRow(page, 'Same product, two machines')).toContainText('agree bit-for-bit');
+
+  await expect(readoutRow(page, 'GPU')).toContainText('no WebGPU device in this browser');
+  await expect(readoutRow(page, 'GPU')).toContainText('nothing on this page has been GPU-verified');
+});
+
 test('the reciprocal method says it has no digits to step through', async ({ page }) => {
   // A method that estimates the whole quotient at once has no serial digits, so
   // the panel drops the tape rather than drawing an animation of something the

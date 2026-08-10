@@ -41,6 +41,7 @@ import { Rendered } from '../../ui/Rendered';
 import { mulWide } from '../../core/wide/multiply';
 import { narrow } from '../../core/wide/narrow';
 import { SCENARIOS, SCENARIO_NAMES } from '../../core/wide/scenario';
+import { ComputeLanes } from './ComputeLanes';
 import { type ArchitectureState } from '../../share/appState';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
@@ -765,6 +766,16 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
               declared.
             </p>
           </section>
+
+          <ComputeLanes
+            a={parsed.a! < 0n ? -parsed.a! : parsed.a!}
+            b={parsed.b! < 0n ? -parsed.b! : parsed.b!}
+            digitProduct={
+              computed.product.value < 0n ? -computed.product.value : computed.product.value
+            }
+            digitCycles={computed.product.metrics.modeledCycles}
+            digitBits={state.digitBits}
+          />
 
           <section className="panel">
             <h3>Partial products</h3>

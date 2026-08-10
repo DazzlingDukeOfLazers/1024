@@ -1262,6 +1262,29 @@ the failure mode is a diagnosable error instead of a stall.
       on success. Two hangs is enough; it should be a script with the revert in
       a `finally`.
 
+## The §18 ladder, complete
+
+Oracle → CPU → GPU → panel, in four commits. The u32-limb model prototyped in
+Python against native ints; the CPU machine in src/core/limbs constrained the
+way a shader is (bigint at the boundary only, carries by comparison, 32×32→64
+from 16-bit halves because WGSL has no u64); the WGSL kernels textually
+mirroring it, all 195 op fixtures passing bit-for-bit on this machine's RDNA-3
+through branded Chrome; and the compute-lane panel drawing A + B from the
+kernel's own carry trace, with a GPU row that reports agreement with the CPU
+machine or says plainly that nothing was GPU-verified here.
+
+Follow-ups deliberately not taken:
+
+- [ ] §17's cooperating-lane organizations (one warp per scalar, one thread
+      per several limbs). Everything so far is one invocation per op —
+      correct first, parallel later, and the metrics are ready to price the
+      difference when it comes.
+- [ ] The panel visualizes ADD only. Op selector (SUB/MUL/DIV_REM views) is a
+      question for Daniel in PLAN.md.
+- [ ] Zero-limb skipping in mulLimbs, to mirror §4 at limb level. The dense
+      baseline is what the GPU runs today, so the model matches the machine;
+      revisit if a sparse GPU path ever exists.
+
 ## Hardening
 
 - [x] Playwright critical path.

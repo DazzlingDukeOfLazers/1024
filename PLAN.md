@@ -24,22 +24,20 @@ Decisions Daniel made when this plan was written (2026-08-09):
 
 - Branch `dd/exact-quantity-core`; 807 unit tests, 95 Playwright, all green.
   CI runs the gate on every push.
-- Current phase: **1** (§18 ladder). 1.1, 1.2 and 1.3 done; 832 unit tests,
-  96 Playwright.
+- Current phase: **1 complete** — the §18 ladder is done; 834 unit tests,
+  98 Playwright.
   - 1.1: 202 limb fixtures; Python kernels asserted against native ints;
     DIV_REM needs **no** extra limb (R ≤ 2^k − 1; proof in `limb_divrem`).
   - 1.2: `src/core/limbs/limbs.ts` — u32-only kernels, 32×32→64 from 16-bit
     halves, metrics per kernel, ten mutants killed, op-list sweep.
-  - 1.3: `src/gpu/wgsl.ts` + `src/gpu/harness.ts` + the window bridge
-    `src/gpu/expose.ts`. **All 195 op fixtures pass bit-for-bit on the real
-    GPU** (amd rdna-3, branded Chrome). Three WGSL mutants killed through the
-    sweep. divRem reports the R-invariant as out[64], and the harness refuses
-    a flagged result. `@webgpu/types` added as a devDependency.
-- Next action: Phase 1.4 — compute panel in the Architecture Lab. Use
-  `createGpuLimbMachine` (may be undefined in the pane/CI — say so in the UI,
-  never pretend), CPU limb machine always available for the visualization,
-  §20 metrics beside the digit-serial ones, sweep + screenshots, and leave a
-  design note in Questions for Daniel.
+  - 1.3: `src/gpu/` — WGSL kernels, harness, window bridge. **All 195 op
+    fixtures pass bit-for-bit on the real GPU** (amd rdna-3, branded Chrome).
+  - 1.4: `ComputeLanes.tsx` — the register as 32 × u32 lanes, A + B drawn
+    from the kernel's own carry trace, §20 metrics, the two-machines product
+    row, and a GPU row that reports agreement-with-CPU or honest absence.
+    Falsified: a panel that pretends agreement when the device is absent
+    fails the sweep. Screenshots reviewed at 1280 and 420.
+- Next action: Phase 2.1 — autoplay for the quotient tape.
 
 ## Session protocol
 
@@ -121,7 +119,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
   pattern (branded Chrome + flags) runs every fixture through the GPU and
   compares bit-for-bit; skips loudly when no adapter.
   *Done means:* every 1.1 fixture passes on the actual GPU on this machine.
-- [ ] **1.4 Compute panel in the Architecture Lab.** §18: "the browser UI can
+- [x] **1.4 Compute panel in the Architecture Lab.** §18: "the browser UI can
   visualize the operation while the compute shader performs it." Minimal
   first: limb lanes with carry propagation shown, CPU/GPU agreement stated per
   §19 (never GPU-as-its-own-reference), and the §20 metrics beside the
@@ -182,4 +180,12 @@ bumps. If one of these becomes necessary, write up why and stop that thread.
 
 > Sessions append here instead of blocking. Answer whenever you check in.
 
-- (none yet)
+- **Compute panel scope (2026-08-09, phase 1.4).** The lane panel visualizes
+  ADD only — the §18 first op, where carry propagation is the story. Worth
+  extending to an op selector (SUB borrows, MUL's 4096-multiply grid, DIV_REM
+  lane traffic)? And should the strip also draw A's and B's lanes above the
+  sum, at the cost of two more rows? Current look: `shots/architecture--dense-*.png`
+  (regenerate any time: `$env:SHOTS='architecture'; npx playwright test
+  e2e/screenshots`). Default if unanswered: leave as ADD-only; §22's
+  accumulation animation (phase 2.2) will add motion to the multiply story
+  instead.
