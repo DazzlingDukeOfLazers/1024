@@ -24,19 +24,22 @@ Decisions Daniel made when this plan was written (2026-08-09):
 
 - Branch `dd/exact-quantity-core`; 807 unit tests, 95 Playwright, all green.
   CI runs the gate on every push.
-- Current phase: **1** (§18 ladder). 1.1 and 1.2 done.
-  - 1.1: 202 limb fixtures; Python kernels asserted against native ints; one
-    false claim caught — DIV_REM needs **no** extra limb (R ≤ 2^k − 1 after k
-    bits; proof in `limb_divrem`'s docstring).
-  - 1.2: `src/core/limbs/limbs.ts` — u32-only kernels (bigint at the boundary
-    only), 32×32→64 from 16-bit halves because WGSL has no u64, metrics per
-    kernel. All fixtures pass, cross-checked against `core/wide`, ten mutants
-    killed via `tools/mutate.py`, op-list sweep in `oracle.test.ts` fails by
-    name on any fixture op without a runner. 832 unit tests.
-- Next action: Phase 1.3 — WGSL kernels + `src/gpu/` harness, verified on this
-  machine's GPU via the `e2e/webgpu.spec.ts` recipe (branded Chrome + flags).
-  The WGSL must textually mirror the 1.2 kernels — same carry idiom, same
-  16-bit-half multiply, same no-extra-limb DIV_REM.
+- Current phase: **1** (§18 ladder). 1.1, 1.2 and 1.3 done; 832 unit tests,
+  96 Playwright.
+  - 1.1: 202 limb fixtures; Python kernels asserted against native ints;
+    DIV_REM needs **no** extra limb (R ≤ 2^k − 1; proof in `limb_divrem`).
+  - 1.2: `src/core/limbs/limbs.ts` — u32-only kernels, 32×32→64 from 16-bit
+    halves, metrics per kernel, ten mutants killed, op-list sweep.
+  - 1.3: `src/gpu/wgsl.ts` + `src/gpu/harness.ts` + the window bridge
+    `src/gpu/expose.ts`. **All 195 op fixtures pass bit-for-bit on the real
+    GPU** (amd rdna-3, branded Chrome). Three WGSL mutants killed through the
+    sweep. divRem reports the R-invariant as out[64], and the harness refuses
+    a flagged result. `@webgpu/types` added as a devDependency.
+- Next action: Phase 1.4 — compute panel in the Architecture Lab. Use
+  `createGpuLimbMachine` (may be undefined in the pane/CI — say so in the UI,
+  never pretend), CPU limb machine always available for the visualization,
+  §20 metrics beside the digit-serial ones, sweep + screenshots, and leave a
+  design note in Questions for Daniel.
 
 ## Session protocol
 
@@ -112,7 +115,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
   *Done means:* all fixtures pass; a mutation pass on carry/borrow logic kills
   every mutant; oracle test sweeps the op list so new ops are automatically
   covered.
-- [ ] **1.3 WGSL shaders + browser harness.** One WGSL kernel per op, textually
+- [x] **1.3 WGSL shaders + browser harness.** One WGSL kernel per op, textually
   mirroring the 1.2 kernels. A small `src/gpu/` harness: capability detection,
   buffer plumbing, dispatch. Playwright spec in the `e2e/webgpu.spec.ts`
   pattern (branded Chrome + flags) runs every fixture through the GPU and

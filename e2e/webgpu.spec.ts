@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
 /**
@@ -17,6 +19,23 @@ import { expect, test } from '@playwright/test';
  * branded Chrome or a GPU (CI, most containers) the test skips — loudly, so a
  * green run is never mistaken for a verified one.
  */
+
+// The bridge src/gpu/expose.ts installs. Declared here as well because the
+// e2e program and the app program are separate TypeScript projects, and a
+// page.evaluate boundary is exactly where their types meet.
+declare global {
+  interface Window {
+    scaleAtlasCompute?: {
+      probe(): Promise<{ available: boolean; description?: string }>;
+      run(
+        op: 'add' | 'sub' | 'bitlen' | 'shl' | 'shr' | 'mulWide' | 'divRem',
+        a: string,
+        b?: string,
+        shift?: number,
+      ): Promise<Record<string, string | number | boolean>>;
+    };
+  }
+}
 
 test.use({
   channel: 'chrome',
@@ -113,4 +132,126 @@ test('a carry propagates through a WGSL compute shader', async ({ page }) => {
   }
   // 0xFFFFFFFF + 1 = 0 carry 1; 1 + 2 + carry = 4.
   expect(report).toEqual({ result: [0, 4] });
+});
+
+test('every limb fixture passes on the actual GPU (§18, §19)', async ({ page }) => {
+  test.skip(process.env['CI'] !== undefined, 'GPU verification runs on the dev box only');
+  // Serial WGSL division on 202 cases takes real wall clock; give it room.
+  test.setTimeout(240_000);
+  await page.goto('/');
+
+  const limbs = JSON.parse(
+    readFileSync(fileURLToPath(new URL('../fixtures/oracle.json', import.meta.url)), 'utf-8'),
+  ).limbs as {
+    add: { a: string; b: string; sum: string; carryOut: boolean }[];
+    sub: { a: string; b: string; difference: string; borrowOut: boolean }[];
+    bitlen: { value: string; bitLength: number }[];
+    shl: { value: string; shift: number; result: string }[];
+    shr: { value: string; shift: number; result: string }[];
+    mulWide: { a: string; b: string; product: string }[];
+    divRem: { dividend: string; divisor: string; quotient: string; remainder: string }[];
+  };
+
+  const probe = await page.evaluate(() => window.scaleAtlasCompute!.probe());
+  if (!probe.available) {
+    test.skip(true, 'adapter or device unavailable — §18 is UNVERIFIED in this run');
+  }
+  console.log(`GPU under test: ${probe.description}`);
+
+  // One evaluate per op batch: the round trip is the slow part, not the GPU.
+  const runBatch = (
+    op: string,
+    cases: { a: string; b?: string; shift?: number }[],
+  ): Promise<Record<string, string | number | boolean>[]> =>
+    page.evaluate(
+      async ({ op, cases }) => {
+        const bridge = window.scaleAtlasCompute!;
+        const results = [];
+        for (const item of cases) {
+          results.push(
+            await bridge.run(op as Parameters<typeof bridge.run>[0], item.a, item.b, item.shift),
+          );
+        }
+        return results;
+      },
+      { op, cases },
+    );
+
+  let checked = 0;
+
+  const additions = await runBatch(
+    'add',
+    limbs.add.map((entry) => ({ a: entry.a, b: entry.b })),
+  );
+  limbs.add.forEach((entry, index) => {
+    expect(additions[index], `add ${entry.a} + ${entry.b}`).toEqual({
+      sum: entry.sum,
+      carryOut: entry.carryOut,
+    });
+    checked += 1;
+  });
+
+  const subtractions = await runBatch(
+    'sub',
+    limbs.sub.map((entry) => ({ a: entry.a, b: entry.b })),
+  );
+  limbs.sub.forEach((entry, index) => {
+    expect(subtractions[index], `sub ${entry.a} − ${entry.b}`).toEqual({
+      difference: entry.difference,
+      borrowOut: entry.borrowOut,
+    });
+    checked += 1;
+  });
+
+  const lengths = await runBatch(
+    'bitlen',
+    limbs.bitlen.map((entry) => ({ a: entry.value })),
+  );
+  limbs.bitlen.forEach((entry, index) => {
+    expect(lengths[index], `bitlen ${entry.value}`).toEqual({ bitLength: entry.bitLength });
+    checked += 1;
+  });
+
+  const lefts = await runBatch(
+    'shl',
+    limbs.shl.map((entry) => ({ a: entry.value, shift: entry.shift })),
+  );
+  limbs.shl.forEach((entry, index) => {
+    expect(lefts[index], `${entry.value} << ${entry.shift}`).toEqual({ result: entry.result });
+    checked += 1;
+  });
+
+  const rights = await runBatch(
+    'shr',
+    limbs.shr.map((entry) => ({ a: entry.value, shift: entry.shift })),
+  );
+  limbs.shr.forEach((entry, index) => {
+    expect(rights[index], `${entry.value} >> ${entry.shift}`).toEqual({ result: entry.result });
+    checked += 1;
+  });
+
+  const products = await runBatch(
+    'mulWide',
+    limbs.mulWide.map((entry) => ({ a: entry.a, b: entry.b })),
+  );
+  limbs.mulWide.forEach((entry, index) => {
+    expect(products[index], `mul ${entry.a} × ${entry.b}`).toEqual({ product: entry.product });
+    checked += 1;
+  });
+
+  const divisions = await runBatch(
+    'divRem',
+    limbs.divRem.map((entry) => ({ a: entry.dividend, b: entry.divisor })),
+  );
+  limbs.divRem.forEach((entry, index) => {
+    expect(divisions[index], `div ${entry.dividend} ÷ ${entry.divisor}`).toEqual({
+      quotient: entry.quotient,
+      remainder: entry.remainder,
+    });
+    checked += 1;
+  });
+
+  // Anti-vacuity: a sweep that swept nothing proves nothing.
+  expect(checked).toBeGreaterThan(190);
+  console.log(`GPU fixture cases checked bit-for-bit: ${checked}`);
 });
