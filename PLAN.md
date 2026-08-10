@@ -53,8 +53,11 @@ Decisions Daniel made when this plan was written (2026-08-09):
   the ~50 formatter call sites dropping the exactness flag, the
   resolution-chart legend overlap, the 1e20 m grid labels, and the
   `role="application"` reconsideration.
-- Next action: Phase 4 — the 1e20 m grid labels (TASKS ~line 898), then the
-  `role="application"` reconsideration.
+- **Phase 4 complete** except the 1e20 m grid labels, which are queued as a
+  question for Daniel rather than guessed at. 853 unit tests, 130 Playwright.
+- Next action: Phase 5 — catalog citations, marked for Daniel's review, with
+  sources quoted in the commit message. After that the plan's numbered phases
+  are done; pick from the TASKS backlog and keep the same disciplines.
   **Note:** any intended visual change from here needs
   `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
   images before committing.
@@ -187,7 +190,9 @@ oracle first, CPU simulation second, the real thing third, UI last.
 - [x] Resolution-chart legend placed by measurement (`chooseClearRect`).
 - [ ] 1e20 m grid labels are unreadable digit strings (TASKS ~line 898) —
   engineering notation there.
-- [ ] `role="application"` reconsideration (TASKS ~line 577).
+- [x] `role="application"` reconsideration — announced-vs-handled key sets held
+  together, focus escape and control alternatives tested. A real screen-reader
+  pass stays open in TASKS; nothing here can hear.
 
 ## Phase 5 — citations (allowed unattended, marked for review)
 
@@ -207,6 +212,33 @@ bumps. If one of these becomes necessary, write up why and stop that thread.
 ## Questions for Daniel
 
 > Sessions append here instead of blocking. Answer whenever you check in.
+
+- **The far-origin ruler's grid labels (phase 4).** TASKS calls this a decision
+  rather than a defect, and it is, so it is not being made unilaterally — but
+  the evidence is worse than the note recorded. At the `1e20 m origin` preset
+  the six tick labels are not merely similar, they are the *identical string*:
+  `100000000000000000000000` at x = 44, 244, 443, 643, 843, 1042. Six different
+  positions labelled with the same number. By this project's own rule that
+  labels are claims, that is a false one — the label claims to say where the
+  tick is and does not.
+
+  Options, cheapest first:
+
+  1. **Offset notation** (matplotlib's convention): state the shared prefix once
+     beside the axis — `+1.0000 × 10^23 mm` — and label the ticks by their
+     difference from it (`0, 2, 4, 6…`). No information is lost: offset plus
+     tick is the exact absolute position. My recommendation.
+  2. **Label relative to the camera centre**, as the TASKS note suggested. Same
+     readability, but the absolute position stops being on screen at all, which
+     is a real change to what the ruler asserts.
+  3. **Leave it.** Defensible if the point of that preset is to *show* that
+     absolute coordinates become unreadable out there — the panel's own text
+     already says "the camera centre is 100 quintillion metres from zero". If
+     that is the intent, I would still drop the five redundant labels, since
+     one unreadable label makes the point and six make it look like a bug.
+
+  Screenshot: `$env:SHOTS='far-origin'; npx playwright test e2e/screenshots`.
+  Default if unanswered: none — this stays open rather than being guessed.
 
 - **Compute panel scope (2026-08-09, phase 1.4).** The lane panel visualizes
   ADD only — the §18 first op, where carry propagation is the story. Worth

@@ -574,9 +574,17 @@ Discovered while implementing:
       boundary is a floor, not a crutch.
 - [x] A share link naming a catalog id that no longer exists opens and explains,
       rather than failing. Links outlive builds.
-- [ ] `role="application"` tells assistive technology to pass all keys through.
-      That is right for a pannable view but it is a strong claim, and it has not
-      been checked with a real screen reader — only with axe.
+- [x] `role="application"` — the checkable half of the claim. The role asks
+      assistive technology to stop interpreting keys and hand every one to the
+      view, so what the `aria-label` announces and what the handler takes must
+      be the same set, in both directions. They are now held together by tests:
+      every announced key works, every handled key is announced in words a
+      listener can act on, and no unannounced key is swallowed. Plus the escape
+      hatches, in the live browser: Tab and Shift+Tab both leave the region, and
+      every capability the keys offer has an ordinary control outside it.
+- [ ] Still not done with a real screen reader, which remains the actual test.
+      The tests above reduce the risk — they would have caught a key silently
+      stolen from the reader — but none of them can hear anything.
 - [x] Skip link, as the first tab stop, moving focus to the lens container
       itself rather than only the URL fragment. Clipped rather than hidden, so
       it stays in the tab order — a skip link nobody can reach is worse than
@@ -923,12 +931,14 @@ It found four defects on its first run, in states nothing had visited:
 rather than inferred from digits. A panel that drops the formatter's flag now
 fails the sweep instead of waiting to be seen.
 
-- [ ] At a 1e20 m origin every grid label reads `1000000000000000000000...`, and
-      they are visually identical because the digits that differ are twenty-one
-      orders down. Correct, in bounds, and unreadable as a grid. Labelling
-      relative to the camera centre would fix it, but that is a change to what
-      the ruler means rather than to how it draws, so it is a decision rather
-      than a defect.
+- [ ] At a 1e20 m origin every grid label reads `1000000000000000000000...`.
+      Measured since that note was written, and it is worse than it recorded:
+      the six labels are not visually similar, they are the *identical string*
+      `100000000000000000000000`, at x = 44, 244, 443, 643, 843, 1042. Six
+      positions carrying the same number. Still a decision rather than a defect
+      — the fix changes what the ruler asserts — but by this project's own rule
+      that labels are claims, the present state makes a false one. Options and a
+      recommendation are queued for Daniel in `PLAN.md`.
 
 ## An oracle that is not us
 

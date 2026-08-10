@@ -237,3 +237,59 @@ test('the skip link stays out of the way until it is wanted', async ({ page }) =
   await expect(link).toHaveCount(1);
   await expect(link).not.toBeInViewport();
 });
+
+test('an application region can always be left, and never is the only route', async ({ page }) => {
+  // `role="application"` asks assistive technology to stop interpreting keys
+  // and hand them all to the view. TASKS flags that as a strong claim checked
+  // only by axe. A screen reader is still the real test and is still not done —
+  // but two of the properties that make the claim survivable are checkable
+  // here, and neither was.
+  for (const [lens, name] of [
+    ['Metric Ruler', /Metric ruler/],
+    ['Scale Atlas', /Scale atlas/],
+  ] as const) {
+    await page.goto('/');
+    await page
+      .getByRole('navigation', { name: 'Lenses' })
+      .getByRole('button', { name: lens })
+      .click();
+
+    const view = page.getByRole('application', { name });
+    await view.focus();
+    await expect(view).toBeFocused();
+
+    // 1. Tab escapes. A view that swallowed Tab would trap a keyboard user
+    //    inside a region whose own commands they may not be able to use.
+    await page.keyboard.press('Tab');
+    await expect(view, `${lens} trapped focus`).not.toBeFocused();
+
+    // 2. Shift+Tab back in, then out the other way — both directions work.
+    await view.focus();
+    await page.keyboard.press('Shift+Tab');
+    await expect(view, `${lens} trapped focus backwards`).not.toBeFocused();
+  }
+});
+
+test('everything the application keys do is also reachable as a control', async ({ page }) => {
+  // The escape hatch that matters most: someone who cannot use the custom keys
+  // must still be able to drive the view. Pan, zoom and reset all have an
+  // ordinary control outside the application region.
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Metric Ruler' })
+    .click();
+
+  const centre = page
+    .locator('table.readout tr')
+    .filter({ has: page.getByRole('rowheader', { name: 'Centre', exact: true }) });
+  const before = await centre.textContent();
+
+  // The preset select moves the camera without touching the application region.
+  await page.getByLabel('Preset').selectOption('coconuts');
+  await expect(centre).not.toHaveText(before ?? '');
+
+  // And Reset view brings it back, which is what Home does from the keyboard.
+  await page.getByRole('button', { name: 'Reset view' }).click();
+  await expect(page.getByLabel('Preset')).toHaveValue('coconuts');
+});

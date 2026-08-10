@@ -72,3 +72,107 @@ describe('tuning', () => {
     });
   });
 });
+
+describe('the keys announced and the keys handled are the same set', () => {
+  /**
+   * `role="application"` tells assistive technology to stop interpreting keys
+   * and hand every one to the view. That is the right call for something you
+   * pan and zoom, but it is a strong promise: the user gives up their own
+   * reading commands in exchange for the ones the `aria-label` names. If the
+   * handler and the announcement drift, an AT user has been told about keys
+   * that do nothing, and — worse — keys they were not told about have quietly
+   * taken over.
+   *
+   * So the two are held together here. Neither direction is optional.
+   */
+  const ANNOUNCED: readonly string[] = [
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowUp',
+    'ArrowDown',
+    '+',
+    '-',
+    'PageUp',
+    'PageDown',
+    'Home',
+    // The unshifted faces of + and -: the same physical keys, and naming them
+    // in the hint would be noise rather than information.
+    '=',
+    '_',
+  ];
+
+  it('handles every key the hint mentions', () => {
+    for (const key of ANNOUNCED) {
+      expect(commandForKey(key), `${key} is announced but does nothing`).toBeDefined();
+    }
+  });
+
+  it('mentions every key it handles, in words a listener can act on', () => {
+    const hint = KEYBOARD_HINT.toLowerCase();
+    for (const [key, phrase] of [
+      ['ArrowLeft', 'arrow keys'],
+      ['ArrowUp', 'arrow keys'],
+      ['+', 'plus'],
+      ['-', 'minus'],
+      ['PageUp', 'page up'],
+      ['PageDown', 'page down'],
+      ['Home', 'home'],
+    ] as const) {
+      expect(commandForKey(key), `${key} unhandled`).toBeDefined();
+      expect(hint, `${key} is handled but the hint never says so`).toContain(phrase);
+    }
+    expect(hint).toContain('shift');
+    expect(commandForKey('ArrowLeft', { shiftKey: true })).not.toEqual(commandForKey('ArrowLeft'));
+  });
+
+  it('takes no key it did not announce', () => {
+    // The direction that actually catches drift: a key added to the handler
+    // without being announced silently steals it from the screen reader.
+    //
+    // The universe is *enumerated*, not hand-picked. The first version of this
+    // test listed a dozen letters it thought were interesting, and a mutant
+    // binding `r` to reset survived it — because `r` was not on the list. A
+    // list of keys-that-should-do-nothing is worth exactly the imagination of
+    // whoever wrote it, so this generates every printable ASCII character and
+    // the named keys a browser is likely to emit, then subtracts the announced
+    // set.
+    const printable: string[] = [];
+    for (let code = 0x20; code <= 0x7e; code += 1) printable.push(String.fromCharCode(code));
+    const named = [
+      'Tab',
+      'Enter',
+      'Escape',
+      'Backspace',
+      'Delete',
+      'Insert',
+      'End',
+      'Shift',
+      'Control',
+      'Alt',
+      'Meta',
+      'CapsLock',
+      'ContextMenu',
+      'Clear',
+      'Copy',
+      'Paste',
+      'Space',
+      ...Array.from({ length: 12 }, (_, index) => `F${index + 1}`),
+    ];
+    const universe = [...printable, ...named].filter((key) => !ANNOUNCED.includes(key));
+
+    // Anti-vacuity: subtracting the announced set must leave a real universe.
+    expect(universe.length).toBeGreaterThan(90);
+
+    for (const key of universe) {
+      expect(commandForKey(key), `${key} is swallowed but never announced`).toBeUndefined();
+    }
+  });
+
+  it('never swallows Tab, so the application region can always be left', () => {
+    // The escape hatch that makes `role="application"` survivable. A view that
+    // ate Tab would trap a keyboard user inside it with no way out.
+    for (const modifiers of [{}, { shiftKey: true }]) {
+      expect(commandForKey('Tab', modifiers)).toBeUndefined();
+    }
+  });
+});
