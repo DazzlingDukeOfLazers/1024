@@ -53,7 +53,8 @@ Decisions Daniel made when this plan was written (2026-08-09):
   the ~50 formatter call sites dropping the exactness flag, the
   resolution-chart legend overlap, the 1e20 m grid labels, and the
   `role="application"` reconsideration.
-- Next action: Phase 4 — the ~50 formatter call sites (TASKS ~line 806).
+- Next action: Phase 4 — the resolution-chart legend overlap (TASKS ~line 776),
+  then the 1e20 m grid labels and the `role="application"` reconsideration.
   **Note:** any intended visual change from here needs
   `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
   images before committing.
@@ -178,8 +179,11 @@ oracle first, CPU simulation second, the real thing third, UI last.
 - [x] Skip link — first tab stop jumps to the lens panel.
 - [x] Colour-vision check: `src/ui/colourVision.ts` + tests. Nothing failed;
   the method and its limits are recorded in TASKS.
-- [ ] The ~50 formatter call sites that drop the exactness flag under
-  non-claiming labels (TASKS ~line 806) — wire through `Rendered`.
+- [x] The formatter call sites that drop the exactness flag. **The plan
+  mis-stated this**: TASKS said they were left alone *deliberately* and to
+  revisit only if a label started making a claim — wiring all 40 through
+  `Rendered` would have made the UI worse. Re-audited (all 40 still under
+  non-claiming labels) and the missing guard closed instead.
 - [ ] Resolution-chart legend sits on its own plotted line (TASKS ~line 776).
 - [ ] 1e20 m grid labels are unreadable digit strings (TASKS ~line 898) —
   engineering notation there.

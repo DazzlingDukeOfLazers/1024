@@ -96,7 +96,17 @@ async function inspect(page: Page): Promise<{ findings: Finding[]; examined: num
     }
 
     /* 5: anything under a label claiming exactness carries the verdict. */
-    const claimsExact = (text: string) => /\bexact\b/i.test(text);
+    // What counts as a label claiming exactness.
+    //
+    // This was `/\bexact\b/i`, which does not match "exactly" — the word
+    // boundary after "exact" fails on the trailing "ly", so a row header
+    // reading "Exactly" would drop straight through the rule meant to catch
+    // it. The vocabulary is a list now, and deliberately short: a claim is a
+    // promise about the digits, not a mood. "Size", "Scale" and "Looking at
+    // 1 m" claim nothing and are meant to stay untagged — a tag on every cell
+    // is noise rather than honesty (docs/NUMERICS.md §15).
+    const claimsExact = (text: string) =>
+      /\b(exact|exactly|exactness|precise|precisely|true value|full value)\b/i.test(text);
     for (const table of Array.from(document.querySelectorAll('table'))) {
       const headerCells = Array.from(table.querySelectorAll('thead th'));
       const exactColumns = headerCells

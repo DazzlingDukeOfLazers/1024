@@ -812,10 +812,22 @@ milestone 1, so the two lenses disagreed about the same idea.
       *label* claims, not what the call site does, since the flag will always be
       optional to use. In dense tables only rounded values are marked, so an
       unmarked one means exact.
-- [ ] The remaining ~50 call sites drop the flag under labels that claim nothing
-      — a name on a marker, "Looking at 1 m", a gap in scientific notation. Left
-      alone deliberately: a tag on every cell is noise rather than honesty. Worth
-      revisiting if any of those labels ever starts making a claim.
+- [x] Revisited, since many panels were added after that audit. Measured: 40
+      call sites drop the flag today, across seven files, and every one is under
+      a label that claims nothing — "Size", "Scale", "Across the view", "Grid
+      step", "Quantization", "Relative error", "Looking at 1 m". The original
+      judgment stands: a tag on every cell is noise rather than honesty. The
+      Architecture Lab's panels are not among them — they use `Rendered` where a
+      value is rounded and `describeWideLiteral` where it is an exact integer.
+- [x] What the audit lacked was a guard. Conformance rule 5 tested
+      `/exact/i`, which does not match "exactly" — the word boundary fails
+      on the trailing "ly" — so a row header reading "Exactly" over an untagged
+      value would have passed the rule written to catch exactly that. Verified
+      against the old regex: "Exactly", "Exactness", "Precisely" and "True
+      value" all missed; all four caught now, while "Size", "Scale" and "Looking
+      at 1 m" still correctly do not match, so the vocabulary adds no noise.
+      Falsified end to end: a planted "Exactly" label over the Ruler's untagged
+      scale fails the sweep in two states.
 
 ## Tests that assert nothing is wrong
 
