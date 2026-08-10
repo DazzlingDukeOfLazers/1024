@@ -87,29 +87,42 @@ export function declutter(
   const cullMargin = options.cullMarginPx ?? DEFAULTS.cullMarginPx;
   const labelFontSize = options.labelFontSizePx ?? DEFAULTS.labelFontSizePx;
 
-  const visible = entries
-    .map((entry) => ({ entry, x: atlasXFromLog10(camera, entry.log10, viewport) }))
-    .filter(
-      ({ x }) => Number.isFinite(x) && x >= -cullMargin && x <= viewport.widthPx + cullMargin,
-    );
-
-  // Merge markers that would overlap. A cluster is anchored at its first
-  // member, so panning does not make members jump between clusters.
-  const clusters: { x: number; log10: number; members: AtlasEntry[] }[] = [];
-  for (const { entry, x } of visible) {
+  // Merge markers that would overlap, over *every* entry rather than the
+  // visible ones, and in log10 rather than in screen x.
+  //
+  // Both details are the same fix. Screen x is `pixelsPerDecade × log10` plus a
+  // pan offset, so a difference of two x values does not depend on the pan —
+  // but which entries survive culling does, and the cluster was anchored at the
+  // first survivor. Pan until an anchor crosses the cull boundary while a
+  // member five pixels away does not, and the anchor moves, the merge boundary
+  // moves with it, and the next object joins a different cluster. A marker that
+  // names a different object depending on where you have panned is a label
+  // making a claim it cannot keep.
+  //
+  // Grouping now depends on the zoom and nothing else. Culling happens after,
+  // to the finished clusters, where it cannot change what belongs to what.
+  const spacingInDecades = minMarkerSpacing / camera.pixelsPerDecade;
+  const clusters: { log10: number; members: AtlasEntry[] }[] = [];
+  for (const entry of entries) {
     const current = clusters[clusters.length - 1];
-    if (current !== undefined && x - current.x < minMarkerSpacing) {
+    if (current !== undefined && entry.log10 - current.log10 < spacingInDecades) {
       current.members.push(entry);
       continue;
     }
-    clusters.push({ x, log10: entry.log10, members: [entry] });
+    clusters.push({ log10: entry.log10, members: [entry] });
   }
+
+  const visible = clusters
+    .map((cluster) => ({ ...cluster, x: atlasXFromLog10(camera, cluster.log10, viewport) }))
+    .filter(
+      ({ x }) => Number.isFinite(x) && x >= -cullMargin && x <= viewport.widthPx + cullMargin,
+    );
 
   // Stagger labels by how wide each one actually is. A fixed allowance was what
   // let "Virus (representative)" run straight through "Human": the allowance
   // said they fitted, and the words did not.
   const placed = placeInRows(
-    clusters.map((cluster) => ({
+    visible.map((cluster) => ({
       ...cluster,
       representative: cluster.members[0]!,
     })),

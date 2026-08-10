@@ -1,5 +1,14 @@
+import { pow10 } from '../../core/rational/rational';
 import { describe, expect, it } from 'vitest';
-import { atlasEntries, clusterLabel, clusterNearest, clusteredCount, declutter } from './atlas';
+import {
+  type AtlasEntry,
+  ATLAS_ENTRIES,
+  atlasEntries,
+  clusterLabel,
+  clusterNearest,
+  clusteredCount,
+  declutter,
+} from './atlas';
 import { type Viewport } from '../../camera/camera';
 import { createLogCamera, frameDecades } from '../../camera/logCamera';
 import { estimateTextWidth } from '../../camera/labels';
@@ -164,5 +173,115 @@ describe('navigating from microscopic to astronomical', () => {
       );
       expect(found, `${id} not visible at 10^${centre}`).toBe(true);
     }
+  });
+});
+
+describe('panning does not regroup the objects', () => {
+  // A cluster is anchored at its first *visible* member, so culling can in
+  // principle re-anchor one: if the anchor falls outside the cull margin while
+  // a member a few pixels away does not, the merge boundary moves and the next
+  // object may join a different cluster. A marker that names a different object
+  // depending on where you have panned is a label making a claim it cannot
+  // keep.
+  //
+  // Measured on the real catalog first: it never happens. Across 400 pan steps
+  // at five zoom levels, no object changed which set it was grouped with — and
+  // narrowing the cull margin from 120 px to 12 did not change that either.
+  // Twenty-eight objects are simply too sparse to put three of them inside the
+  // window where an anchor is culled and its members are not. That is what
+  // TASKS meant by "fine at 28 objects".
+  //
+  // So the real catalog cannot exercise this, and a test that cannot fail is
+  // not a test. These entries are synthetic and deliberately crowded: a dozen
+  // objects a few pixels apart, dragged across the cull boundary. That is the
+  // shape a 500-object catalog would have, and it is where the property has to
+  // hold.
+  const crowded = (count: number, decadesApart: number): AtlasEntry[] =>
+    Array.from({ length: count }, (_, index) => {
+      const log10 = index * decadesApart;
+      return {
+        object: {
+          id: `crowd-${index}`,
+          name: `Crowd ${index}`,
+          categories: ['test'],
+          quantities: {},
+        } as unknown as AtlasEntry['object'],
+        meters: pow10(Math.round(log10)),
+        log10,
+      };
+    });
+
+  const groupingsAcross = (entries: readonly AtlasEntry[], pixelsPerDecade: number) => {
+    const viewport = { widthPx: 600, heightPx: 200 };
+    const groupOf = new Map<string, string>();
+    const conflicts: string[] = [];
+    let grouped = 0;
+
+    for (let step = 0; step < 300; step += 1) {
+      const camera = { centerLog10: step * 0.02, pixelsPerDecade };
+      for (const cluster of declutter(entries, camera, viewport)) {
+        if (cluster.members.length < 2) continue;
+        const group = cluster.members.map((member) => member.object.id).join('+');
+        for (const member of cluster.members) {
+          const before = groupOf.get(member.object.id);
+          if (before === undefined) {
+            groupOf.set(member.object.id, group);
+            grouped += 1;
+          } else if (before !== group) {
+            conflicts.push(`${member.object.id}: "${before}" then "${group}"`);
+          }
+        }
+      }
+    }
+    return { conflicts, grouped };
+  };
+
+  it('holds on a crowded axis, where it can actually be tested', () => {
+    // A dozen objects at a twentieth of a decade apart: at 100 px per decade
+    // that is 5 px, half the merge distance, so they cluster in overlapping
+    // runs and every pan step moves the cull boundary through one of them.
+    const { conflicts, grouped } = groupingsAcross(crowded(12, 0.05), 100);
+    expect(conflicts, conflicts.slice(0, 3).join(' | ')).toEqual([]);
+    // Anti-vacuity: the entries have to actually cluster, or the loop compared
+    // nothing. This is what the real catalog could not provide.
+    expect(grouped, 'objects observed sharing a marker').toBeGreaterThan(5);
+  });
+
+  it('never lets a cluster grow wider than the distance it merges at', () => {
+    // Anchor-clustering, not chaining, and a mutant that swapped them survived
+    // the invariant above — both are pan-invariant, so that test cannot tell
+    // them apart. The difference is real: comparing each entry against the
+    // previous *member* rather than the anchor lets a long run of near-misses
+    // chain into one enormous cluster whose ends are nowhere near each other,
+    // and the marker would then stand for objects decades apart.
+    const pixelsPerDecade = 100;
+    const spacingInDecades = 10 / pixelsPerDecade;
+    // Spaced at six tenths of the merge distance: every neighbour merges, so
+    // chaining would swallow all twelve into one.
+    const entries = crowded(12, spacingInDecades * 0.6);
+    const clusters = declutter(
+      entries,
+      { centerLog10: 0.3, pixelsPerDecade },
+      {
+        widthPx: 600,
+        heightPx: 200,
+      },
+    );
+
+    for (const cluster of clusters) {
+      const spread = cluster.members[cluster.members.length - 1]!.log10 - cluster.members[0]!.log10;
+      expect(spread, `${cluster.members.length} members spanning ${spread}`).toBeLessThan(
+        spacingInDecades,
+      );
+    }
+    // Anti-vacuity: they must actually have merged, or the bound is trivial.
+    expect(clusters.some((cluster) => cluster.members.length > 1)).toBe(true);
+    expect(clusters.length, 'chaining would have collapsed these to one').toBeGreaterThan(1);
+  });
+
+  it('holds on the real catalog too', () => {
+    const { conflicts, grouped } = groupingsAcross(ATLAS_ENTRIES, 45);
+    expect(conflicts, conflicts.slice(0, 3).join(' | ')).toEqual([]);
+    expect(grouped, 'objects observed sharing a marker').toBeGreaterThan(3);
   });
 });

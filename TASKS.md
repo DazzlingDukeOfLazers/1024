@@ -330,9 +330,28 @@ Discovered while implementing:
       and the Comparator takes it as subject A.
 - [x] The landing lens is now the Atlas. Nine e2e tests that assumed the Lab was
       on screen navigate there explicitly.
-- [ ] Cluster membership is anchored at the first member, so which object
-      represents a cluster can change as you pan. Fine at 28 objects; a stable
-      representative (largest? nearest the centroid?) would be better at 500.
+- [x] Cluster membership no longer depends on where you have panned. It did:
+      clustering ran over the *visible* entries and anchored each cluster at the
+      first survivor, so panning an anchor across the cull boundary while a
+      member five pixels away stayed re-anchored the cluster and moved the merge
+      boundary with it.
+
+      Measured before designing anything, and the honest answer was that it does
+      not happen at 28 objects — 400 pan steps at five zoom levels, no
+      regrouping, and narrowing the cull margin from 120 px to 12 did not change
+      that either. The catalog is too sparse to put three objects inside the
+      window. So the first version of the test could not fail, which is not a
+      test; on a crowded synthetic axis of a dozen entries five pixels apart it
+      failed instantly, with 664 regroupings.
+
+      Fixed by grouping over every entry in log10 space rather than over the
+      visible ones in screen x, and culling the finished clusters afterwards.
+      Grouping now depends on the zoom and nothing else. The Atlas renders
+      identically — the visual baselines did not move a pixel — because the real
+      catalog never reached the defect.
+
+      No stable-representative rule was needed: with grouping independent of the
+      viewport, "first member" is already stable.
 - [ ] Progressive semantic detail (milestone 11) is the missing half of the
       Atlas: zooming should reveal *related* objects, not just closer ones.
 - [x] Selection is keyboard-reachable through the object picker, and the axis
