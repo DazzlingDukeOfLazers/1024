@@ -87,6 +87,26 @@ export function neighbourIds(catalog: Catalog, id: string): string[] {
   return edgesOf(catalog, id).map((edge) => edge.target.id);
 }
 
+/**
+ * The relations *within* a set of objects, ignoring everything outside it.
+ *
+ * The Ruler draws whatever is legible at the current scale, which is a set
+ * chosen by size alone. Some of what lands there is genuinely connected and
+ * some is a coincidence of magnitude, and a picture of a finger, a hand, a
+ * coconut, a human and a door invites the reader to assume the first reading
+ * for all five. This is what lets a view say which is which.
+ *
+ * Edges to objects outside the set are dropped rather than reported as
+ * out-of-view: a door being part of a house is true, but it is not a fact about
+ * the picture.
+ */
+export function relationsAmong(catalog: Catalog, ids: readonly string[]): Map<string, GraphEdge[]> {
+  const present = new Set(ids);
+  return new Map(
+    ids.map((id) => [id, edgesOf(catalog, id).filter((edge) => present.has(edge.target.id))]),
+  );
+}
+
 export interface PathStep {
   readonly object: ScaleObject;
   /** How this object was reached from the previous one. Absent on the first. */

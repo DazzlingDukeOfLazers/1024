@@ -35,6 +35,7 @@ import { type Pinch, pinchLog10Delta, pinchOf } from '../../camera/pinch';
 import { estimateTextWidth } from '../../camera/labels';
 import { RulerGrid } from '../../renderers/svg/RulerGrid';
 import { CATALOG, requireLength } from '../../catalog/catalog';
+import { relationsAmong } from '../../catalog/graph';
 import { provenanceSummary } from '../../catalog/schema';
 import { type RulerState } from '../../share/appState';
 import { RULER_VIEWPORT, rulerPresets } from './presets';
@@ -155,7 +156,29 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
     // Anything below two pixels or wider than the viewport is not usefully
     // drawn at this zoom.
     .filter(({ widthPx }) => widthPx >= 2 && widthPx <= VIEWPORT.widthPx)
+    // Measured: at 28 objects this cap never bites — no zoom from 1e-12 to
+    // 1e24 m/px puts more than six in range at either width. It would drop the
+    // *largest* ones if it did, which are the ones this lens is about, so it
+    // wants revisiting alongside a bigger catalog rather than left as a silent
+    // truncation.
     .slice(0, 6);
+
+  // Every bar is anchored at zero, so at a far origin the whole set can be off
+  // screen. Culling here rather than inside the render keeps the stacked rows
+  // gapless and lets the panel below describe what is actually drawn.
+  const drawn = nearby.filter(({ widthPx }) => {
+    const x = toScreen(ZERO);
+    return !(x + Math.max(widthPx, 1) < 0 || x > VIEWPORT.widthPx);
+  });
+
+  // Which of them are connected to each other, and which are here by size
+  // alone. Five objects stacked at true scale read as a family; three of these
+  // usually are and the rest are a coincidence of magnitude.
+  const among = relationsAmong(
+    CATALOG,
+    drawn.map((entry) => entry.object.id),
+  );
+  const connected = drawn.filter((entry) => (among.get(entry.object.id) ?? []).length > 0);
 
   /* ---------------------------------------------------------------------- */
   /* Interaction                                                            */
@@ -363,7 +386,7 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
             )}
 
           {repeated === undefined &&
-            nearby.map((entry, index) => {
+            drawn.map((entry, index) => {
               const x = toScreen(ZERO);
               const barWidth = Math.max(entry.widthPx, 1);
               // A bar anchored at zero is often mostly off-screen — at a 1e20 m
@@ -371,7 +394,6 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
               // edge. The label belongs to the bar, so it is pinned inside the
               // view while any of the bar is, and dropped when the view is too
               // narrow to hold it.
-              if (x + barWidth < 0 || x > VIEWPORT.widthPx) return null;
               const text = `${entry.object.name} — ${
                 formatEngineering(quantity('length', entry.size)).text
               }`;
@@ -491,6 +513,74 @@ export function RulerView({ state, onChange, focusObjectId }: RulerViewProps) {
           and a millimetre stays resolvable however far from zero the camera sits.
         </p>
       </section>
+
+      {/* Metric navigation put these objects side by side; the graph says which
+          of them belong together. At true scale that is the more striking place
+          to draw the distinction than the Atlas — a hand really is that
+          fraction of a human, and a coconut really is that size by accident. */}
+      {repeated === undefined && (
+        <section className="panel">
+          <h3>Drawn together</h3>
+          {/* Two different reasons for an empty picture, and saying the wrong
+              one is worse than saying nothing. At a 1e20 m origin the objects
+              are exactly the right size to draw — a grain of sand is 50 px
+              here — and what removes them is that the ruler measures from zero
+              and zero is twenty decades away. */}
+          {drawn.length === 0 ? (
+            nearby.length === 0 ? (
+              <p className="lens-question">
+                Nothing in the catalog is between two pixels and a full view wide here, so the ruler
+                is drawing the grid alone.
+              </p>
+            ) : (
+              <p className="lens-question">
+                {nearby.length} {nearby.length === 1 ? 'object is' : 'objects are'} the right size
+                to draw at this scale, and none is on screen: the ruler measures them from zero, and
+                zero is {formatEngineering(quantity('length', camera.centerMeters)).text} away.
+              </p>
+            )
+          ) : (
+            <>
+              <table className="readout">
+                <thead>
+                  <tr>
+                    <th scope="col">Object</th>
+                    <th scope="col">Size</th>
+                    <th scope="col">Related to what else is drawn</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {drawn.map((entry) => {
+                    const edges = among.get(entry.object.id) ?? [];
+                    return (
+                      <tr key={entry.object.id}>
+                        <th scope="row">{entry.object.name}</th>
+                        <td className="mono">
+                          {formatEngineering(quantity('length', entry.size)).text}
+                        </td>
+                        <td>
+                          {edges.length === 0 ? (
+                            <small>here by size alone</small>
+                          ) : (
+                            edges
+                              .map((edge) => `${edge.label} ${edge.target.name.toLowerCase()}`)
+                              .join(', ')
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p className="lens-question">
+                {connected.length === 0
+                  ? `None of these ${drawn.length} objects is related to another one here. Being the same size is not a relationship, and the ruler chose them by size.`
+                  : `${connected.length} of the ${drawn.length} objects drawn are related to each other. The rest are here by size alone — the ruler chooses what to draw by magnitude, and the graph is what says which neighbours mean anything.`}
+              </p>
+            </>
+          )}
+        </section>
+      )}
     </>
   );
 }

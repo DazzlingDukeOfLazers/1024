@@ -529,6 +529,51 @@ test('the atlas spans the catalog on one logarithmic axis', async ({ page }) => 
   await expect(page.getByText(/crowded ones merge rather than being dropped/)).toBeVisible();
 });
 
+test('the ruler says which of the objects it drew belong together', async ({ page }) => {
+  await openRuler(page);
+  await page.getByLabel('Preset').selectOption('human-scale');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Drawn together' }) });
+  const row = (name: string) =>
+    panel.locator('tr').filter({ has: page.getByRole('rowheader', { name, exact: true }) });
+
+  // Five objects sit within a few decades of a metre and the ruler draws them
+  // all. Three are a chain and two are a coincidence of magnitude, and the
+  // picture alone cannot tell you which.
+  await expect(row('Finger')).toContainText('part of hand');
+  await expect(row('Hand')).toContainText('part of human');
+  await expect(row('Hand')).toContainText('has part finger');
+  await expect(row('Human')).toContainText('has part hand');
+
+  // Anti-vacuity, and the actual point: a caveat that appears on every row is
+  // one a reader learns to skip.
+  await expect(row('Coconut')).toContainText('here by size alone');
+  await expect(row('Door')).toContainText('here by size alone');
+  await expect(row('Coconut')).not.toContainText('part of');
+
+  await expect(panel).toContainText('3 of the 5 objects drawn are related to each other');
+});
+
+test('the ruler gives the right reason for an empty picture', async ({ page }) => {
+  await openRuler(page);
+  await page.getByLabel('Preset').selectOption('far-origin');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Drawn together' }) });
+
+  // At a 1e20 m origin the objects are exactly the right size to draw — a grain
+  // of sand is tens of pixels wide at 10 µm per pixel. What removes them is
+  // that the ruler measures from zero and zero is twenty decades away. Saying
+  // "nothing is the right size here" would be false, and it is the sentence a
+  // single empty-state message would have produced.
+  await expect(panel).toContainText('the right size to draw at this scale');
+  await expect(panel).toContainText('zero is 100 Em away');
+  await expect(panel).not.toContainText('between two pixels and a full view wide');
+});
+
 test('the atlas walks the object graph from the selection', async ({ page }) => {
   await page.goto('/');
 

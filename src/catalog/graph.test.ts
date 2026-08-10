@@ -7,6 +7,7 @@ import {
   log10Of,
   neighbourIds,
   relationPath,
+  relationsAmong,
   revealedIn,
   suggestFrom,
   visibilityIn,
@@ -58,6 +59,46 @@ describe('edges', () => {
 
   it('returns nothing for an unknown id rather than throwing', () => {
     expect(edgesOf(CATALOG, 'nope')).toEqual([]);
+  });
+});
+
+describe('relations within a set', () => {
+  // The set the ruler draws at human scale, chosen by size alone.
+  const DRAWN = ['finger', 'hand', 'coconut', 'human', 'door'];
+
+  it('reports only the edges that land inside the set', () => {
+    const among = relationsAmong(CATALOG, DRAWN);
+    expect(among.get('finger')?.map((edge) => edge.target.id)).toEqual(['hand']);
+    expect(among.get('human')?.map((edge) => edge.target.id)).toEqual(['hand']);
+    expect(
+      among
+        .get('hand')
+        ?.map((edge) => edge.target.id)
+        .sort(),
+    ).toEqual(['finger', 'human']);
+  });
+
+  it('drops edges to objects outside it', () => {
+    // A door is part of a house, and the house is not in the picture. True, and
+    // not a fact about the picture.
+    expect(neighbourIds(CATALOG, 'door')).toEqual(['house']);
+    expect(relationsAmong(CATALOG, DRAWN).get('door')).toEqual([]);
+
+    // And a skin cell's four neighbours vanish entirely when none is present.
+    expect(edgesOf(CATALOG, 'skin-cell').length).toBeGreaterThan(2);
+    expect(relationsAmong(CATALOG, ['skin-cell', 'coconut']).get('skin-cell')).toEqual([]);
+  });
+
+  it('names every object it was asked about, related or not', () => {
+    const among = relationsAmong(CATALOG, DRAWN);
+    expect([...among.keys()]).toEqual(DRAWN);
+    // Which is what lets a caller say "here by size alone" rather than omitting
+    // the row and leaving the reader to wonder.
+    expect(among.get('coconut')).toEqual([]);
+  });
+
+  it('is empty for an empty set', () => {
+    expect([...relationsAmong(CATALOG, []).keys()]).toEqual([]);
   });
 });
 

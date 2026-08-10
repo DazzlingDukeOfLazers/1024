@@ -265,6 +265,12 @@ Discovered while implementing:
       and says so. The count never changes; only the drawing does.
 - [ ] Search is a substring scan over 28 objects. Fine now; it needs an index
       long before the catalog is large.
+- [ ] The Ruler draws at most six objects at a zoom. Measured: at 28 objects the
+      cap never bites — no scale from 1e-12 to 1e24 m per pixel puts more than
+      six in range, at either width. It would drop the *largest* ones if it did,
+      since `byScale` is smallest-first, and those are the ones the lens is
+      about. Worth an explicit "and N more" alongside a bigger catalog rather
+      than fixing a truncation that does not happen yet.
 - [x] Area and volume comparisons, with the geometry named rather than assumed
       away. For two objects that share nothing but a length, the geometry that
       applies is similarity: for the same shape at different sizes, areas go as
@@ -522,8 +528,23 @@ Discovered while implementing:
       camera. The field is there for an editorial opinion nobody has had yet.
 - [ ] Relations are length-only in effect. A `mass scale` projection (DATA_MODEL
       §15) needs the mass dimension first.
-- [ ] The Ruler does not use the graph yet — it still picks nearby objects by
-      size alone.
+- [x] The Ruler picks what to draw by size, and now says which of those picks
+      mean anything. Five objects stacked at true scale — finger, hand, coconut,
+      human, door — read as a family, and three of them are. `relationsAmong`
+      reports the edges that land *inside* a set and drops the rest: a door
+      being part of a house is true and is not a fact about a picture the house
+      is not in. The panel names every drawn object either by its relation or as
+      "here by size alone", and says 3 of 5, because a caveat on every row is
+      one a reader learns to skip.
+
+      Two things fell out of writing it. The bars are culled for being off
+      screen inside the render, so the row index left a gap where one was
+      dropped; culling before the render fixed that and is what let the panel
+      describe what is actually drawn. And the first empty-state message was
+      false at the far-origin preset — it said nothing was the right size, when
+      four objects are exactly the right size and what removes them is that the
+      ruler measures from zero and zero is 100 Em away. Two reasons, two
+      sentences, and a test that the wrong one does not appear.
 
 ## Share state
 
