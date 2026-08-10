@@ -173,6 +173,13 @@ export function App() {
 
   return (
     <div className="app">
+      {/* First tab stop, visible only when focused. The nav is five buttons
+          today and a keyboard user can walk past them; the point is that it
+          will not stay five, and a skip link costs nothing until it is
+          needed. */}
+      <a className="skip-link" href="#lens-content">
+        Skip to the lens
+      </a>
       <header className="app-header">
         <h1 className="app-title">Scale Atlas / Numerical Microscope</h1>
         <p className="app-tagline">We have an irresponsible amount of coordinate space.</p>
@@ -190,7 +197,7 @@ export function App() {
         </nav>
       </header>
 
-      <main className="app-main">
+      <main className="app-main" id="lens-content" tabIndex={-1}>
         <h2 className="app-title">{active?.title}</h2>
         <p className="lens-question">{active?.question}</p>
 

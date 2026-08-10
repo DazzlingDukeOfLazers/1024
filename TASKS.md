@@ -577,10 +577,19 @@ Discovered while implementing:
 - [ ] `role="application"` tells assistive technology to pass all keys through.
       That is right for a pannable view but it is a strong claim, and it has not
       been checked with a real screen reader — only with axe.
-- [ ] No skip link. With five lenses and a share bar the tab order to reach
-      content is short, but it will not stay that way.
-- [ ] Colour contrast passes axe, but the palette has never been checked against
-      a colour-vision simulation.
+- [x] Skip link, as the first tab stop, moving focus to the lens container
+      itself rather than only the URL fragment. Clipped rather than hidden, so
+      it stays in the tab order — a skip link nobody can reach is worse than
+      none, because it reads as done.
+- [x] The palette is checked against a Viénot–Brettel–Mollon simulation of
+      protanopia, deuteranopia and tritanopia (`src/ui/colourVision.ts`), read
+      from `app.css` so the two cannot drift. Every text colour stays above
+      6.5:1 under every simulation; `--accent` and `--warn` compress from 0.328
+      to 0.238 apart but never collapse — and the exactness distinction does not
+      rely on that anyway, since `ExactnessTag` writes the words.
+- [ ] The simulation models dichromacy, not anomalous trichromacy — the common
+      case, and a spectrum this cannot represent. It is evidence, not a
+      substitute for asking someone.
 
 ## Pixel claims are measured, not nominal
 

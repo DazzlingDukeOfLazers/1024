@@ -85,7 +85,10 @@ test('no state of the app has an accessibility violation', async ({ page }) => {
 test('every lens is reachable and operable from the keyboard alone', async ({ page }) => {
   await page.goto('/');
 
-  // Tab into the lens navigation and walk it.
+  // Tab into the lens navigation and walk it. The skip link is the first stop
+  // — that is its whole job — so the nav starts one Tab later than it used to.
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Skip to the lens' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Scale Atlas' })).toBeFocused();
 
@@ -205,4 +208,32 @@ test('a share link naming an object that no longer exists still opens', async ({
     .getByRole('button', { name: 'Scale Atlas' })
     .click();
   await expect(page.getByRole('application', { name: /Scale atlas/ })).toBeVisible();
+});
+
+test('a skip link is the first tab stop and moves focus to the lens', async ({ page }) => {
+  await page.goto('/');
+
+  // First tab from the document reaches it — a skip link that is not first is
+  // not a skip link.
+  await page.keyboard.press('Tab');
+  const link = page.getByRole('link', { name: 'Skip to the lens' });
+  await expect(link).toBeFocused();
+
+  // And it is visible while focused. Hiding it with `display: none` would take
+  // it out of the tab order entirely, which is the usual way this feature gets
+  // shipped broken: present in the DOM, unreachable, and counted as done.
+  await expect(link).toBeInViewport();
+
+  await page.keyboard.press('Enter');
+  // Focus lands on the lens container itself, not merely the URL fragment, so
+  // the next Tab continues inside the content rather than back at the nav.
+  await expect(page.locator('main#lens-content')).toBeFocused();
+});
+
+test('the skip link stays out of the way until it is wanted', async ({ page }) => {
+  await page.goto('/');
+  const link = page.getByRole('link', { name: 'Skip to the lens' });
+  // Present in the accessibility tree, but off-screen while unfocused.
+  await expect(link).toHaveCount(1);
+  await expect(link).not.toBeInViewport();
 });

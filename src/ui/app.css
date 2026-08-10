@@ -24,6 +24,9 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  /* The containing block for the skip link, so its offsets are relative to the
+     app rather than to whatever happens to be positioned above it. */
+  position: relative;
 }
 
 .app-header {
@@ -202,6 +205,39 @@ table.readout.comparison th[scope='row'] {
 @media (max-width: 640px) {
   table.readout.comparison th[scope='row'] {
     width: auto;
+  }
+}
+
+/* Off-screen until focused, then a real, visible target. `clip` rather than
+   `display: none` or `visibility: hidden`, because those remove the element
+   from the tab order — a skip link nobody can reach is worse than none, since
+   it reads as done. */
+.skip-link {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: inherit;
+  left: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  position: absolute;
+  top: -3rem;
+  transition: top 0.15s ease;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+/* The lens container takes focus programmatically after the jump, and a focus
+   ring on a whole page region is noise rather than information. */
+.app-main:focus {
+  outline: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skip-link {
+    transition: none;
   }
 }
 

@@ -49,8 +49,12 @@ Decisions Daniel made when this plan was written (2026-08-09):
   padding change fails 20 of 21. Skips on CI (Windows-rendered fonts);
   procedure documented in docs/TEST_STRATEGY.md. A guard test asserts every
   curated name still exists in `states.ts`.
-- Next action: Phase 4 — the polish batch, starting with the skip link
-  (TASKS ~line 580). **Note:** any intended visual change from here needs
+- Phase 4 in progress: skip link and colour-vision check done. Remaining:
+  the ~50 formatter call sites dropping the exactness flag, the
+  resolution-chart legend overlap, the 1e20 m grid labels, and the
+  `role="application"` reconsideration.
+- Next action: Phase 4 — the ~50 formatter call sites (TASKS ~line 806).
+  **Note:** any intended visual change from here needs
   `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
   images before committing.
 
@@ -171,9 +175,9 @@ oracle first, CPU simulation second, the real thing third, UI last.
 
 ## Phase 4 — polish batch (interleave when blocked)
 
-- [ ] Skip link (TASKS ~line 580) — first tab stop jumps to the lens panel.
-- [ ] Colour-vision check (TASKS ~line 582): simulate deuteranopia/protanopia/
-  tritanopia on the palette programmatically, fix what fails, record method.
+- [x] Skip link — first tab stop jumps to the lens panel.
+- [x] Colour-vision check: `src/ui/colourVision.ts` + tests. Nothing failed;
+  the method and its limits are recorded in TASKS.
 - [ ] The ~50 formatter call sites that drop the exactness flag under
   non-claiming labels (TASKS ~line 806) — wire through `Rendered`.
 - [ ] Resolution-chart legend sits on its own plotted line (TASKS ~line 776).
