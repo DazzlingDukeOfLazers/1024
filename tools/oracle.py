@@ -42,6 +42,7 @@ import math
 import os
 import random
 import struct
+import decimal
 from fractions import Fraction
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -630,6 +631,140 @@ def limb_section(rng):
     }
 
 
+# ---------------------------------------------------------------------------
+# Rotation: sin and cos of dyadic multiples of pi
+# ---------------------------------------------------------------------------
+#
+# The two-track rotation experiment needs a reference the TypeScript side cannot
+# produce, and this is the first place in this file where the honest answer is
+# not exact. sin and cos of a rational multiple of pi are irrational except in
+# the handful of cases Niven's theorem allows, so the reference here is a
+# *declared* high-precision value: computed to more digits than any machine
+# under test can hold, and shipped with the digit count so nothing below it is
+# mistaken for measured.
+#
+# `decimal` rather than `math`: doubles have 17 digits and Q128.128 has 38, so a
+# float reference could not measure the fixed-point machine's error at all. The
+# series below are the textbook Taylor expansions, summed until a term falls
+# below the working precision. That is a second implementation in the sense this
+# file exists for — the TypeScript side never computes a sine at all, it reads
+# these numbers.
+
+ROTATION_DIGITS = 60
+# theta = pi / 8, a dyadic multiple of pi. Dyadic matters: an angle register
+# scaled by pi with binary fraction bits can hold k/2^n exactly and nothing
+# else, so this angle accumulates with no error at all and wraps exactly at
+# 16 steps. Its sine and cosine are irrational, which is the price Niven's
+# theorem charges for that.
+ROTATION_DENOMINATOR = 8
+ROTATION_PERIOD = 2 * ROTATION_DENOMINATOR
+
+
+# k*pi/8 at the quarter turns, where Niven's theorem says the values are
+# rational -- and here they are integers.
+QUARTER_TURNS = {0: ('1', '0'), 4: ('0', '1'), 8: ('-1', '0'), 12: ('0', '-1')}
+
+
+def _pi(context):
+    """Pi by the Gauss-Legendre-free series from the decimal documentation."""
+    context.prec += 2
+    three = decimal.Decimal(3)
+    lasts, t, s, n, na, d, da = 0, three, 3, 1, 0, 0, 24
+    while s != lasts:
+        lasts = s
+        n, na = n + na, na + 8
+        d, da = d + da, da + 32
+        t = (t * n) / d
+        s += t
+    context.prec -= 2
+    return +s
+
+
+def _cos(x, context):
+    context.prec += 2
+    i, lasts, s, fact, num, sign = 0, 0, 1, 1, 1, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i - 1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    context.prec -= 2
+    return +s
+
+
+def _sin(x, context):
+    context.prec += 2
+    i, lasts, s, fact, num, sign = 1, 0, x, 1, x, 1
+    while s != lasts:
+        lasts = s
+        i += 2
+        fact *= i * (i - 1)
+        num *= x * x
+        sign *= -1
+        s += num / fact * sign
+    context.prec -= 2
+    return +s
+
+
+def rotation_section():
+    context = decimal.getcontext()
+    previous = context.prec
+    context.prec = ROTATION_DIGITS + 10
+    try:
+        pi = _pi(context)
+        steps = []
+        for k in range(ROTATION_PERIOD):
+            angle = pi * k / ROTATION_DENOMINATOR
+            quarter = QUARTER_TURNS.get(k % ROTATION_PERIOD)
+            if quarter is None:
+                cos_text = _round(_cos(angle, context))
+                sin_text = _round(_sin(angle, context))
+            else:
+                # The quarter turns are exact, and saying so is not a shortcut.
+                # A truncated Taylor series at an odd multiple of pi/2 returns
+                # about 2e-70 for a cosine that is zero, and rounding that to 60
+                # significant digits publishes seventy digits of noise as though
+                # they were measured. These are the only rational multiples of
+                # pi whose sine and cosine are rational at all -- Niven's
+                # theorem -- so they are the one place here an exact answer
+                # exists, and the series is the wrong instrument for it.
+                cos_text, sin_text = quarter
+            steps.append(
+                {
+                    'step': k,
+                    # The angle as a multiple of pi, exactly: k/8 is dyadic, so
+                    # this one really is a fraction and not an approximation.
+                    'anglePi': '%d/%d' % (k, ROTATION_DENOMINATOR),
+                    'cos': cos_text,
+                    'sin': sin_text,
+                    'exact': quarter is not None,
+                }
+            )
+    finally:
+        context.prec = previous
+    return {
+        'digits': ROTATION_DIGITS,
+        'denominator': ROTATION_DENOMINATOR,
+        'period': ROTATION_PERIOD,
+        'note': (
+            'sin and cos of k*pi/8 to %d significant digits. Irrational by '
+            "Niven's theorem except at the quarter turns, so this is a declared "
+            'reference rather than an exact one.' % ROTATION_DIGITS
+        ),
+        'steps': steps,
+    }
+
+
+def _round(value):
+    """Fixed number of significant digits, as a plain decimal string."""
+    if value == 0:
+        return '0'
+    quantized = +decimal.Context(prec=ROTATION_DIGITS).create_decimal(value)
+    return format(quantized, 'f')
+
+
 def main():
     rng = random.Random(SEED)
     values = curated() + ties(60, rng) + random_rationals(240, rng)
@@ -766,6 +901,8 @@ def main():
     limbs = limb_section(random.Random(SEED * 31 + 18))
 
     generator = io.open(os.path.abspath(__file__), 'rb').read()
+    rotation = rotation_section()
+
     document = {
         'note': (
             'Generated by tools/oracle.py using fractions.Fraction and struct. '
@@ -784,6 +921,7 @@ def main():
         'wideMultiply': wide_multiply,
         'wideDivide': wide_divide,
         'limbs': limbs,
+        'rotation': rotation,
     }
 
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(

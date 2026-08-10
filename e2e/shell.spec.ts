@@ -555,6 +555,31 @@ test('the chosen lane operation survives a share link', async ({ page }) => {
   await expect(page.getByLabel('Operation')).toHaveValue('divRem');
 });
 
+test('the two rotation strategies race, and the angle wins after one step', async ({ page }) => {
+  await openLab(page);
+
+  const panel = page.locator('section.panel').filter({
+    has: page.getByRole('heading', { name: 'Two ways to turn: compose, or keep the angle' }),
+  });
+
+  // Two machines, two strategies each.
+  await expect(panel.locator('tbody tr')).toHaveCount(4);
+
+  // The headline: the angle track lands exactly on the point at every quarter
+  // turn; composing never does, on either machine.
+  await expect(panel).toContainText('100 of 400');
+  await expect(panel).toContainText('0 of 400');
+  await expect(panel).toContainText('exactly on the point');
+  await expect(panel).toContainText('never on the point');
+
+  await expect(panel).toContainText('The crossover is step 2, on both machines');
+
+  // And the caveat that makes this the first declared reference in the Lab.
+  await expect(panel).toContainText('The reference is declared, not exact');
+  await expect(panel).toContainText('60 significant digits');
+  await expect(panel).toContainText('Niven');
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 

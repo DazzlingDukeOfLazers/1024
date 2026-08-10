@@ -15,6 +15,7 @@ import { Binary64Panel } from './Binary64Panel';
 import { RepresentationLab } from '../features/representation-lab/RepresentationLab';
 import { FloatingOriginPanel } from '../features/representation-lab/FloatingOriginPanel';
 import { RotationPanel } from '../features/representation-lab/RotationPanel';
+import { AngleTrackPanel } from '../features/representation-lab/AngleTrackPanel';
 import { type LabState, type RepresentationState } from '../share/appState';
 
 const UNIT_CHOICES = [
@@ -77,6 +78,8 @@ export function LabView({
       <FloatingOriginPanel />
 
       <RotationPanel />
+
+      <AngleTrackPanel />
 
       <section className="panel">
         <div className="field">

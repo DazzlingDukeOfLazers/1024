@@ -227,6 +227,28 @@ Discovered while implementing:
       claiming exactness must have the verified value in the cell beside it, and
       that cell was prose about registers. The row is named for the machine now
       and the claim is made once, where the verdict is.
+- [x] **Compose the rotation, or keep the angle.** Daniel's idea, and it turned
+      the rotation work into a race between two strategies rather than a study
+      of one. The angle is held in a register scaled by π — bits above the point
+      are half-turns, bits below are fractions — which makes the dyadic step
+      π/8 exact, drift-free under accumulation, and free to wrap.
+
+      Over 400 steps the angle track lands *exactly* on the point at all 100
+      quarter turns, on both machines; the composing track lands on none of
+      them, ever. The crossover is **step 2**: composing pays nothing up front
+      and accumulates, the angle pays one rounding and then stops paying, so
+      composing is ahead for exactly one step. Same shape as §10's answer about
+      division algorithms.
+
+      **The first declared reference in this project.** Niven's theorem says the
+      only rational multiples of π with a rational sine are those giving 0, ±½
+      and ±1, so an angle exactly representable in a π-scaled register has an
+      irrational sine except at the quarter turns: an exact angle or an exact
+      rotation matrix, never both. `tools/oracle.py` computes the sines to 60
+      digits with `decimal`, past binary64's 17 and Q128.128's 38, and every
+      view says an error below the last digit is unmeasured rather than small.
+      The quarter turns are stated exactly rather than summed, because a
+      truncated series returns 2 × 10^-70 for a cosine that is zero.
 - [ ] Velocity integration, the third of §7's three. Rotation covered the
       conserved-quantity shape; integration is the one where the *step size*
       is the variable and the error is a function of it.
@@ -1108,6 +1130,39 @@ edge were cut down the middle rather than dropped.
 `getComputedTextLength` needs a live SVG — so the estimate errs wide, and
 `e2e/labels.spec.ts` measures the real rendered boxes at four widths and asserts
 nothing overlaps or runs off the edge. A bad estimate now fails loudly.
+
+## Three invisible characters in one day
+
+A NUL byte landed in a string literal, a U+2028 LINE SEPARATOR landed in JSX
+where a space was meant, and a third landed in the script written to fix the
+first two. All three came from writing a file rather than typing it, and **all
+three passed typecheck, lint, prettier and the entire test suite** - a NUL is a
+valid separator character and U+2028 is valid inside a JSX expression.
+
+They were found by accident. The NUL because ripgrep refused the file as binary;
+the U+2028 because a string replacement that should have matched did not, three
+times in a row. Neither is a mistake a person makes at a keyboard, and both are
+the kind that gets committed and surfaces months later as "why does this line
+break there".
+
+- [x] `src/source.test.ts` scans every shipped file for NUL, U+2028, U+2029 and
+      U+200B. Not U+00A0: a non-breaking space is sometimes deliberate in prose,
+      and a rule that cried wolf is a rule someone turns off.
+
+      The forbidden characters are built with `String.fromCharCode` rather than
+      written, because writing them is how the third one arrived and would make
+      the file fail its own rule.
+
+      Two guards, both earned. An anti-vacuity check that the walk found more
+      than a hundred files, because a scan of nothing reports a clean repository
+      for ever - which it briefly did, reading `C:\C:\Users\...`, since
+      `URL.pathname` is `/C:/...` on Windows and `readFileSync` prepends the
+      drive again. And a falsification that the same detection fires on a
+      planted U+2028 and not on an ordinary space.
+- [ ] Only the four characters above are checked. Bidirectional overrides
+      (U+202E and friends) are the other classic invisible-source problem and
+      are not covered; nothing here has produced one, so it is recorded rather
+      than guessed at.
 
 ## The third look, after ten commits in a day
 

@@ -38,9 +38,18 @@ Blocks, in order. Each ends with a commit and a Position update.
   the same machine drifts *both ways* depending on whether only the storage
   rounds or the arithmetic does too — §7's two error categories as a change of
   sign. Velocity integration, §7's third, is left open in TASKS.
-- [ ] **2. Compute panel op selector** (~2 h). Now an answered request rather
-  than a queued question, so it outranks the rest.
-- [ ] **3. Small closures** (~2 h), as many as fit: the `how-many-fit-volume`
+- [x] **2. Compute panel op selector** (`a9bf51d`). SUB, MUL_WIDE and DIV_REM,
+  every marker from the kernel's own trace. DIV_REM deliberately has none: its
+  lanes do not pass each other a carry.
+- [x] **3. Replaced by Daniel's two-track rotation race** (his idea, mid-block):
+  compose the rotation against keeping the angle in a pi-scaled register.
+  Crossover at step 2; the angle track lands exactly on the point at all 100
+  quarter turns and composing lands on none. First declared reference in the
+  project, at 60 digits, because Niven's theorem forbids an exact angle and an
+  exact rotation matrix together. Also `src/source.test.ts`, after three
+  invisible control characters landed in source in one day and passed the
+  entire gate.
+- [ ] ~~3.~~ **Small closures**, now next session's work: the `how-many-fit-volume`
   bulk condition; the lattice zoom control (a UI_SPEC gap); the resolution
   chart's power-of-two staircase (measure first — likely sub-pixel, and closing
   it with the measurement is the honest outcome); Atlas relation arcs with the
