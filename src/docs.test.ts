@@ -87,6 +87,48 @@ describe('the documentation points at files that exist', () => {
   });
 });
 
+describe('the backlog does not contradict itself', () => {
+  /**
+   * The one class of backlog rot a machine can settle.
+   *
+   * Auditing every open item's premise against the code is a reading job and
+   * stays one — it has now found eleven false entries across two passes. But
+   * one of those eleven was findable mechanically: `The visualization of full
+   * result / destination / residue from §8` sat in a single block twice, once
+   * open and once done, describing the same work. An item cannot be both.
+   *
+   * Matched on the first eight words rather than the whole line, because the
+   * two copies of that entry ended differently — "…§8. The arithmetic is done"
+   * against "…§8, plus §22's wide-number chunks". Measured before choosing the
+   * number: across 290 items it produces two same-state pairs and no
+   * mixed-state ones, so it is not a filter that fires on everything.
+   */
+  const items = [...read('TASKS.md').matchAll(/^- \[( |x)\] (.+)$/gm)].map((match) => ({
+    done: match[1] === 'x',
+    opening: (match[2]!.toLowerCase().match(/[a-z0-9^]+/g) ?? []).slice(0, 8).join(' '),
+  }));
+
+  it('never lists the same item as both open and done', () => {
+    const states = new Map<string, Set<boolean>>();
+    for (const item of items) {
+      const seen = states.get(item.opening) ?? new Set<boolean>();
+      seen.add(item.done);
+      states.set(item.opening, seen);
+    }
+    const contradictory = [...states.entries()]
+      .filter(([, seen]) => seen.size > 1)
+      .map(([opening]) => opening);
+    expect(contradictory, 'listed as both open and done').toEqual([]);
+  });
+
+  it('is actually reading the backlog rather than matching nothing', () => {
+    // A regex that stopped matching would report a contradiction-free file.
+    expect(items.length).toBeGreaterThan(200);
+    expect(items.some((item) => item.done)).toBe(true);
+    expect(items.some((item) => !item.done)).toBe(true);
+  });
+});
+
 describe('the README counts what is actually there', () => {
   const readme = read('README.md');
 

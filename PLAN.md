@@ -87,7 +87,11 @@ Decisions Daniel made when this plan was written (2026-08-09):
     mutant proved rather than tested. No speed claim anywhere.
     Then SUB on the same scan, extracted and shared — a borrow is a carry with
     the signs turned round, and only the two predicates differ.
-- 914 unit tests, 141 Playwright, 315 GPU checks, full gate green.
+  - Second backlog audit: six open TASKS items were already done, every one
+    recorded in a different section from the entry asking for it — including
+    two phases finished *here*, in this file. **Closing a phase here is not
+    closing the TASKS entry**, and TASKS is what the next session reads.
+- 916 unit tests, 141 Playwright, 315 GPU checks, full gate green.
 - Next action: pick from the TASKS backlog. Open items now: §17's subgroup
   organization (optional WGSL feature *and* hardware-dependent subgroup size,
   so it would be a weaker claim than the rest of this track — decide before

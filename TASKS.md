@@ -413,8 +413,19 @@ Discovered while implementing:
 
       No stable-representative rule was needed: with grouping independent of the
       viewport, "first member" is already stable.
-- [ ] Progressive semantic detail (milestone 11) is the missing half of the
-      Atlas: zooming should reveal *related* objects, not just closer ones.
+- [x] Progressive semantic detail (milestone 11), which this entry called the
+      missing half of the Atlas. It was, and it was built two sections down —
+      the milestone's own items have been checked off since, and `SemanticPanel`
+      does exactly what this asks: it walks the graph from the selection and
+      labels each neighbour with how many decades of zoom away it is, so zooming
+      changes what is in reach rather than only what is near in size. Left open
+      here for several milestones because the entry lives in the Atlas section
+      and the work was recorded in the Microscope's.
+- [ ] What is *not* built, and is the honest remainder of that entry: the Atlas
+      **axis** shows no relations. The panel beside it lists them; the drawing
+      is still 28 markers ordered by magnitude and nothing else. An arc from the
+      selection to its neighbours would put the ontology in the picture rather
+      than in a table next to it.
 - [x] **"Also at this size" was captioned "unrelated to the selection" and
       listed related objects.** The panel asks the graph two questions and shows
       both answers, but `revealedIn` excluded only the selection itself, so with
@@ -912,6 +923,41 @@ found nothing today, which is the point of adding it before a rename rather than
 after. It cannot tell a done item from an open one — that stays a reading job,
 and this section is the record that it needs doing.
 
+## Six more had, and this time one was findable by machine
+
+The reading job, done again after another twenty-odd commits. Six open items
+were false, and the pattern in them is worth more than the corrections: **every
+one was work recorded in a different section from the entry that asked for it.**
+
+- "Radix-2^N digit decomposition with a configurable digit width", "significant
+  width dispatch", "zero-digit skipping with the control cost configurable" and
+  "`MUL_WIDE` 1024 × 1024 → 2048" — all four in `src/core/wide/`, and the third
+  has `cyclesPerDigitInspection` as a parameter for exactly the reason the entry
+  gives. They were checked off in the Architecture Lab's own section instead.
+- "§22's animations" and "WebGPU compute track (§18)" — both are completed
+  phases in `PLAN.md`, which is where the autonomous sessions recorded them, and
+  neither session came back to the list that asked for them. The `§18 is now the
+  only untouched section` line and the quotient tape's "an autoplay control is
+  not built" went the same way.
+- "The mutation procedure is still ad-hoc shell" — `tools/mutate.py` has existed
+  since the session that wrote that sentence's justification.
+- "Progressive semantic detail is the missing half of the Atlas" — built, in the
+  Microscope's section, because that is where the graph work was logged. Split
+  rather than deleted: the panel does walk the graph, and the Atlas *axis* still
+  draws no relations, which is the part that was really missing.
+
+One of the six was findable mechanically, and now is. `The visualization of full
+result / destination / residue from §8` appeared twice in a single block, once
+open and once done, describing the same work — so `src/docs.test.ts` asserts no
+task item is listed as both. Matched on the first eight words, because the two
+copies ended differently; measured across 290 items before choosing that number,
+where it flags two same-state pairs and no contradictions. Falsified by putting
+the duplicate back.
+
+The rest stays a reading job. If there is a lesson for next time it is that
+finishing a phase in `PLAN.md` is not finishing the entry in here that asked
+for it, and the entry is what the next session plans from.
+
 ## I had never looked at the app
 
 Eleven commits of verifying claims through tests, and I had never opened the
@@ -1222,15 +1268,17 @@ note before treating that zip as a spec update.
 
 What it asks for, roughly in dependency order:
 
-- [ ] Radix-2^N digit decomposition over the existing wide values, with a
+- [x] Radix-2^N digit decomposition over the existing wide values, with a
       configurable digit width (8/16/32/64/128) so the slice-size trade can be
-      measured rather than assumed.
-- [ ] Significant-width dispatch: report declared width against the significant
-      width actually touched, and pick a path from it.
-- [ ] Zero-digit skipping, with the control cost configurable so the saving is
-      not assumed to be free.
-- [ ] `MUL_WIDE` — 1024 × 1024 → 2048, wide first and narrow later, so
-      calculation is separated from information loss.
+      measured rather than assumed. `DIGIT_WIDTHS` in `src/core/wide/digits.ts`.
+- [x] Significant-width dispatch: report declared width against the significant
+      width actually touched, and pick a path from it. `dispatchFor`.
+- [x] Zero-digit skipping, with the control cost configurable so the saving is
+      not assumed to be free. `cyclesPerDigitInspection` is a parameter for
+      exactly that reason, and the panel says the saving reverses at a high
+      enough control cost.
+- [x] `MUL_WIDE` — 1024 × 1024 → 2048, wide first and narrow later, so
+      calculation is separated from information loss. `mulWide`.
 - [x] `NARROW source → destination + residue`, with the policy list from §8.
       **One interpretation to be aware of**: §8 lists its twelve policies in a
       single block, and they are not alternatives to each other — rounding to
@@ -1239,8 +1287,9 @@ What it asks for, roughly in dependency order:
       residue rule), and each of the twelve names maps onto one setting of one
       axis. A flat enum would have needed a name per combination. That is a
       reading of the document rather than something it states.
-- [ ] The visualization of full result / destination / residue from §8. The
-      arithmetic is done; the picture is not.
+- [x] The visualization of full result / destination / residue from §8. Listed
+      twice in this same block, once open and once done — the duplicate is the
+      one below, which describes the Architecture Lab that shipped it.
 - [x] `DIV_REM` holding `A = Q × B + R`, with the remainder a first-class result
       rather than a failure, and demand-driven extra quotient digits. Restoring
       radix-2, named in the result because §10 says not to lock the project to
@@ -1281,11 +1330,12 @@ What it asks for, roughly in dependency order:
 - [x] The metrics in §20 — significant width, partial products executed against
       skipped, modeled cycles, widest intermediate — shown beside the picture
       they describe.
-- [ ] §22's animations: the accumulation of a partial product into the wide
+- [x] §22's animations: the accumulation of a partial product into the wide
       accumulator, and the quotient digits of a division appearing one at a
-      time. Both are movement rather than layout, and everything here so far is
-      a still.
-- [ ] WebGPU compute track (§18), after the CPU simulation works.
+      time. Both built, both honouring `prefers-reduced-motion`, both with the
+      scrubber still working when the motion is off.
+- [x] WebGPU compute track (§18), after the CPU simulation works. Every op, every
+      fixture, bit-for-bit on real hardware.
 
 Two notes on how this lands against what exists:
 
@@ -1386,9 +1436,9 @@ and failed at the first bit of the first case. The failure was the useful part.
 - [x] Radix-2^N and reciprocal-based division (§10). The trace shape held
       radix-2^N unchanged; the reciprocal has no serial digits to trace, which
       is a fact about the method the panel now states.
-- [ ] The quotient tape shows a 48-bit window. A run of 717 steps at 1.6 px a
-      cell is a texture rather than a diagram, and the window is the fix; an
-      autoplay control over it is not built.
+- [x] The quotient tape shows a 48-bit window, because a run of 717 steps at
+      1.6 px a cell is a texture rather than a diagram. The autoplay control
+      over it, missing when this was written, is built.
 
 ## No answer to "which radix", only to "which radix for this size"
 
@@ -1460,7 +1510,8 @@ So there is no answer to "which division algorithm". §10 was right to refuse on
 
 - [x] Radix-2^N division (§10).
 - [x] Reciprocal-based division (§10).
-- [ ] §18's WebGPU compute track is now the only untouched section.
+- [x] §18's WebGPU compute track, the only untouched section when this was
+      written. Built, and §17 with it.
 
 ## Two things mutation testing found that a passing suite did not
 
@@ -1483,9 +1534,12 @@ nothing for a test runner to interrupt. The fix belonged in the code rather than
 the harness — the loop is bounded at four corrections and throws beyond it, so
 the failure mode is a diagnosable error instead of a stall.
 
-- [ ] The mutation procedure is still ad-hoc shell with a revert that only runs
-      on success. Two hangs is enough; it should be a script with the revert in
-      a `finally`.
+- [x] The mutation procedure is a script now — `tools/mutate.py`, with a
+      per-mutant subprocess timeout, the revert in a `finally`, and NO-MATCH
+      counted as a failure so a pattern that stopped matching cannot read as a
+      mutant that died. Every mutation since has gone through it, and the
+      handful it cannot drive (WGSL and JSX, which vitest does not run) use the
+      same shape with the read-the-backup-first restore.
 
 ## The §18 ladder, complete
 
