@@ -307,6 +307,329 @@ def wide_cases(rng):
     return cases
 
 
+# ---------------------------------------------------------------------------
+# §17–§18: the u32-limb model. One 1024-bit value is 32 × u32 limbs, limb 0
+# least significant — the layout `array<u32, 32>` will use in WGSL.
+#
+# The kernels below are limb-serial on purpose: they are the prototype of the
+# arithmetic the CPU limb machine and the compute shaders will implement, so
+# they may only combine limbs the way u32 hardware can — 32×32→64 products,
+# single-bit carries and borrows — and every result is asserted against
+# Python's native integers before it is allowed into the fixture. A prototype
+# that is its own correctness reference is exactly what §19 forbids.
+#
+# The model is unsigned at kernel level, like `mulWide`'s digit arrays: sign
+# belongs to the boundary, not the limbs. §19's "min/max signed" appears here
+# as the 2^1023 bit patterns. Narrowing is §8's own operation family and is
+# not a limb kernel.
+
+LIMB_BITS = 32
+LIMB_MASK = (1 << LIMB_BITS) - 1
+LIMBS = 32  # 1024 bits
+
+
+def to_limbs(value, count=LIMBS):
+    assert 0 <= value < 1 << (LIMB_BITS * count)
+    return [(value >> (LIMB_BITS * i)) & LIMB_MASK for i in range(count)]
+
+
+def from_limbs(limbs):
+    return sum(limb << (LIMB_BITS * i) for i, limb in enumerate(limbs))
+
+
+def limb_add(a, b):
+    """ADD, computed two ways at once and required to agree.
+
+    The obvious form keeps a 33-bit intermediate. The WGSL form cannot — u32
+    addition wraps silently — so it detects the carry by comparison: a wrapped
+    sum is smaller than either operand. Prototyping both here is the point of
+    doing this in Python first: a wrong carry idiom should die in an assert,
+    not in a shader.
+    """
+    out = []
+    carry = 0
+    wgsl_out = []
+    wgsl_carry = 0
+    for i in range(LIMBS):
+        total = a[i] + b[i] + carry
+        out.append(total & LIMB_MASK)
+        carry = total >> LIMB_BITS
+
+        sum1 = (a[i] + b[i]) & LIMB_MASK
+        c1 = 1 if sum1 < a[i] else 0
+        sum2 = (sum1 + wgsl_carry) & LIMB_MASK
+        c2 = 1 if sum2 < sum1 else 0
+        # Both carries cannot fire on one limb: if the first addition wrapped,
+        # its result is at most 2^32 − 2, and adding one cannot wrap again.
+        assert c1 + c2 <= 1
+        wgsl_out.append(sum2)
+        wgsl_carry = c1 + c2
+    assert out == wgsl_out and carry == wgsl_carry
+    return out, carry
+
+
+def limb_sub(a, b):
+    """SUB, wrapping mod 2^1024, with the borrow reported rather than hidden."""
+    out = []
+    borrow = 0
+    for i in range(len(a)):
+        diff = a[i] - b[i] - borrow
+        borrow = 1 if diff < 0 else 0
+        out.append(diff & LIMB_MASK)
+    return out, borrow
+
+
+def limb_bitlen(limbs):
+    """BITLEN: index of the highest non-zero limb, plus that limb's own length."""
+    for i in range(len(limbs) - 1, -1, -1):
+        if limbs[i] != 0:
+            return LIMB_BITS * i + limbs[i].bit_length()
+    return 0
+
+
+def limb_shl(limbs, shift):
+    """SHL within the register. The WGSL hazard this encodes: shifting a u32 by
+    32 is not a defined way to get zero, so the limb-aligned case branches
+    instead of shifting by `LIMB_BITS - 0`.
+    """
+    limb_offset, bit_offset = divmod(shift, LIMB_BITS)
+    out = []
+    for i in range(LIMBS):
+        source = i - limb_offset
+        if source < 0:
+            out.append(0)
+        elif bit_offset == 0:
+            out.append(limbs[source])
+        else:
+            low = (limbs[source] << bit_offset) & LIMB_MASK
+            high = limbs[source - 1] >> (LIMB_BITS - bit_offset) if source > 0 else 0
+            out.append(low | high)
+    return out
+
+
+def limb_shr(limbs, shift):
+    limb_offset, bit_offset = divmod(shift, LIMB_BITS)
+    out = []
+    for i in range(LIMBS):
+        source = i + limb_offset
+        if source >= LIMBS:
+            out.append(0)
+        elif bit_offset == 0:
+            out.append(limbs[source])
+        else:
+            low = limbs[source] >> bit_offset
+            high = (
+                (limbs[source + 1] << (LIMB_BITS - bit_offset)) & LIMB_MASK
+                if source + 1 < LIMBS
+                else 0
+            )
+            out.append(low | high)
+    return out
+
+
+def limb_mul(a, b):
+    """MUL_WIDE: 1024 × 1024 → 2048, schoolbook over 32×32→64 partial products.
+
+    The inner accumulation relies on the identity that keeps u32 multipliers
+    honest: u32×u32 + u32 + u32 ≤ 2^64 − 1, so the running term never outgrows
+    the double-width intermediate the hardware actually has.
+    """
+    out = [0] * (2 * LIMBS)
+    for i in range(LIMBS):
+        carry = 0
+        for j in range(LIMBS):
+            term = out[i + j] + a[i] * b[j] + carry
+            assert term < 1 << 64
+            out[i + j] = term & LIMB_MASK
+            carry = term >> LIMB_BITS
+        out[i + LIMBS] = carry
+    return out
+
+
+def limb_divrem(a, b):
+    """DIV_REM: §10's restoring loop at limb granularity.
+
+    The remainder register is the same 32 limbs as the operands, and that is a
+    theorem rather than an economy: after k bits of the dividend have been
+    consumed, R ≤ 2^k − 1 — the shifted value is 2R + bit ≤ 2^k − 1, and the
+    subtraction only ever lowers it — so with at most 1024 steps no
+    intermediate ever needs a 33rd limb. The first draft of this function
+    carried one anyway, "to be safe", and mutation testing proved it could
+    never be used: removing it changed nothing any fixture could see. The
+    assert on the shift's outgoing carry is that proof kept live, and the WGSL
+    kernel gets to be one limb smaller because of it.
+    """
+    assert from_limbs(b) != 0
+    remainder = [0] * LIMBS
+    quotient = [0] * LIMBS
+    for index in range(limb_bitlen(a) - 1, -1, -1):
+        # remainder = (remainder << 1) | bit(index)
+        carry = (a[index // LIMB_BITS] >> (index % LIMB_BITS)) & 1
+        for i in range(LIMBS):
+            shifted = ((remainder[i] << 1) & LIMB_MASK) | carry
+            carry = remainder[i] >> (LIMB_BITS - 1)
+            remainder[i] = shifted
+        assert carry == 0  # the R ≤ 2^k − 1 invariant, kept loud
+        # compare remainder >= divisor, from the top limb down
+        fits = True
+        for i in range(LIMBS - 1, -1, -1):
+            if remainder[i] != b[i]:
+                fits = remainder[i] > b[i]
+                break
+        if fits:
+            remainder, borrow = limb_sub(remainder, b)
+            assert borrow == 0
+            quotient[index // LIMB_BITS] |= 1 << (index % LIMB_BITS)
+    return quotient, remainder
+
+
+def limb_operand_cases(rng):
+    """§19's stress list, as unsigned 1024-bit values."""
+    top = (1 << 1024) - 1
+    cases = [
+        0,
+        1,
+        2,
+        LIMB_MASK,  # one full limb
+        LIMB_MASK + 1,  # the first inter-limb boundary
+        (1 << 64) - 1,
+        top,  # all ones: the longest carry chain there is
+        top - 1,
+        1 << 512,
+        (1 << 512) - 1,
+        (1 << 700) + (1 << 12),  # sparse
+        1 << 1023,  # the signed-min bit pattern
+        (1 << 1023) + 1,
+        (1 << 96) - (1 << 32),  # leading-zero-heavy, with a hole
+    ]
+    for _ in range(18):
+        cases.append(rng.getrandbits(rng.randint(1, 1024)))  # dense, seeded
+    for _ in range(6):
+        cases.append(1 << rng.randint(0, 1023))  # single-bit sparse
+    return cases
+
+
+def limb_section(rng):
+    """Generate the limb fixtures, asserting every kernel against native ints."""
+    cases = limb_operand_cases(rng)
+    top = (1 << 1024) - 1
+
+    encoding = []
+    for value in [0, 1, LIMB_MASK, LIMB_MASK + 1, top, 1 << 1023, (1 << 700) + (1 << 12)]:
+        encoding.append({'value': str(value), 'limbs': to_limbs(value)})
+
+    add = []
+    add_pairs = [(top, 1), (top, top), (1 << 1023, 1 << 1023), (0, 0)]
+    add_pairs += [(rng.choice(cases), rng.choice(cases)) for _ in range(36)]
+    for a, b in add_pairs:
+        limbs, carry = limb_add(to_limbs(a), to_limbs(b))
+        expected = a + b
+        assert from_limbs(limbs) == expected & top
+        assert carry == expected >> 1024
+        add.append({'a': str(a), 'b': str(b), 'sum': str(expected & top), 'carryOut': carry == 1})
+
+    sub = []
+    sub_pairs = [(0, 1), (0, top), (1 << 1023, (1 << 1023) + 1), (top, top)]
+    sub_pairs += [(rng.choice(cases), rng.choice(cases)) for _ in range(36)]
+    for a, b in sub_pairs:
+        limbs, borrow = limb_sub(to_limbs(a), to_limbs(b))
+        expected = (a - b) % (1 << 1024)
+        assert from_limbs(limbs) == expected
+        assert (borrow == 1) == (a < b)
+        sub.append(
+            {'a': str(a), 'b': str(b), 'difference': str(expected), 'borrowOut': borrow == 1}
+        )
+
+    bitlen = []
+    for value in cases[:20]:
+        measured = limb_bitlen(to_limbs(value))
+        assert measured == value.bit_length()
+        bitlen.append({'value': str(value), 'bitLength': measured})
+
+    shl = []
+    shr = []
+    shifts = [0, 1, 31, 32, 33, 63, 64, 511, 512, 1023]
+    shifts += [rng.randint(2, 1022) for _ in range(8)]
+    for shift in shifts:
+        value = rng.choice(cases)
+        left = limb_shl(to_limbs(value), shift)
+        assert from_limbs(left) == (value << shift) & top
+        # What fell off the top is oracle data computed natively, not a kernel
+        # output — the register kernel only holds the register.
+        shl.append(
+            {
+                'value': str(value),
+                'shift': shift,
+                'result': str((value << shift) & top),
+                'lost': str(value >> (1024 - shift) if shift > 0 else 0),
+            }
+        )
+        right = limb_shr(to_limbs(value), shift)
+        assert from_limbs(right) == value >> shift
+        shr.append(
+            {
+                'value': str(value),
+                'shift': shift,
+                'result': str(value >> shift),
+                'lost': str(value & ((1 << shift) - 1) if shift > 0 else 0),
+            }
+        )
+
+    mul_wide = []
+    mul_pairs = [(top, top), (top, 1), (1 << 1023, 2), (0, top)]
+    mul_pairs += [(rng.choice(cases), rng.choice(cases)) for _ in range(26)]
+    for a, b in mul_pairs:
+        limbs = limb_mul(to_limbs(a), to_limbs(b))
+        assert from_limbs(limbs) == a * b
+        mul_wide.append({'a': str(a), 'b': str(b), 'product': str(a * b)})
+
+    div_rem = []
+    divisors = [d for d in cases if d != 0]
+    div_pairs = [(top, 1), (top, top), (0, 7), (1, top)]
+    div_pairs += [(rng.choice(cases), rng.choice(divisors)) for _ in range(22)]
+    # Exact divisions on purpose, so `remainder == 0` is a covered path.
+    for divisor in [7, (1 << 64) - 1, 1 << 500]:
+        div_pairs.append(((divisor * 12345) % (1 << 1024), divisor))
+    for a, b in div_pairs:
+        quotient, remainder = limb_divrem(to_limbs(a), to_limbs(b))
+        assert from_limbs(quotient) == a // b
+        assert from_limbs(remainder) == a % b
+        div_rem.append(
+            {
+                'dividend': str(a),
+                'divisor': str(b),
+                'quotient': str(a // b),
+                'remainder': str(a % b),
+            }
+        )
+
+    # Anti-vacuity: a fixture set in which no addition carried, no subtraction
+    # borrowed, no shift lost a bit and no division was exact would pass every
+    # test above while exercising none of the interesting paths.
+    assert any(entry['carryOut'] for entry in add)
+    assert any(not entry['carryOut'] for entry in add)
+    assert any(entry['borrowOut'] for entry in sub)
+    assert any(entry['lost'] != '0' for entry in shl)
+    assert any(entry['lost'] != '0' for entry in shr)
+    assert any(entry['remainder'] == '0' for entry in div_rem)
+    assert any(entry['remainder'] != '0' for entry in div_rem)
+    assert any(entry['bitLength'] == 1024 for entry in bitlen)
+
+    return {
+        'limbBits': LIMB_BITS,
+        'limbsPerValue': LIMBS,
+        'layout': 'limb 0 is least significant',
+        'encoding': encoding,
+        'add': add,
+        'sub': sub,
+        'bitlen': bitlen,
+        'shl': shl,
+        'shr': shr,
+        'mulWide': mul_wide,
+        'divRem': div_rem,
+    }
+
+
 def main():
     rng = random.Random(SEED)
     values = curated() + ties(60, rng) + random_rationals(240, rng)
@@ -436,6 +759,12 @@ def main():
             }
         )
 
+    # §17–§18. A separate generator instance, so adding this section leaves
+    # every fixture above byte-identical — the file is committed, the
+    # instruction is to read the diff, and a diff full of reshuffled random
+    # values would bury the one line that mattered.
+    limbs = limb_section(random.Random(SEED * 31 + 18))
+
     generator = io.open(os.path.abspath(__file__), 'rb').read()
     document = {
         'note': (
@@ -454,14 +783,19 @@ def main():
         'errorMeter': meter,
         'wideMultiply': wide_multiply,
         'wideDivide': wide_divide,
+        'limbs': limbs,
     }
 
     io.open(OUT, 'w', encoding='utf-8', newline='\n').write(
         json.dumps(document, indent=1, ensure_ascii=False) + '\n'
     )
+    limb_count = sum(
+        len(limbs[key]) for key in ('encoding', 'add', 'sub', 'bitlen', 'shl', 'shr', 'mulWide', 'divRem')
+    )
     print(
         'wrote %s: %d arithmetic, %d magnitudes, %d decimals, %d encodings, '
-        '%d neighbourhoods, %d q128, %d planck, %d error meter, %d wide multiply, %d wide divide'
+        '%d neighbourhoods, %d q128, %d planck, %d error meter, %d wide multiply, '
+        '%d wide divide, %d limb cases'
         % (
             os.path.relpath(OUT, HERE),
             len(arithmetic),
@@ -474,6 +808,7 @@ def main():
             len(meter),
             len(wide_multiply),
             len(wide_divide),
+            limb_count,
         )
     )
 

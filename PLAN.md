@@ -22,12 +22,14 @@ Decisions Daniel made when this plan was written (2026-08-09):
 > Update this section at the end of every session. Keep it to a few lines;
 > the log lives in git.
 
-- Branch `dd/exact-quantity-core`, pushed through commit `ee08454` plus this
-  plan's infrastructure commit.
-- 807 unit tests, 94 Playwright tests (95 with the WebGPU environment test),
-  all green. CI runs the gate on every push.
-- Current phase: **1** (§18 ladder), not yet started.
-- Next action: Phase 1.1 — extend `tools/oracle.py` with u32-limb fixtures.
+- Branch `dd/exact-quantity-core`; 807 unit tests, 95 Playwright, all green.
+  CI runs the gate on every push.
+- Current phase: **1** (§18 ladder). 1.1 done: 202 limb fixtures committed,
+  Python limb kernels asserted against native ints, five mutants killed, and
+  one false claim caught — DIV_REM's remainder needs **no** extra limb
+  (R ≤ 2^k − 1 after k bits; proof in `limb_divrem`'s docstring). The WGSL
+  kernel gets to be one limb smaller because of it.
+- Next action: Phase 1.2 — CPU limb machine in `src/core/limbs/`.
 
 ## Session protocol
 
@@ -85,7 +87,7 @@ The last untouched section of `docs/WIDE_INTEGER_ARCHITECTURE.md`. Read §17–�
 before starting. The ladder mirrors how every other track here was built:
 oracle first, CPU simulation second, the real thing third, UI last.
 
-- [ ] **1.1 Python limb prototype + fixtures.** Extend `tools/oracle.py` with a
+- [x] **1.1 Python limb prototype + fixtures.** Extend `tools/oracle.py` with a
   u32-limb model (`array of 32 × u32` = one 1024-bit value) and generate
   fixtures for ADD, SUB, BITLEN, SHL, SHR, MUL_WIDE, DIV_REM covering §19's
   stress list: all-zero, all-one, min/max signed, long carry chains, long
