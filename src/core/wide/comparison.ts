@@ -44,6 +44,7 @@ import {
   DEFAULT_Q128_128_CONFIG,
   encodeMeters as encodeQ128,
 } from '../representations/q128_128';
+import { WideError } from './digits';
 import { narrow } from './narrow';
 import type { NarrowPolicy } from './narrow';
 
@@ -169,21 +170,47 @@ export function compareRepresentations(
   for (const step of workload.steps) exact = applyExact(exact, step);
 
   return REPRESENTATIONS.map((representation) => {
-    let value: Rational | undefined = quantize(representation, workload.initial, settings);
+    /**
+     * Three outcomes, and they are genuinely different things:
+     *
+     *   - a value, possibly rounded;
+     *   - out of range, which is the machine saying it cannot hold this at all;
+     *   - a trap, which is the machine refusing under §14's scenario C.
+     *
+     * Only the first has an error worth measuring. Reporting either of the other
+     * two as a very large divergence would put a refusal and a bad answer in the
+     * same column.
+     */
+    const attempt = (wanted: Rational): { value: Rational } | { note: string } => {
+      try {
+        const next = quantize(representation, wanted, settings);
+        return next === undefined ? { note: 'out of range for this machine' } : { value: next };
+      } catch (error) {
+        if (error instanceof WideError) return { note: `trapped: ${error.message}` };
+        throw error;
+      }
+    };
+
     let worstStepError = ZERO;
     let inexactSteps = 0;
     let note: string | undefined;
+
+    const start = attempt(workload.initial);
+    let value: Rational | undefined;
+    if ('value' in start) value = start.value;
+    else note = start.note;
 
     for (const step of workload.steps) {
       if (value === undefined) break;
       // Exactly from where this machine actually is, then quantized once.
       const wanted = applyExact(value, step);
-      const next = quantize(representation, wanted, settings);
-      if (next === undefined) {
+      const attempted = attempt(wanted);
+      if (!('value' in attempted)) {
         value = undefined;
-        note = 'out of range for this machine';
+        note = attempted.note;
         break;
       }
+      const next = attempted.value;
       const introduced = abs(sub(next, wanted));
       if (!isZero(introduced)) {
         inexactSteps += 1;

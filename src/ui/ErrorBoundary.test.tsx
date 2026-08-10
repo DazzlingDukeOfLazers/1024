@@ -61,6 +61,20 @@ describe('when a lens throws', () => {
     expect(alert?.textContent).toContain('camera centre is not a rational');
   });
 
+  it('marks itself so the conformance sweep can tell blank from clean', () => {
+    // `e2e/conformance.spec.ts` rule 6 finds a failed lens by this attribute.
+    // Every other rule there is a statement about something drawn, so without a
+    // marker a lens that drew nothing passes them all. Dropping the attribute
+    // would disable that rule silently, which is why it is asserted here rather
+    // than only relied on there.
+    render(
+      <ErrorBoundary label="Comparator">
+        <Boom message="nope" />
+      </ErrorBoundary>,
+    );
+    expect(container.querySelector('[data-lens-failed]')).not.toBeNull();
+  });
+
   it('says the other lenses still work, because they do', () => {
     render(
       <ErrorBoundary label="Scale Atlas">

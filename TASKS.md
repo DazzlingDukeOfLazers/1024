@@ -1104,6 +1104,43 @@ A rule that covers one axis of a two-axis problem passes for the same reason a
 rule that covers one panel of five does. Worth remembering the next time a check
 looks complete.
 
+## A rule set that could not tell blank from clean
+
+`e2e/conformance.spec.ts` was written to stop defects arriving through paths
+nobody had walked. Then a path nobody had walked went through it untouched:
+selecting `Trap on any inexact result` — a scenario the Architecture Lab's own
+menu offers — threw a `WideError` out of the narrowing, and the lens error
+boundary replaced the entire lab with an apology. Adding that state to the sweep
+did not fail the sweep, because all five rules were statements about drawn
+things and a lens that drew nothing satisfied every one of them.
+
+Two fixes, and they are different in kind:
+
+- A trap is an answer, not a failure. The lab now catches the refusal, says
+  which operation was refused and why, and keeps every panel that did not depend
+  on it. §14's scenario C exists to refuse; refusing is the machine working.
+- Rule 6: the lens drew at all, found by a `data-lens-failed` attribute on the
+  error boundary rather than by its wording, and asserted in the boundary's own
+  unit test so dropping it cannot silently disable the rule.
+
+The anti-vacuity guard in that file counts labels across *all* states, so one
+blank state never moved the total. Worth noting for the next guard: a floor on a
+sum does not floor the parts.
+
+## Two mutants, one width
+
+The comparison tests went green and then survived cutting the wide machine from
+128 fraction bits to 127. Not a bug — a coincidence. `2^126/5` has fractional
+part .8 and `2^127/5` has .6, so both round up and the 128-bit answer is exactly
+twice the 127-bit one; a tenth cannot separate those grids, and every workload in
+the file was built from tenths. A third separates them.
+
+The second survival was the instructive one. Having added tests that pin the
+width, the mutant lived again: every new test passed the width in explicitly, so
+the *default* — the value every other test in the file actually runs at — was
+still unpinned. Fixing the case in front of me and missing the one beside it,
+again, at the level of the test rather than the code.
+
 ## Hardening
 
 - [x] Playwright critical path.

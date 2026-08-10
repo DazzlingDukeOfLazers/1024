@@ -37,7 +37,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     if (error === undefined) return this.props.children;
 
     return (
-      <section className="panel" role="alert">
+      // `data-lens-failed` is for `e2e/conformance.spec.ts`. A lens that fell
+      // back to this draws almost nothing, so every geometric rule in the sweep
+      // passes for want of anything to check — which is how a scenario the UI
+      // offers went on replacing the whole Architecture Lab with an apology
+      // while the sweep called that state clean. Matching an attribute rather
+      // than the heading text keeps the rule from depending on the wording.
+      <section className="panel" role="alert" data-lens-failed="">
         <h3>{this.props.label} could not be drawn</h3>
         <p className="error">{error.message}</p>
         <p className="lens-question">

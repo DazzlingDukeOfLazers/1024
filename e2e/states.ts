@@ -109,6 +109,24 @@ for (const digitBits of ['8', '128'] as const) {
   });
 }
 
+// The scenario selector governs the comparison panel as well as the narrowing
+// readout, and `Trap on any inexact result` is the state where a row has no
+// markers to draw and falls back to text. That is a first-run path, which is
+// where every defect in this project has come from, so it gets swept.
+for (const scenario of [
+  'Preserve everything',
+  'Trap on any inexact result',
+  'Truncate and discard residue',
+] as const) {
+  STATES.push({
+    name: `architecture/${scenario.split(' ')[0]!.toLowerCase()}`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('Scenario').selectOption({ label: scenario });
+    },
+  });
+}
+
 for (const experiment of [
   'decimal-0-1-plus-0-2',
   'million-millimeters',

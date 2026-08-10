@@ -20,7 +20,17 @@ import { STATES } from './states';
  *  2. no label is cut off by the edge of its own drawing;
  *  3. no label is too small to read;
  *  4. the page never scrolls sideways;
- *  5. a value under a label claiming exactness carries the formatter's verdict.
+ *  5. a value under a label claiming exactness carries the formatter's verdict;
+ *  6. the lens drew at all.
+ *
+ * Rule 6 is the one that closes this file's own vacuity. Rules 1–5 are all
+ * statements about drawn things, so a lens that fell back to its error boundary
+ * satisfies every one of them by drawing nothing — and that is not hypothetical:
+ * selecting `Trap on any inexact result`, a scenario the Architecture Lab's own
+ * menu offers, replaced the entire lens with an apology, and adding that state
+ * to the sweep did not fail the sweep. A rule set that cannot tell "nothing is
+ * wrong" from "nothing is there" is the same blind spot this file was written
+ * against, one level up.
  */
 
 interface Finding {
@@ -123,6 +133,14 @@ async function inspect(page: Page): Promise<{ findings: Finding[]; examined: num
           }
         }
       }
+    }
+
+    /* 6: the lens drew at all. */
+    for (const failed of Array.from(document.querySelectorAll('[data-lens-failed]'))) {
+      findings.push({
+        rule: 'lens did not draw',
+        detail: failed.querySelector('.error')?.textContent ?? '',
+      });
     }
 
     return { findings, examined };

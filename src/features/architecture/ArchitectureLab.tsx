@@ -25,7 +25,18 @@ import {
   WideError,
   profile,
 } from '../../core/wide/digits';
+import {
+  ACCUMULATE_TENTHS,
+  ACCUMULATE_TENTHS_FAR,
+  type ComparisonWorkload,
+  type RepresentationRun,
+  compareRepresentations,
+} from '../../core/wide/comparison';
 import { describeWideLiteral, parseWideLiteral } from '../../core/wide/parse';
+import { isZero } from '../../core/rational/rational';
+import { log10RationalForDisplay } from '../../core/rational/log10';
+import { formatCount } from '../../core/units/format';
+import { Rendered } from '../../ui/Rendered';
 import { mulWide } from '../../core/wide/multiply';
 import { narrow } from '../../core/wide/narrow';
 import { SCENARIOS, SCENARIO_NAMES } from '../../core/wide/scenario';
@@ -102,6 +113,169 @@ function ChunkRow({ label, report }: { label: string; report: DigitProfile }) {
           fillOpacity={0.75}
         >
           {report.significantBits} of {report.declaredBits} bits · {report.path} path
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* §21 and §23: where each representation's worst step lands                    */
+/* -------------------------------------------------------------------------- */
+
+const SCALE_TOP = 18;
+const SCALE_ROW_HEIGHT = 30;
+const SCALE_AXIS_HEIGHT = 30;
+/** Half the width of a `10^-39` label, so no tick label can leave the box. */
+const TICK_LABEL_HALF_WIDTH = 18;
+
+/**
+ * The three machines with an error to compare. `exact` is the reference every
+ * one of them is measured against, so it has no error to plot and appears in
+ * the table as the zero row rather than on the axis.
+ */
+const COMPARED = [
+  { key: 'binary64' as const, label: 'binary64' },
+  { key: 'q128.128' as const, label: 'Q128.128' },
+  { key: 'wide-fixed-point' as const, label: 'wide fixed point' },
+];
+
+interface ScaleRow {
+  readonly label: string;
+  /** log10 of the worst single-step error, or undefined if there is none to plot. */
+  readonly near: number | undefined;
+  readonly far: number | undefined;
+  /** Shown in place of the markers when there is nothing to place. */
+  readonly note: string;
+}
+
+/**
+ * A log axis with two markers per representation: the accumulation run near
+ * zero, and the same accumulation at 10^6 m.
+ *
+ * The picture is the whole §23 argument. A fixed-point row is a dot inside a
+ * ring — the two runs land in the same place, because an absolute quantum does
+ * not know where it is. binary64's row is a segment, and its length is what
+ * moving six decades from the origin costs.
+ */
+function ErrorScale({ rows }: { rows: readonly ScaleRow[] }) {
+  const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
+  const height = SCALE_TOP + rows.length * SCALE_ROW_HEIGHT + SCALE_AXIS_HEIGHT;
+  const gutter = Math.min(120, width * 0.28);
+  const plotLeft = gutter;
+  const plotRight = Math.max(plotLeft + 1, width);
+  const axisY = SCALE_TOP + rows.length * SCALE_ROW_HEIGHT;
+
+  const values = rows.flatMap((row) => [row.near, row.far]).filter((v) => v !== undefined);
+  // `Math.min()` of nothing is `Infinity`, which would make every coordinate
+  // NaN and render an empty box with no hint that anything went wrong. A
+  // scenario that traps every row is a reachable state, so it gets an axis.
+  const low = values.length === 0 ? -1 : Math.floor(Math.min(...values)) - 1;
+  const high = values.length === 0 ? 1 : Math.ceil(Math.max(...values)) + 1;
+  const span = Math.max(high - low, 1);
+  const x = (value: number) => plotLeft + ((value - low) / span) * (plotRight - plotLeft);
+
+  // At most seven gridlines, whatever the span turns out to be.
+  const step = Math.max(1, Math.ceil(span / 7));
+  const ticks: number[] = [];
+  for (let decade = low; decade <= high; decade += step) ticks.push(decade);
+
+  return (
+    <div ref={measure}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        width="100%"
+        role="img"
+        aria-label="Worst single-step error for each representation, near zero and at ten to the sixth metres"
+      >
+        {ticks.map((decade) => (
+          <g key={decade}>
+            <line
+              x1={x(decade)}
+              y1={SCALE_TOP}
+              x2={x(decade)}
+              y2={axisY}
+              stroke="currentColor"
+              strokeOpacity={0.12}
+            />
+            <text
+              x={Math.min(
+                Math.max(x(decade), TICK_LABEL_HALF_WIDTH),
+                width - TICK_LABEL_HALF_WIDTH,
+              )}
+              y={axisY + 14}
+              fontSize={LABEL_FONT_SIZE}
+              textAnchor="middle"
+              fill="currentColor"
+              fillOpacity={0.6}
+            >
+              10^{decade}
+            </text>
+          </g>
+        ))}
+        {rows.map((row, index) => {
+          const centre = SCALE_TOP + index * SCALE_ROW_HEIGHT + SCALE_ROW_HEIGHT / 2;
+          return (
+            <g key={row.label}>
+              <text
+                x={0}
+                y={centre + 3}
+                fontSize={LABEL_FONT_SIZE + 1}
+                fill="currentColor"
+                fillOpacity={0.8}
+              >
+                {row.label}
+              </text>
+              {row.near !== undefined && row.far !== undefined && (
+                <line
+                  x1={x(row.near)}
+                  y1={centre}
+                  x2={x(row.far)}
+                  y2={centre}
+                  stroke="currentColor"
+                  strokeOpacity={0.45}
+                  strokeWidth={3}
+                />
+              )}
+              {row.near !== undefined && (
+                <circle
+                  cx={x(row.near)}
+                  cy={centre}
+                  r={5.5}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeOpacity={0.85}
+                />
+              )}
+              {row.far !== undefined && (
+                <circle cx={x(row.far)} cy={centre} r={3} fill="currentColor" fillOpacity={0.85} />
+              )}
+              {row.near === undefined && row.far === undefined && (
+                <text
+                  x={plotLeft}
+                  y={centre + 3}
+                  fontSize={LABEL_FONT_SIZE}
+                  fill="currentColor"
+                  fillOpacity={0.5}
+                >
+                  {row.note}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        <text x={0} y={12} fontSize={LABEL_FONT_SIZE} fill="currentColor" fillOpacity={0.6}>
+          worst single step
+        </text>
+        <text
+          x={width}
+          y={12}
+          fontSize={LABEL_FONT_SIZE}
+          textAnchor="end"
+          fill="currentColor"
+          fillOpacity={0.6}
+        >
+          ring: near zero · dot: at 10^6 m
         </text>
       </svg>
     </div>
@@ -264,16 +438,75 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
     // width belonged, shifted away 1024 bits of a 1001-bit product, and reported
     // a destination of 0 with the entire product as residue. Confidently, under
     // a heading. Worth remembering that the numbers were all individually true.
-    const narrowed = narrow({
-      value: product.value,
-      sourceFractionBits: FRACTION_BITS * 2,
-      sourceWidthBits: REGISTER_BITS * 2,
-      destinationFractionBits: FRACTION_BITS,
-      destinationWidthBits: REGISTER_BITS,
-      policy: { ...scenario.narrowing, range: 'saturate' },
-    });
-    return { profileA, profileB, product, narrowed };
+    //
+    // A trap is an answer. §14's scenario C exists to refuse a value that is no
+    // longer the one that was asked for, and refusing is the machine working.
+    // Letting the `WideError` escape put the whole lens behind "Architecture Lab
+    // could not be drawn" — a policy the interface offers, taken, and reported
+    // as the lens breaking. The lab now says which operation was refused and why
+    // and keeps everything that did not depend on it.
+    let narrowed: ReturnType<typeof narrow> | undefined;
+    let refusal: string | undefined;
+    try {
+      narrowed = narrow({
+        value: product.value,
+        sourceFractionBits: FRACTION_BITS * 2,
+        sourceWidthBits: REGISTER_BITS * 2,
+        destinationFractionBits: FRACTION_BITS,
+        destinationWidthBits: REGISTER_BITS,
+        policy: { ...scenario.narrowing, range: 'saturate' },
+      });
+    } catch (error) {
+      if (!(error instanceof WideError)) throw error;
+      refusal = error.message;
+    }
+    return { profileA, profileB, product, narrowed, refusal };
   }, [parsed, state.digitBits, state.skipZeroDigits, scenario]);
+
+  /**
+   * §21's comparison, under whichever scenario is selected. The two workloads
+   * differ only in where they start, which is the entire experiment: everything
+   * else — the operand, the count, the reference — is held fixed.
+   */
+  const comparison = useMemo(() => {
+    const index = (workload: ComparisonWorkload) =>
+      new Map(
+        compareRepresentations(workload, { narrowing: scenario.narrowing }).map((run) => [
+          run.representation,
+          run,
+        ]),
+      );
+    const near = index(ACCUMULATE_TENTHS);
+    const far = index(ACCUMULATE_TENTHS_FAR);
+
+    const place = (run: RepresentationRun) =>
+      run.final === undefined || isZero(run.worstStepError)
+        ? undefined
+        : log10RationalForDisplay(run.worstStepError);
+
+    const drift = (run: RepresentationRun) =>
+      run.divergence === undefined ? undefined : formatCount(run.divergence);
+
+    return {
+      rows: COMPARED.map(({ key, label }) => ({
+        label,
+        near: place(near.get(key)!),
+        far: place(far.get(key)!),
+        // Short on purpose. SVG text does not wrap, and the trap message is a
+        // full sentence carrying a ninety-bit integer — at 420px it leaves the
+        // drawing entirely. The table below wraps, so it carries the detail.
+        note:
+          near.get(key)!.note === undefined ? 'no step error to place' : 'refused by the policy',
+      })),
+      table: [{ key: 'exact' as const, label: 'exact' }, ...COMPARED].map(({ key, label }) => ({
+        label,
+        near: drift(near.get(key)!),
+        far: drift(far.get(key)!),
+        nearNote: near.get(key)!.note ?? '—',
+        farNote: far.get(key)!.note ?? '—',
+      })),
+    };
+  }, [scenario]);
 
   return (
     <>
@@ -425,15 +658,23 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
                 <tr>
                   <th scope="row">Narrowed back</th>
                   <td className="mono">
-                    {describeWideLiteral(computed.narrowed.value)}
-                    <br />
-                    <small>{FRACTION_BITS} fraction bits</small>
+                    {computed.narrowed === undefined ? (
+                      <small>refused: {computed.refusal}</small>
+                    ) : (
+                      <>
+                        {describeWideLiteral(computed.narrowed.value)}
+                        <br />
+                        <small>{FRACTION_BITS} fraction bits</small>
+                      </>
+                    )}
                   </td>
                 </tr>
                 <tr>
                   <th scope="row">Residue</th>
                   <td className="mono">
-                    {computed.narrowed.exact ? (
+                    {computed.narrowed === undefined ? (
+                      <small>no narrowing happened, so there is nothing left over</small>
+                    ) : computed.narrowed.exact ? (
                       <span className="tag tag-exact">nothing lost</span>
                     ) : (
                       describeWideLiteral(computed.narrowed.residue)
@@ -457,6 +698,50 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
           </section>
         </>
       )}
+
+      <section className="panel">
+        <h3>The same arithmetic, four ways</h3>
+        <ErrorScale rows={comparison.rows} />
+        <table className="readout comparison">
+          <thead>
+            <tr>
+              <th scope="col">Representation</th>
+              <th scope="col">Drift near zero</th>
+              <th scope="col">Drift at 10^6 m</th>
+            </tr>
+          </thead>
+          <tbody>
+            {comparison.table.map((row) => (
+              <tr key={row.label}>
+                <th scope="row">{row.label}</th>
+                <td className="mono">
+                  {row.near === undefined ? (
+                    <small>{row.nearNote}</small>
+                  ) : (
+                    <Rendered value={row.near} />
+                  )}
+                </td>
+                <td className="mono">
+                  {row.far === undefined ? (
+                    <small>{row.farNote}</small>
+                  ) : (
+                    <Rendered value={row.far} />
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="lens-question">
+          Add a tenth a thousand times, then do it again starting a million metres out. The
+          fixed-point machines land in exactly the same place both times, because their quantum is
+          absolute and does not know where it is; binary64 coarsens by 4096, which is 2<sup>12</sup>{' '}
+          — twelve binades, not six decades. None of them is exact, because a tenth is not a binary
+          fraction, and width does not change that. The scenario above governs the wide machine
+          only: binary64 and Q128.128 have fixed contracts, so trapping on inexact stops one row and
+          leaves the others running.
+        </p>
+      </section>
     </>
   );
 }

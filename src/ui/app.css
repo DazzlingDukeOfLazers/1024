@@ -188,6 +188,23 @@ table.readout th {
   }
 }
 
+/* The comparison table has three columns rather than the usual label/value
+   pair, so the 14rem row-header width above would claim the whole width and
+   leave the two value columns fighting over what is left. */
+table.readout.comparison th[scope='col'] {
+  width: auto;
+}
+
+table.readout.comparison th[scope='row'] {
+  width: 9rem;
+}
+
+@media (max-width: 640px) {
+  table.readout.comparison th[scope='row'] {
+    width: auto;
+  }
+}
+
 .answer {
   align-items: center;
   display: flex;

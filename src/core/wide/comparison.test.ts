@@ -7,6 +7,7 @@ import {
   REPRESENTATIONS,
   compareRepresentations,
 } from './comparison';
+import { SCENARIOS } from './scenario';
 import {
   type Rational,
   ZERO,
@@ -186,6 +187,43 @@ describe('cancellation', () => {
     // otherwise here would be the kind of rigged demonstration this project
     // exists not to make.
     expect(isZero(runs.get('binary64')!.divergence!)).toBe(true);
+  });
+});
+
+describe('a policy that refuses inexact results refuses this workload (§14)', () => {
+  const strict = new Map(
+    compareRepresentations(ACCUMULATE_TENTHS, { narrowing: SCENARIOS.strict.narrowing }).map(
+      (run) => [run.representation, run],
+    ),
+  );
+
+  it('stops the wide machine on the first tenth', () => {
+    const wide = strict.get('wide-fixed-point')!;
+    expect(wide.final).toBeUndefined();
+    expect(wide.note).toContain('trapped');
+    // A refusal is not a large error, and must not be reported as one.
+    expect(wide.divergence).toBeUndefined();
+  });
+
+  it('leaves the other machines alone, because the policy is only the wide one’s', () => {
+    // Worth being explicit about rather than letting the panel imply otherwise:
+    // binary64 and Q128.128 have fixed contracts. The scenario selector governs
+    // the machine this track built, not the two it inherited.
+    for (const name of ['binary64', 'q128.128'] as const) {
+      expect(strict.get(name)!.final, name).toBeDefined();
+    }
+  });
+
+  it('still gets an answer when nothing is lost', () => {
+    // Anti-vacuity: if the strict policy trapped on everything, the test above
+    // would pass without the trap meaning anything.
+    const exactWorkload = new Map(
+      compareRepresentations(CANCELLATION, { narrowing: SCENARIOS.strict.narrowing }).map((run) => [
+        run.representation,
+        run,
+      ]),
+    );
+    expect(exactWorkload.get('wide-fixed-point')!.final).toBeDefined();
   });
 });
 
