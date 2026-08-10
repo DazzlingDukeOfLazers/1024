@@ -43,6 +43,44 @@ function meters(value: Rational): string {
   return formatScientific(quantity('length', value)).text;
 }
 
+/**
+ * Beyond this many characters an exact decimal stops being a number you read
+ * and becomes a wall you scroll past.
+ *
+ * Measured rather than picked: `1` and `3` are 1 character, `0.1` is 57 — the
+ * famous one, 0.1000000000000000055511151231257827…, which has to stay in
+ * plain sight because it is the whole demonstration. `10^-40` is 185 and a
+ * subnormal near `10^-310` is **1076**, which on a 420 px screen is forty lines
+ * of mostly zeros pushing the quantization, the gaps and the regime row off the
+ * bottom of the panel.
+ */
+const INLINE_DECIMAL_LIMIT = 120;
+
+/**
+ * The exact decimal, entire, and folded away when it is too long to read.
+ *
+ * Nothing is truncated and nothing is rounded — `toExactDecimalString` already
+ * refuses to do either, returning `undefined` for a repeating expansion rather
+ * than cutting one short, and this keeps that promise. The digits are all there
+ * behind one click.
+ *
+ * The length is worth saying out loud in its own right. "1076 digits" is a fact
+ * about what it costs to write a subnormal exactly, and it was invisible before
+ * — buried in the thousand digits that were the answer to it.
+ */
+function ExactDecimal({ text }: { text: string | undefined }) {
+  if (text === undefined) return <small>no finite decimal expansion</small>;
+  if (text.length <= INLINE_DECIMAL_LIMIT) return <small>{text}</small>;
+  return (
+    <details>
+      <summary>
+        <small>exactly {text.length.toLocaleString()} characters — show them</small>
+      </summary>
+      <small>{text}</small>
+    </details>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /* One representation's lattice                                                */
 /* -------------------------------------------------------------------------- */
@@ -146,7 +184,7 @@ function LatticeRow({ report }: { report: LatticeReport }) {
                 <td className="mono">
                   {meters(report.nearest!)}
                   <br />
-                  <small>{exactDecimal ?? 'no finite decimal expansion'}</small>
+                  <ExactDecimal text={exactDecimal} />
                 </td>
               </tr>
               <tr>

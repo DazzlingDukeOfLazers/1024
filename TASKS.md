@@ -1063,6 +1063,35 @@ edge were cut down the middle rather than dropped.
 `e2e/labels.spec.ts` measures the real rendered boxes at four widths and asserts
 nothing overlaps or runs off the edge. A bad estimate now fails loudly.
 
+## The third look, after ten commits in a day
+
+Same procedure as the two before it: every swept state, both widths, read rather
+than asserted. 52 states, 104 shots, tiled into contact sheets so the whole app
+could be scanned at once instead of sampled. Two defects, both in states that
+pass every rule the conformance sweep has.
+
+- [x] **A subnormal's exact decimal buried its own panel.** `1 × 10^-310` needs
+      **1,076 characters** to write out exactly, and all of them were inline —
+      about forty lines of mostly zeros on a 420 px screen, pushing the
+      quantization, both gaps and the Regime row off the bottom. The Regime row
+      is the one that says binary64 is a fixed-point machine down there, which
+      is the entire reason that state is swept.
+
+      Folded behind a disclosure above 120 characters, with the length in the
+      summary. Nothing is truncated and nothing is rounded —
+      `toExactDecimalString` already refuses both — and every digit is one click
+      away. The count is worth saying on its own: "1,076 characters" is a fact
+      about what a subnormal costs to write exactly, and it was invisible,
+      buried under the thousand digits that were the answer to it.
+
+      The threshold was measured, not picked. `1` and `3` are one character;
+      `0.1` is 57 and stays inline because it is the demonstration this lens is
+      built around; `10^-40` is 185. A test pins that 0.1 is *not* folded, or
+      the fix would have traded one defect for a worse one. The page went from
+      5,155 px to 4,435 px at 420.
+- [x] **"Laying them out for real takes 1 whole items."** A kilometre across a
+      millimetre takes exactly one of them, and the sentence did not survive its
+      own smallest case.
 - [ ] Look at the app after any change to layout. A test suite that checks
       geometry through `getBoundingClientRect` cannot tell you the words are on
       top of each other; it will happily confirm that two unreadable labels are

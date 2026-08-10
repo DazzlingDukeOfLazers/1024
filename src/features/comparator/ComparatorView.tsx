@@ -331,8 +331,12 @@ export function ComparatorView({ state, onChange }: ComparatorViewProps) {
 
         {layout !== undefined && (
           <p className="lens-question">
-            Laying them out for real takes {layout.count.toLocaleString()} whole items, overshooting
-            by {formatEngineering(layout.remainder, { significantDigits: 3 }).text}.
+            {/* "1 whole items" — a kilometre laid out across a millimetre takes
+                exactly one of them, and the sentence has to survive its own
+                smallest case. */}
+            Laying them out for real takes {layout.count.toLocaleString()}{' '}
+            {layout.count === 1n ? 'whole item' : 'whole items'}, overshooting by{' '}
+            {formatEngineering(layout.remainder, { significantDigits: 3 }).text}.
           </p>
         )}
       </section>

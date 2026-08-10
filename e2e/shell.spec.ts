@@ -435,6 +435,45 @@ test('the resolution chart shows where binary64 stops climbing', async ({ page }
   await expect(panel).toContainText('285 decades coarser');
 });
 
+test('a thousand-digit exact decimal folds instead of burying the panel', async ({ page }) => {
+  await openMicroscope(page);
+  await page.getByLabel('Value', { exact: true }).fill('1e-310');
+
+  const binary64 = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+
+  // 1,076 characters of mostly zeros used to sit inline, forty lines of it on a
+  // phone, pushing the quantization, the gaps and the regime off the bottom.
+  await expect(binary64).toContainText('exactly 1,076 characters');
+  // Direct child, so this is the digits rather than the summary's own <small>.
+  const digits = binary64.locator('details > small');
+  await expect(digits).not.toBeVisible();
+
+  // Nothing is truncated: every digit is one click away.
+  await binary64.locator('summary').click();
+  await expect(digits).toBeVisible();
+  expect((await digits.textContent())?.length).toBe(1076);
+
+  // And the rows it used to bury are on screen without expanding anything.
+  await expect(binary64.getByRole('rowheader', { name: 'Regime' })).toBeVisible();
+});
+
+test('the exact decimal worth reading is not folded away', async ({ page }) => {
+  // Anti-vacuity. 0.1 in binary64 is 57 characters and is the whole
+  // demonstration this lens is built around — a threshold that hid it would
+  // have traded the defect for a worse one.
+  await openMicroscope(page);
+  await page.getByLabel('Value', { exact: true }).fill('0.1');
+
+  const binary64 = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'binary64', exact: true }) });
+
+  await expect(binary64).toContainText('0.1000000000000000055511151231257827');
+  await expect(binary64.locator('details')).toHaveCount(0);
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 
