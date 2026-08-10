@@ -54,6 +54,19 @@ import { Q128_128_PRESETS, encodeMeters as encodeQ128 } from './representations/
 import { encodeMeters as encodePlanck } from './representations/planck';
 import { Q512_512, encode as encodeFixedPoint } from './representations/fixedPoint';
 import { DIGIT_WIDTHS } from './wide/digits';
+import {
+  LIMB_BITS,
+  LIMBS_PER_VALUE,
+  addLimbs,
+  bitLengthLimbs,
+  divRemLimbs,
+  fromLimbs,
+  mulLimbs,
+  shlLimbs,
+  shrLimbs,
+  subLimbs,
+  toLimbs,
+} from './limbs/limbs';
 import { mulWide } from './wide/multiply';
 import { DIVISION_ALGORITHMS, divRem } from './wide/divide';
 
@@ -335,6 +348,110 @@ describe('DIV_REM agrees with the CPU oracle, as §19 requires', () => {
       const divisor = BigInt(entry.divisor);
       const scaled = dividend * (1n << BigInt(entry.fractionBits));
       expect(BigInt(entry.quotient) * divisor + BigInt(entry.remainder)).toBe(scaled);
+    }
+  });
+});
+
+describe('the limb machine agrees with the CPU oracle (§18, §19)', () => {
+  // The sweep is driven by the fixture's own key list, so an op added to the
+  // generator without a TypeScript implementation fails here by name instead
+  // of silently going untested. The metadata keys are the layout contract.
+  const HANDLED = ['encoding', 'add', 'sub', 'bitlen', 'shl', 'shr', 'mulWide', 'divRem'];
+  const METADATA = ['limbBits', 'limbsPerValue', 'layout'];
+
+  it('has a runner for every op the fixture carries', () => {
+    expect(oracle.limbs.limbBits).toBe(LIMB_BITS);
+    expect(oracle.limbs.limbsPerValue).toBe(LIMBS_PER_VALUE);
+    for (const key of Object.keys(oracle.limbs)) {
+      expect(HANDLED.concat(METADATA), `unhandled limb fixture section "${key}"`).toContain(key);
+    }
+    for (const key of HANDLED) {
+      expect(Object.keys(oracle.limbs), `fixture lost section "${key}"`).toContain(key);
+    }
+  });
+
+  it('was given enough cases to mean something', () => {
+    expect(oracle.limbs.add.length).toBeGreaterThan(30);
+    expect(oracle.limbs.sub.length).toBeGreaterThan(30);
+    expect(oracle.limbs.mulWide.length).toBeGreaterThan(20);
+    expect(oracle.limbs.divRem.length).toBeGreaterThan(20);
+    expect(oracle.limbs.shl.length).toBeGreaterThan(10);
+    expect(oracle.limbs.shr.length).toBeGreaterThan(10);
+  });
+
+  it('lays limbs out the way the fixture pins', () => {
+    for (const entry of oracle.limbs.encoding) {
+      expect(Array.from(toLimbs(BigInt(entry.value))), entry.value).toEqual(entry.limbs);
+    }
+  });
+
+  it('adds with the carry Python saw', () => {
+    for (const entry of oracle.limbs.add) {
+      const sum = addLimbs(toLimbs(BigInt(entry.a)), toLimbs(BigInt(entry.b)));
+      expect(fromLimbs(sum.limbs), `${entry.a} + ${entry.b}`).toBe(BigInt(entry.sum));
+      expect(sum.carryOut, `${entry.a} + ${entry.b} carry`).toBe(entry.carryOut);
+    }
+  });
+
+  it('subtracts with the borrow Python saw', () => {
+    for (const entry of oracle.limbs.sub) {
+      const difference = subLimbs(toLimbs(BigInt(entry.a)), toLimbs(BigInt(entry.b)));
+      expect(fromLimbs(difference.limbs), `${entry.a} − ${entry.b}`).toBe(BigInt(entry.difference));
+      expect(difference.borrowOut, `${entry.a} − ${entry.b} borrow`).toBe(entry.borrowOut);
+    }
+  });
+
+  it('measures the bit lengths Python measured', () => {
+    for (const entry of oracle.limbs.bitlen) {
+      expect(bitLengthLimbs(toLimbs(BigInt(entry.value))).bitLength, entry.value).toBe(
+        entry.bitLength,
+      );
+    }
+  });
+
+  it('shifts to the values Python computed, and the lost bits reconcile', () => {
+    for (const entry of oracle.limbs.shl) {
+      const result = fromLimbs(shlLimbs(toLimbs(BigInt(entry.value)), entry.shift).limbs);
+      expect(result, `${entry.value} << ${entry.shift}`).toBe(BigInt(entry.result));
+      // Nothing vanished: what fell off the top plus what the register kept is
+      // the whole shifted value. Same shape as NARROW's residue contract.
+      expect(
+        (BigInt(entry.lost) << 1024n) + BigInt(entry.result),
+        `${entry.value} << ${entry.shift} residue`,
+      ).toBe(BigInt(entry.value) << BigInt(entry.shift));
+    }
+    for (const entry of oracle.limbs.shr) {
+      const result = fromLimbs(shrLimbs(toLimbs(BigInt(entry.value)), entry.shift).limbs);
+      expect(result, `${entry.value} >> ${entry.shift}`).toBe(BigInt(entry.result));
+      // SHR's residue identity is exact: result·2^shift + lost = value.
+      expect(
+        (BigInt(entry.result) << BigInt(entry.shift)) + BigInt(entry.lost),
+        `${entry.value} >> ${entry.shift} residue`,
+      ).toBe(BigInt(entry.value));
+    }
+  });
+
+  it('multiplies to the products Python computed', () => {
+    for (const entry of oracle.limbs.mulWide) {
+      const product = mulLimbs(toLimbs(BigInt(entry.a)), toLimbs(BigInt(entry.b)));
+      expect(fromLimbs(product.limbs), `${entry.a} × ${entry.b}`).toBe(BigInt(entry.product));
+    }
+  });
+
+  it('divides to the quotient and remainder Python computed', () => {
+    for (const entry of oracle.limbs.divRem) {
+      const division = divRemLimbs(toLimbs(BigInt(entry.dividend)), toLimbs(BigInt(entry.divisor)));
+      expect(fromLimbs(division.quotient), `${entry.dividend} ÷ ${entry.divisor}`).toBe(
+        BigInt(entry.quotient),
+      );
+      expect(fromLimbs(division.remainder), `${entry.dividend} ÷ ${entry.divisor}`).toBe(
+        BigInt(entry.remainder),
+      );
+      // And the whole point, §9's identity, from the fixture's own halves.
+      expect(
+        BigInt(entry.quotient) * BigInt(entry.divisor) + BigInt(entry.remainder),
+        `${entry.dividend} ÷ ${entry.divisor} identity`,
+      ).toBe(BigInt(entry.dividend));
     }
   });
 });

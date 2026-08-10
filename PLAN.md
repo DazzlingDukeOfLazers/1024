@@ -24,12 +24,19 @@ Decisions Daniel made when this plan was written (2026-08-09):
 
 - Branch `dd/exact-quantity-core`; 807 unit tests, 95 Playwright, all green.
   CI runs the gate on every push.
-- Current phase: **1** (§18 ladder). 1.1 done: 202 limb fixtures committed,
-  Python limb kernels asserted against native ints, five mutants killed, and
-  one false claim caught — DIV_REM's remainder needs **no** extra limb
-  (R ≤ 2^k − 1 after k bits; proof in `limb_divrem`'s docstring). The WGSL
-  kernel gets to be one limb smaller because of it.
-- Next action: Phase 1.2 — CPU limb machine in `src/core/limbs/`.
+- Current phase: **1** (§18 ladder). 1.1 and 1.2 done.
+  - 1.1: 202 limb fixtures; Python kernels asserted against native ints; one
+    false claim caught — DIV_REM needs **no** extra limb (R ≤ 2^k − 1 after k
+    bits; proof in `limb_divrem`'s docstring).
+  - 1.2: `src/core/limbs/limbs.ts` — u32-only kernels (bigint at the boundary
+    only), 32×32→64 from 16-bit halves because WGSL has no u64, metrics per
+    kernel. All fixtures pass, cross-checked against `core/wide`, ten mutants
+    killed via `tools/mutate.py`, op-list sweep in `oracle.test.ts` fails by
+    name on any fixture op without a runner. 832 unit tests.
+- Next action: Phase 1.3 — WGSL kernels + `src/gpu/` harness, verified on this
+  machine's GPU via the `e2e/webgpu.spec.ts` recipe (branded Chrome + flags).
+  The WGSL must textually mirror the 1.2 kernels — same carry idiom, same
+  16-bit-half multiply, same no-extra-limb DIV_REM.
 
 ## Session protocol
 
@@ -96,7 +103,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
   overflow, narrowing. Commit regenerated `fixtures/oracle.json`.
   *Done means:* fixtures exist and the Python model agrees with Python's
   native ints on every case — the prototype is checked against an oracle too.
-- [ ] **1.2 CPU limb machine** in `src/core/limbs/`. The kernels use only u32
+- [x] **1.2 CPU limb machine** in `src/core/limbs/`. The kernels use only u32
   operations (`>>> 0` semantics, explicit carries/borrows) — `bigint` appears
   at the encode/decode boundary and in tests, never inside a kernel, because a
   kernel that secretly uses bigint is not a simulation of anything. Checked
