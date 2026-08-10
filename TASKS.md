@@ -255,8 +255,25 @@ Discovered while implementing:
       and says so. The count never changes; only the drawing does.
 - [ ] Search is a substring scan over 28 objects. Fine now; it needs an index
       long before the catalog is large.
-- [ ] The comparator is length-only in practice. Area and volume need real
-      geometry, not a reused length ratio (`docs/DATA_MODEL.md`).
+- [x] Area and volume comparisons, with the geometry named rather than assumed
+      away. For two objects that share nothing but a length, the geometry that
+      applies is similarity: for the same shape at different sizes, areas go as
+      the square and volumes as the cube of any corresponding length, exactly,
+      whatever the shape — the shape factors cancel in a ratio. No shape factor
+      is invented because none is needed.
+
+      What does not cancel is the similarity, and the catalog does not know it.
+      So the results carry an `assumes` field and the view shows it in its own
+      row, separate from "why approximate": the arithmetic is exact and the
+      claim is conditional, and folding those together would let "exact" read as
+      "true". A house is being treated as a large coconut, and the panel says
+      so in those words.
+- [ ] `how-many-fit` by volume is deliberately absent. It needs a packing
+      efficiency as well as a shape, and spheres do not tile — the honest figure
+      is unavailable rather than imprecise. Offering it with a third assumption
+      stacked on the other two would be worse than not offering it, but the
+      coconuts-in-a-house question is the one people actually ask, so this is
+      worth revisiting with a real packing model rather than leaving forever.
 
 ## Ruler
 

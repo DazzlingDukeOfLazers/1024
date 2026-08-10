@@ -141,9 +141,15 @@ end-to-end
 how-many-fit
 difference
 ratio
+area-ratio
+volume-ratio
 ```
 
-Future area/volume operations must use appropriate geometry rather than blindly reusing length ratios.
+Area and volume must use appropriate geometry rather than blindly reusing length ratios — and for two objects that share nothing but a length, the geometry that applies is **similarity**. For the same shape at different sizes, areas go as the square of any corresponding length and volumes as the cube, exactly, whatever the shape is: the shape factors cancel in a ratio. No shape factor is invented, and none is needed.
+
+What does not cancel is the similarity itself, and the catalog does not know it. So `area-ratio` and `volume-ratio` carry an `assumes` field, and every view that shows one must show it — the arithmetic is exact and the claim is conditional, which are different things. `assumes` is deliberately not merged into `approximateBecause`: that field is about how well the inputs are known, and two exactly defined lengths still do not make a house the same shape as a coconut.
+
+`how-many-fit` is **not** offered by volume. It would need a packing efficiency as well as a shape, and spheres do not tile — the honest figure is unavailable rather than merely imprecise, so the operation is absent instead of approximate.
 
 Example request:
 

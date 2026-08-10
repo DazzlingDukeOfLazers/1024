@@ -33,7 +33,14 @@ import {
 } from '../../catalog/schema';
 import { requireLength } from '../../catalog/catalog';
 
-export const COMPARISON_OPERATIONS = ['ratio', 'how-many-fit', 'end-to-end', 'difference'] as const;
+export const COMPARISON_OPERATIONS = [
+  'ratio',
+  'how-many-fit',
+  'end-to-end',
+  'difference',
+  'area-ratio',
+  'volume-ratio',
+] as const;
 export type ComparisonOperation = (typeof COMPARISON_OPERATIONS)[number];
 
 export class ComparisonError extends Error {
@@ -118,6 +125,21 @@ interface ResultBase {
   certainty: Certainty;
   /** Which subjects made the answer approximate, for the UI to name. */
   approximateBecause: readonly string[];
+  /**
+   * Modelling assumptions the answer rests on, which are a different thing from
+   * `approximateBecause` and must not be folded into it.
+   *
+   * `approximateBecause` is about the *inputs*: this coconut is a representative
+   * 0.2 m rather than a measured one. An assumption is about the *question*:
+   * squaring a length ratio gives the ratio of areas only if the two objects are
+   * the same shape, and no amount of precision in the lengths makes that true.
+   * A house is not a large coconut.
+   *
+   * The same distinction the numerics core draws between operand encoding error
+   * and operation rounding error (docs/NUMERICS.md §7): two ways to be wrong
+   * that a single bucket would blur.
+   */
+  assumes?: readonly string[];
 }
 
 /** A dimensionless count: ratio and how-many-fit. */
@@ -200,6 +222,67 @@ export function ratio(a: Subject, b: Subject): CountResult {
  */
 export function howManyFit(a: Subject, b: Subject): CountResult {
   return { ...ratio(b, a), operation: 'how-many-fit', a, b };
+}
+
+/**
+ * Geometric similarity: the assumption that squaring and cubing a length ratio
+ * is allowed at all.
+ *
+ * For two shapes that are *similar* — the same shape at different sizes — areas
+ * go as the square of any corresponding length and volumes as the cube, exactly,
+ * whatever the shape is. No shape factor is needed and none is invented here:
+ * the factors cancel in a ratio. What does not cancel is the similarity itself.
+ * A coconut and a house share one number, a length, and nothing else; the
+ * catalog does not know their shapes and this function does not pretend to.
+ *
+ * So the arithmetic is exact and the claim is conditional, and the condition is
+ * carried on the result rather than left in a comment.
+ */
+const SIMILARITY = 'both objects have the same shape, at different sizes';
+
+function poweredRatio(
+  a: Subject,
+  b: Subject,
+  power: 2 | 3,
+  operation: 'area-ratio' | 'volume-ratio',
+): CountResult {
+  const lengths = ratio(a, b);
+  const raise = (value: Rational): Rational =>
+    power === 2 ? mul(value, value) : mul(mul(value, value), value);
+
+  const base: CountResult = {
+    ...lengths,
+    operation,
+    value: raise(lengths.value),
+    assumes: [SIMILARITY],
+  };
+  if (lengths.range === undefined) {
+    // `range` is optional, and spreading a result that has none would carry an
+    // explicit `undefined` into a type that says the key may be absent.
+    const withoutRange = { ...base };
+    delete withoutRange.range;
+    return withoutRange;
+  }
+  // Both bounds are positive and `x^n` is increasing there, so the extremes of
+  // the range map to the extremes of the answer.
+  return { ...base, range: { min: raise(lengths.range.min), max: raise(lengths.range.max) } };
+}
+
+/**
+ * How many times the surface area, if the two are the same shape.
+ *
+ * §DATA_MODEL: "Future area/volume operations must use appropriate geometry
+ * rather than blindly reusing length ratios." The geometry that applies to two
+ * lengths and nothing else is similarity, and this says so out loud rather than
+ * quietly cubing.
+ */
+export function areaRatio(a: Subject, b: Subject): CountResult {
+  return poweredRatio(a, b, 2, 'area-ratio');
+}
+
+/** How many times the volume, if the two are the same shape. */
+export function volumeRatio(a: Subject, b: Subject): CountResult {
+  return poweredRatio(a, b, 3, 'volume-ratio');
 }
 
 /** `a - b`, a quantity. */

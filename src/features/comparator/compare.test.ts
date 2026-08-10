@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ComparisonError,
+  areaRatio,
   difference,
   endToEnd,
   howManyFit,
@@ -9,6 +10,7 @@ import {
   relativeSpread,
   subjectFromCatalog,
   subjectFromQuantity,
+  volumeRatio,
   wholeItemsToSpan,
 } from './compare';
 import { CATALOG } from '../../catalog/catalog';
@@ -212,5 +214,77 @@ describe('the scale span the atlas will need', () => {
     expect(result.certainty).toBe('exact');
     expect(result.value).toEqual(r(9460730472580800000n));
     expect(toUnit(lightYear.value, 'mm')).toEqual(result.value);
+  });
+});
+
+describe('area and volume, where the geometry is an assumption rather than a fact', () => {
+  const metres = (value: bigint) => fromUnit(rational(value), 'm');
+  const twoMetres = subjectFromQuantity('two metres', metres(2n));
+  const oneMetre = subjectFromQuantity('one metre', metres(1n));
+
+  it('squares and cubes the length ratio exactly', () => {
+    expect(areaRatio(twoMetres, oneMetre).value).toEqual(rational(4n));
+    expect(volumeRatio(twoMetres, oneMetre).value).toEqual(rational(8n));
+    // Exactly, in both directions — a third cubes to a twenty-seventh, not to
+    // 0.037037037.
+    expect(volumeRatio(oneMetre, subjectFromQuantity('3 m', metres(3n))).value).toEqual(
+      rational(1n, 27n),
+    );
+  });
+
+  it('says what it assumed, on the result, every time', () => {
+    // The whole point of the operation. A number that is only true for similar
+    // shapes, presented without that condition, is the defect this project
+    // exists to avoid — and it would be invisible, because the arithmetic is
+    // perfect.
+    for (const result of [areaRatio(twoMetres, oneMetre), volumeRatio(twoMetres, oneMetre)]) {
+      expect(result.assumes, result.operation).toEqual([
+        'both objects have the same shape, at different sizes',
+      ]);
+    }
+  });
+
+  it('keeps the assumption separate from the input precision', () => {
+    // Two exactly defined metres: nothing about the *inputs* is approximate,
+    // and the answer is still conditional. Folding the two together would let
+    // "exact" mean "true", which it does not.
+    const result = volumeRatio(twoMetres, oneMetre);
+    expect(result.certainty).toBe('exact');
+    expect(result.approximateBecause).toEqual([]);
+    expect(result.assumes).toHaveLength(1);
+  });
+
+  it('carries the assumption on a real catalog pair, and the imprecision too', () => {
+    const coconut = subjectFromCatalog(CATALOG.require('coconut'));
+    const house = subjectFromCatalog(CATALOG.require('house'));
+    const result = volumeRatio(house, coconut);
+    expect(result.certainty).toBe('approximate');
+    expect(result.approximateBecause.length).toBeGreaterThan(0);
+    expect(result.assumes).toHaveLength(1);
+  });
+
+  it('propagates a range through the power, widest to widest', () => {
+    const wide: typeof oneMetre = {
+      label: 'wide',
+      dimension: 'length',
+      value: metres(2n),
+      range: { min: metres(1n), max: metres(3n) },
+      approximation: 'representative',
+    };
+    const result = volumeRatio(wide, oneMetre);
+    expect(result.range?.min).toEqual(rational(1n));
+    expect(result.range?.max).toEqual(rational(27n));
+    // And the range brackets the representative answer.
+    expect(lt(result.range!.min, result.value)).toBe(true);
+    expect(lt(result.value, result.range!.max)).toBe(true);
+  });
+
+  it('omits the range when neither subject has one', () => {
+    expect('range' in areaRatio(twoMetres, oneMetre)).toBe(false);
+  });
+
+  it('refuses a zero denominator, like the length ratio it is built on', () => {
+    const zero = subjectFromQuantity('zero', zeroQuantity('length'));
+    expect(() => volumeRatio(twoMetres, zero)).toThrow(ComparisonError);
   });
 });

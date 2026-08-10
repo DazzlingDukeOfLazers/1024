@@ -19,6 +19,7 @@ import {
   type ComparisonResult,
   type Subject,
   type SubjectChoice,
+  areaRatio,
   difference,
   endToEnd,
   howManyFit,
@@ -26,6 +27,7 @@ import {
   relativeSpread,
   subjectFromCatalog,
   subjectFromQuantity,
+  volumeRatio,
   wholeItemsToSpan,
 } from './compare';
 import { ComparisonStrip } from './ComparisonStrip';
@@ -39,6 +41,8 @@ const OPERATION_LABELS: Record<ComparisonOperation, string> = {
   ratio: 'A ÷ B',
   difference: 'A − B',
   'end-to-end': 'N × A, end to end',
+  'area-ratio': 'A ÷ B, by area',
+  'volume-ratio': 'A ÷ B, by volume',
 };
 
 function encodeChoice(choice: SubjectChoice): string {
@@ -157,6 +161,22 @@ function Answer({ result }: { result: ComparisonResult }) {
               </td>
             </tr>
           )}
+          {result.assumes !== undefined && result.assumes.length > 0 && (
+            <tr>
+              <th scope="row">What this assumes</th>
+              <td>
+                {/* Deliberately its own row rather than folded into "Why
+                    approximate". An assumption is not imprecision: these two
+                    lengths can be exactly defined and the answer still only
+                    holds if the shapes match. A single caveat line would let
+                    "exact" read as "true". */}
+                Areas go as the square of a length and volumes as the cube — for the same shape at
+                different sizes. This answer assumes {result.assumes.join(' and ')}. The catalog
+                knows one length per object and nothing about its shape, so a house is being treated
+                as a large coconut.
+              </td>
+            </tr>
+          )}
           <tr>
             <th scope="row">Why approximate</th>
             <td>
@@ -222,6 +242,10 @@ export function ComparatorView({ state, onChange }: ComparatorViewProps) {
           return { result: ratio(subjectA, subjectB), error: undefined };
         case 'difference':
           return { result: difference(subjectA, subjectB), error: undefined };
+        case 'area-ratio':
+          return { result: areaRatio(subjectA, subjectB), error: undefined };
+        case 'volume-ratio':
+          return { result: volumeRatio(subjectA, subjectB), error: undefined };
         case 'end-to-end': {
           const count: Rational = parseRationalExact(countText);
           return { result: endToEnd(subjectA, count), error: undefined };

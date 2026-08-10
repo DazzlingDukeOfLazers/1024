@@ -50,7 +50,14 @@ for (const preset of ['rbc-across-mm', 'coconuts', 'far-origin', 'human-scale'] 
   });
 }
 
-for (const operation of ['how-many-fit', 'ratio', 'difference', 'end-to-end'] as const) {
+for (const operation of [
+  'how-many-fit',
+  'ratio',
+  'difference',
+  'end-to-end',
+  'area-ratio',
+  'volume-ratio',
+] as const) {
   for (const [subject, label] of [
     ['object:red-blood-cell', 'object'],
     ['unit:km', 'unit'],

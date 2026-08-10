@@ -1367,3 +1367,33 @@ test('a shared link carries the division position', async ({ page }) => {
   await page.goto(url);
   await expect(page.getByLabel('Quotient digit')).toHaveValue('412');
 });
+
+test('a volume comparison says what it assumed about the shapes', async ({ page }) => {
+  // The arithmetic is exact and the claim is conditional, and the second part
+  // is the one a reader can miss. Cubing a length ratio gives the ratio of
+  // volumes only for the same shape at different sizes — and the catalog knows
+  // one length per object and nothing about its shape.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Comparator' }).click();
+  await page.getByLabel('A', { exact: true }).selectOption('object:house');
+  await page.getByLabel('B', { exact: true }).selectOption('object:coconut');
+  await page.getByLabel('Operation').selectOption('volume-ratio');
+
+  const assumed = readoutRow(page, 'What this assumes');
+  await expect(assumed).toContainText('same shape at different sizes');
+  await expect(assumed).toContainText('house is being treated as a large coconut');
+
+  // And it is a separate row from the precision caveat, because they are
+  // different failures: exactly defined inputs would still not make the shapes
+  // match.
+  await expect(readoutRow(page, 'Why approximate')).toBeVisible();
+});
+
+test('a length comparison claims nothing about shape', async ({ page }) => {
+  // Anti-vacuity for the row above: it must appear only where it applies, or
+  // it is decoration that readers learn to skip.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Comparator' }).click();
+  await page.getByLabel('Operation').selectOption('ratio');
+  await expect(page.getByRole('rowheader', { name: 'What this assumes' })).toHaveCount(0);
+});
