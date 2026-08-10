@@ -65,6 +65,7 @@ for (const operation of [
   'end-to-end',
   'area-ratio',
   'volume-ratio',
+  'how-many-fit-volume',
 ] as const) {
   for (const [subject, label] of [
     ['object:red-blood-cell', 'object'],

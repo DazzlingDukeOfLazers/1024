@@ -27,6 +27,7 @@ import {
   relativeSpread,
   subjectFromCatalog,
   subjectFromQuantity,
+  howManyFitByVolume,
   volumeRatio,
   wholeItemsToSpan,
 } from './compare';
@@ -43,6 +44,17 @@ const OPERATION_LABELS: Record<ComparisonOperation, string> = {
   'end-to-end': 'N × A, end to end',
   'area-ratio': 'A ÷ B, by area',
   'volume-ratio': 'A ÷ B, by volume',
+  'how-many-fit-volume': 'how many A fit inside B',
+};
+
+/**
+ * For operations that raise the length comparison to a power, what the strip is
+ * *not*. Absent for the operations whose answer the strip really does draw.
+ */
+const POWERED_STRIP_NOTE: Partial<Record<ComparisonOperation, string>> = {
+  'area-ratio': 'squared',
+  'volume-ratio': 'cubed',
+  'how-many-fit-volume': 'cubed and then multiplied by the packing fraction',
 };
 
 function encodeChoice(choice: SubjectChoice): string {
@@ -169,11 +181,21 @@ function Answer({ result }: { result: ComparisonResult }) {
                     approximate". An assumption is not imprecision: these two
                     lengths can be exactly defined and the answer still only
                     holds if the shapes match. A single caveat line would let
-                    "exact" read as "true". */}
-                Areas go as the square of a length and volumes as the cube — for the same shape at
-                different sizes. This answer assumes {result.assumes.join(' and ')}. The catalog
-                knows one length per object and nothing about its shape, so a house is being treated
-                as a large coconut.
+                    "exact" read as "true".
+
+                    A list rather than a sentence, because joining three of them
+                    with "and" produced one unreadable paragraph in which the
+                    packing citation ran straight into the wall condition. Each
+                    assumption can be rejected on its own, so each gets a line. */}
+                <ul className="assumes">
+                  {result.assumes.map((assumption) => (
+                    <li key={assumption}>{assumption}</li>
+                  ))}
+                </ul>
+                <small>
+                  The catalog knows one length per object and nothing about its shape, so a house is
+                  being treated as a large coconut.
+                </small>
               </td>
             </tr>
           )}
@@ -246,6 +268,8 @@ export function ComparatorView({ state, onChange }: ComparatorViewProps) {
           return { result: areaRatio(subjectA, subjectB), error: undefined };
         case 'volume-ratio':
           return { result: volumeRatio(subjectA, subjectB), error: undefined };
+        case 'how-many-fit-volume':
+          return { result: howManyFitByVolume(subjectA, subjectB), error: undefined };
         case 'end-to-end': {
           const count: Rational = parseRationalExact(countText);
           return { result: endToEnd(subjectA, count), error: undefined };
@@ -317,6 +341,20 @@ export function ComparatorView({ state, onChange }: ComparatorViewProps) {
         <section className="panel">
           <h3>To scale</h3>
           <ComparisonStrip result={outcome.result} />
+          {/* The strip compares lengths, because a length is the one dimension
+              the catalog holds. For the three operations that raise that
+              comparison to a power, the picture and the headline are then
+              different numbers — 133 across a millimetre, 2,370,000 through it
+              — and a reader is entitled to assume the picture is the answer
+              unless told otherwise. It shipped without this and read as a
+              contradiction. */}
+          {POWERED_STRIP_NOTE[operation] !== undefined && (
+            <p className="lens-question">
+              The strip compares the two <strong>lengths</strong>. The answer above is that
+              comparison {POWERED_STRIP_NOTE[operation]}, so this is the input to the answer rather
+              than a picture of it.
+            </p>
+          )}
         </section>
       )}
     </>

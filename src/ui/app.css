@@ -405,6 +405,18 @@ svg.ruler:active {
   font-size: 0.85rem;
 }
 
+/* One assumption per line. Three of them joined into a sentence ran the packing
+   citation straight into the wall condition, and each can be rejected on its
+   own. */
+.assumes {
+  margin: 0 0 0.4rem;
+  padding-left: 1.1rem;
+}
+
+.assumes li {
+  margin-bottom: 0.25rem;
+}
+
 /* Drift sparklines.
    Deliberately *not* scaled to fit. `max-width: 100%` was the first attempt and
    it broke the rule every other view here obeys: one viewBox unit is one CSS

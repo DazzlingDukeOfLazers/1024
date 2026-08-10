@@ -32,6 +32,8 @@ import {
   type ScaleObject,
 } from '../../catalog/schema';
 import { requireLength } from '../../catalog/catalog';
+import { toExactDecimalString } from '../../core/rational/decimal';
+import { DENSEST_SPHERE_PACKING_TEXT, RANDOM_CLOSE_PACKING } from './packing';
 
 export const COMPARISON_OPERATIONS = [
   'ratio',
@@ -40,6 +42,7 @@ export const COMPARISON_OPERATIONS = [
   'difference',
   'area-ratio',
   'volume-ratio',
+  'how-many-fit-volume',
 ] as const;
 export type ComparisonOperation = (typeof COMPARISON_OPERATIONS)[number];
 
@@ -283,6 +286,81 @@ export function areaRatio(a: Subject, b: Subject): CountResult {
 /** How many times the volume, if the two are the same shape. */
 export function volumeRatio(a: Subject, b: Subject): CountResult {
   return poweredRatio(a, b, 3, 'volume-ratio');
+}
+
+/**
+ * The packing model, in the words the panel shows.
+ *
+ * The volume ratio is not the answer to "how many fit inside", and the gap is
+ * not small: spheres poured into a large container reach 0.6366 of its volume,
+ * so `V_b / V_a` overstates the count by more than half. Naming the model is
+ * what makes the operation offerable at all — this was left out of the area and
+ * volume work precisely because there was no citable number for it, and there
+ * is one.
+ */
+const POURED_SPHERES =
+  `the smaller object pours and settles like an equal sphere, filling ` +
+  `${packingFractionText()} of the space — ${RANDOM_CLOSE_PACKING.source}. ` +
+  `The densest arrangement any equal spheres can reach is ` +
+  `${DENSEST_SPHERE_PACKING_TEXT}, and pouring does not get there`;
+
+/**
+ * The packing fraction as its source published it.
+ *
+ * Held exactly as 3183/5000, and `3183/5000 of the space` is what the panel
+ * first said — arithmetically right and unreadable, and not the form anyone
+ * could check against the paper. `toExactDecimalString` returns `undefined` for
+ * a repeating expansion rather than truncating; this one terminates, and the
+ * fallback exists so a future constant that does not cannot print a lie.
+ */
+function packingFractionText(): string {
+  return toExactDecimalString(RANDOM_CLOSE_PACKING.nominal) ?? 'its declared fraction';
+}
+
+/**
+ * The condition under which a bulk packing fraction means anything.
+ *
+ * 0.6366 is a property of an arrangement far from any wall. Ask how many
+ * coconuts fit in a slightly larger coconut and the answer the arithmetic gives
+ * is one; the answer the packing model is entitled to give is none, because
+ * there is no bulk. No threshold is invented here — inventing one would be a
+ * third guess — so the condition is stated and the number is left to stand.
+ */
+const BULK =
+  'the container is far larger than the item, so the walls do not dominate the arrangement';
+
+/**
+ * How many of `a` fit inside `b`, by volume.
+ *
+ * `b / a` cubed, times the packing fraction. The count is exact rational
+ * arithmetic on three exact inputs and it is still conditional on all three
+ * assumptions, which is the distinction `assumes` exists to keep: exact is not
+ * the same as true.
+ */
+export function howManyFitByVolume(a: Subject, b: Subject): CountResult {
+  const volumes = poweredRatio(b, a, 3, 'volume-ratio');
+  const fraction = RANDOM_CLOSE_PACKING.nominal;
+
+  const base: CountResult = {
+    ...volumes,
+    operation: 'how-many-fit-volume',
+    a,
+    b,
+    value: mul(volumes.value, fraction),
+    assumes: [SIMILARITY, POURED_SPHERES, BULK],
+  };
+  if (volumes.range === undefined) {
+    const withoutRange = { ...base };
+    delete withoutRange.range;
+    return withoutRange;
+  }
+  // The packing fraction is positive, so scaling preserves the order of the
+  // bounds. Its own ±0.0005 is deliberately not folded in: that is uncertainty
+  // in the *model*, and `range` carries uncertainty in the inputs.
+  return {
+    ...base,
+    range: { min: mul(volumes.range.min, fraction), max: mul(volumes.range.max, fraction) },
+  };
 }
 
 /** `a - b`, a quantity. */

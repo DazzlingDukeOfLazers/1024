@@ -284,12 +284,40 @@ Discovered while implementing:
       claim is conditional, and folding those together would let "exact" read as
       "true". A house is being treated as a large coconut, and the panel says
       so in those words.
-- [ ] `how-many-fit` by volume is deliberately absent. It needs a packing
-      efficiency as well as a shape, and spheres do not tile — the honest figure
-      is unavailable rather than imprecise. Offering it with a third assumption
-      stacked on the other two would be worse than not offering it, but the
-      coconuts-in-a-house question is the one people actually ask, so this is
-      worth revisiting with a real packing model rather than leaving forever.
+- [x] `how-many-fit` by volume, revisited with a real packing model as this
+      entry asked. What was missing was never arithmetic — it was a citable
+      number for the shortfall, and there is one, measured rather than chosen:
+      equal spheres poured into a large container and shaken down occupy
+      0.6366 ± 0.0005 of it (Scott and Kilgour, J. Phys. D 2 (1969) 863, from up
+      to 80,000 steel balls extrapolated to infinite volume). Not a rounding of
+      the theoretical maximum — the densest arrangement equal spheres can reach
+      is π/√18 ≈ 0.7405, proved by Hales, and pouring does not get there.
+
+      About 79,575 coconuts fill a house, against 125,000 coconut-volumes of
+      house. The naive answer overstates by more than half, which is why the
+      operation was worth waiting for a number rather than shipping without one.
+
+      The fraction is a declared constant with provenance, in the same shape as
+      the machine constants and deliberately outside `CODATA_2018`: that set is
+      what a simulated machine's grid is conditioned on. Its own ±0.0005 stays
+      out of `range`, which carries input uncertainty; model uncertainty belongs
+      with the assumption that names it.
+- [x] **The "To scale" strip was a picture of a different question.** It draws
+      the two *lengths*, which for `area-ratio` and `volume-ratio` sits under a
+      headline that is those lengths squared or cubed: about 2,370,000 above a
+      caption reading "133 shown", with nothing saying they answer different
+      things. Shipped that way in the area/volume work and found by opening the
+      new operation beside it. The strip now says what it is drawing wherever
+      the operation raises the comparison to a power.
+- [x] Three assumptions do not fit in a sentence. Joined with "and" the packing
+      citation ran straight into the wall condition and the row was unreadable;
+      each assumption can be rejected on its own, so each gets a line.
+- [ ] `how-many-fit-volume` states the bulk condition rather than enforcing it.
+      Ask how many coconuts fit inside a slightly larger coconut and the
+      arithmetic answers "about one" while the packing model is entitled to
+      answer nothing, because 0.6366 is a property of an arrangement far from
+      any wall. No threshold is invented — that would be a third guess — but a
+      real container model would have one.
 
 ## Ruler
 

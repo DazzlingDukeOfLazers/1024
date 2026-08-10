@@ -185,13 +185,20 @@ difference
 ratio
 area-ratio
 volume-ratio
+how-many-fit-volume
 ```
 
 Area and volume must use appropriate geometry rather than blindly reusing length ratios — and for two objects that share nothing but a length, the geometry that applies is **similarity**. For the same shape at different sizes, areas go as the square of any corresponding length and volumes as the cube, exactly, whatever the shape is: the shape factors cancel in a ratio. No shape factor is invented, and none is needed.
 
 What does not cancel is the similarity itself, and the catalog does not know it. So `area-ratio` and `volume-ratio` carry an `assumes` field, and every view that shows one must show it — the arithmetic is exact and the claim is conditional, which are different things. `assumes` is deliberately not merged into `approximateBecause`: that field is about how well the inputs are known, and two exactly defined lengths still do not make a house the same shape as a coconut.
 
-`how-many-fit` is **not** offered by volume. It would need a packing efficiency as well as a shape, and spheres do not tile — the honest figure is unavailable rather than merely imprecise, so the operation is absent instead of approximate.
+`how-many-fit-volume` needs a third thing: a **packing model**. Spheres do not tile, so the volume ratio is not the count — it overstates it by more than half. This operation was deliberately absent while there was no citable number for the shortfall, and it exists now because there is one, measured rather than chosen: equal spheres poured into a large container and shaken down occupy 0.6366 ± 0.0005 of it (Scott and Kilgour 1969). That is not a rounding of the theoretical maximum; the densest arrangement equal spheres can reach is π/√18 ≈ 0.7405, and pouring does not get there. Two numbers, two questions, and "how many fit in here" takes the poured one.
+
+The fraction is a declared constant with provenance, in the shape `src/core/representations/constants.ts` uses and deliberately outside `CODATA_2018` — that set is what a simulated machine's grid is conditioned on, and a packing fraction has nothing to do with a register. Its own ±0.0005 stays out of the result's `range`, which carries uncertainty in the *inputs*; uncertainty in the model belongs with the assumption that names it.
+
+Three assumptions is more than one, so the view lists them rather than joining them into a sentence — each can be rejected on its own, and joined with "and" the citation ran straight into the wall condition.
+
+A view that draws a comparison must also say when the picture is not the answer. The strip compares *lengths*, because a length is the one dimension the catalog holds, so for the three operations that raise that comparison to a power the picture and the headline are different numbers — 133 across a millimetre, 2,370,000 through it. A reader is entitled to assume the picture is the answer unless told otherwise.
 
 Example request:
 

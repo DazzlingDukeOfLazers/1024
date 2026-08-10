@@ -1497,8 +1497,10 @@ test('a volume comparison says what it assumed about the shapes', async ({ page 
   await page.getByLabel('Operation').selectOption('volume-ratio');
 
   const assumed = readoutRow(page, 'What this assumes');
-  await expect(assumed).toContainText('same shape at different sizes');
+  await expect(assumed).toContainText('same shape, at different sizes');
   await expect(assumed).toContainText('house is being treated as a large coconut');
+  // One assumption, one line.
+  await expect(assumed.locator('ul.assumes li')).toHaveCount(1);
 
   // And it is a separate row from the precision caveat, because they are
   // different failures: exactly defined inputs would still not make the shapes
@@ -1513,4 +1515,56 @@ test('a length comparison claims nothing about shape', async ({ page }) => {
   await page.getByRole('button', { name: 'Comparator' }).click();
   await page.getByLabel('Operation').selectOption('ratio');
   await expect(page.getByRole('rowheader', { name: 'What this assumes' })).toHaveCount(0);
+  // And the strip is a picture of the answer here, so it says nothing extra.
+  await expect(page.getByText('the input to the answer')).toHaveCount(0);
+});
+
+test('fitting things inside names the packing model and cites it', async ({ page }) => {
+  // "How many coconuts fit in a house" is the question people ask, and the
+  // volume ratio is not the answer to it: spheres do not tile.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Comparator' }).click();
+  await page.getByLabel('A', { exact: true }).selectOption('object:coconut');
+  await page.getByLabel('B', { exact: true }).selectOption('object:house');
+  await page.getByLabel('Operation').selectOption('how-many-fit-volume');
+
+  // 125,000 coconut-volumes of house; 79,575 coconuts. The smaller number is
+  // the right one, and the naive answer is the one that is wrong.
+  //
+  // The headline rounds to three figures because the coconut's spread is wide,
+  // and the exact row carries the value the arithmetic actually produced —
+  // exact and imprecise at once, which is the pairing this lens is built on.
+  await expect(page.locator('p.answer')).toContainText('about 79600');
+  await expect(readoutRow(page, 'Exact value')).toContainText('79575');
+
+  const assumed = readoutRow(page, 'What this assumes');
+  // Three assumptions, three lines. Joined into a sentence they ran the
+  // citation straight into the wall condition and could not be read.
+  await expect(assumed.locator('ul.assumes li')).toHaveCount(3);
+  await expect(assumed).toContainText('0.6366 of the space');
+  await expect(assumed).toContainText('Scott and D M Kilgour');
+  await expect(assumed).toContainText('J. Phys. D');
+  await expect(assumed).toContainText('walls do not dominate');
+  // Not the theoretical maximum wearing a different name.
+  await expect(assumed).toContainText('0.7405');
+
+  // And the strip below says it is drawing the lengths, not the answer: 50
+  // coconuts across a house sits under a headline of 79,575.
+  await expect(page.getByText('the input to the answer')).toBeVisible();
+});
+
+test('the volume ratio no longer reads as a picture of itself', async ({ page }) => {
+  // This shipped without the note: a headline of about 2,370,000 sitting above
+  // a strip captioned "133 shown", with nothing saying they answer different
+  // questions.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Comparator' }).click();
+  await page.getByLabel('Operation').selectOption('volume-ratio');
+
+  const strip = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'To scale' }) });
+  await expect(strip).toContainText('Drawn to scale: 133 shown');
+  await expect(strip).toContainText('that comparison cubed');
+  await expect(strip).toContainText('the input to the answer rather than a picture of it');
 });

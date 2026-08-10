@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   ComparisonError,
+  type Subject,
   areaRatio,
   difference,
   endToEnd,
   howManyFit,
+  howManyFitByVolume,
   isExactSubject,
   ratio,
   relativeSpread,
@@ -13,6 +15,7 @@ import {
   volumeRatio,
   wholeItemsToSpan,
 } from './compare';
+import { RANDOM_CLOSE_PACKING } from './packing';
 import { CATALOG } from '../../catalog/catalog';
 import { ONE, equals, gt, lt, rational } from '../../core/rational/rational';
 import { parseDecimalExact } from '../../core/rational/parse';
@@ -286,5 +289,102 @@ describe('area and volume, where the geometry is an assumption rather than a fac
   it('refuses a zero denominator, like the length ratio it is built on', () => {
     const zero = subjectFromQuantity('zero', zeroQuantity('length'));
     expect(() => volumeRatio(twoMetres, zero)).toThrow(ComparisonError);
+  });
+});
+
+describe('how many fit inside, where spheres do not tile', () => {
+  const metres = (value: bigint) => fromUnit(rational(value), 'm');
+  const oneMetre = subjectFromQuantity('one metre', metres(1n));
+  const tenMetres = subjectFromQuantity('ten metres', metres(10n));
+
+  it('is the volume ratio times the packing fraction, exactly', () => {
+    // A thousand unit cubes would fill a ten-metre cube; a thousand unit
+    // *spheres* poured in do not, and the gap is more than a third.
+    expect(volumeRatio(tenMetres, oneMetre).value).toEqual(rational(1000n));
+    // 1000 × 3183/5000, in lowest terms. Not 636.6, and not 636.
+    expect(howManyFitByVolume(oneMetre, tenMetres).value).toEqual(rational(3183n, 5n));
+  });
+
+  it('uses a packing fraction that was measured, not chosen', () => {
+    expect(RANDOM_CLOSE_PACKING.nominal).toEqual(rational(3183n, 5000n));
+    expect(RANDOM_CLOSE_PACKING.source).toContain('Scott');
+    expect(RANDOM_CLOSE_PACKING.source).toContain('J. Phys. D');
+    expect(RANDOM_CLOSE_PACKING.uncertainty?.value).toEqual(rational(1n, 2000n));
+
+    // And it is not the theoretical maximum wearing a different name: pouring
+    // reaches 0.6366, the densest possible arrangement is about 0.7405, and
+    // using the second to answer "how many fit" would overstate by a sixth.
+    expect(lt(RANDOM_CLOSE_PACKING.nominal, rational(7405n, 10000n))).toBe(true);
+  });
+
+  it('says all three things it assumed, not just the geometric one', () => {
+    const result = howManyFitByVolume(oneMetre, tenMetres);
+    expect(result.assumes).toHaveLength(3);
+    expect(result.assumes?.[0]).toBe('both objects have the same shape, at different sizes');
+    expect(result.assumes?.[1]).toContain('pours and settles');
+    expect(result.assumes?.[1]).toContain('Scott');
+    // The number as its source published it. `3183/5000 of the space` is what
+    // the panel said first: right, unreadable, and not checkable against the
+    // paper.
+    expect(result.assumes?.[1]).toContain('0.6366 of the space');
+    expect(result.assumes?.[1]).not.toContain('3183');
+    expect(result.assumes?.[2]).toContain('walls do not dominate');
+  });
+
+  it('is exact and conditional at the same time', () => {
+    // Two exactly defined lengths. Nothing about the inputs is approximate, the
+    // arithmetic is exact rational, and the answer still rests on three
+    // assumptions. `exact` has never meant `true`.
+    const result = howManyFitByVolume(oneMetre, tenMetres);
+    expect(result.certainty).toBe('exact');
+    expect(result.approximateBecause).toEqual([]);
+    expect(result.assumes).toHaveLength(3);
+  });
+
+  it('keeps the model uncertainty out of the input range', () => {
+    // The packing fraction is ±0.0005, and that is uncertainty in the *model*.
+    // `range` carries uncertainty in the inputs, so a pair of exact lengths has
+    // no range at all even though the model has a spread.
+    expect('range' in howManyFitByVolume(oneMetre, tenMetres)).toBe(false);
+
+    const wide: Subject = {
+      label: 'wide',
+      dimension: 'length',
+      value: metres(2n),
+      range: { min: metres(1n), max: metres(4n) },
+      approximation: 'representative',
+    };
+    const result = howManyFitByVolume(wide, tenMetres);
+    // A *larger* item means fewer fit, so the wide bound gives the small count.
+    expect(result.range?.min).toEqual(rational(3183n, 320n));
+    expect(result.range?.max).toEqual(rational(3183n, 5n));
+    expect(lt(result.range!.min, result.value)).toBe(true);
+  });
+
+  it('answers the question people actually ask', () => {
+    const coconut = subjectFromCatalog(CATALOG.require('coconut'));
+    const house = subjectFromCatalog(CATALOG.require('house'));
+    const result = howManyFitByVolume(coconut, house);
+
+    // 125,000 coconut-volumes of house, of which the coconuts occupy 0.6366.
+    expect(volumeRatio(house, coconut).value).toEqual(rational(125000n));
+    expect(result.value).toEqual(rational(79575n));
+    // And it is the smaller number: the naive answer is the one that is wrong.
+    expect(lt(result.value, volumeRatio(house, coconut).value)).toBe(true);
+  });
+
+  it('is not the same operation as fitting them across', () => {
+    // Fifty coconuts span a house; eighty thousand fill it. Same two objects,
+    // different questions, and the operation is what distinguishes them.
+    const coconut = subjectFromCatalog(CATALOG.require('coconut'));
+    const house = subjectFromCatalog(CATALOG.require('house'));
+    expect(howManyFit(coconut, house).value).toEqual(rational(50n));
+    expect(howManyFit(coconut, house).assumes).toBeUndefined();
+    expect(howManyFitByVolume(coconut, house).assumes).toHaveLength(3);
+  });
+
+  it('refuses a zero item, like every other ratio here', () => {
+    const zero = subjectFromQuantity('zero', zeroQuantity('length'));
+    expect(() => howManyFitByVolume(zero, tenMetres)).toThrow(ComparisonError);
   });
 });
