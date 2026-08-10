@@ -16,7 +16,16 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { LIMBS_PER_VALUE, addLimbs, fromLimbs, mulLimbs, toLimbs } from '../../core/limbs/limbs';
+import {
+  LIMBS_PER_VALUE,
+  addLimbs,
+  divRemLimbs,
+  fromLimbs,
+  mulLimbs,
+  subLimbs,
+  toLimbs,
+} from '../../core/limbs/limbs';
+import { COMPUTE_OPS, COMPUTE_OP_DESCRIPTIONS, type ComputeOp } from './computeOps';
 import { type LimbOrganization, createGpuLimbMachine } from '../../gpu/harness';
 import { describeWideLiteral } from '../../core/wide/parse';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
@@ -42,12 +51,30 @@ type GpuVerdict =
   | { readonly kind: 'agrees'; readonly description: string }
   | { readonly kind: 'disagrees'; readonly description: string };
 
-/** One row of 32 lanes, with a marker at every boundary that carried. */
-function LaneStrip({ sum, carries }: { sum: Uint32Array; carries: Uint8Array }) {
+/**
+ * One row of lanes, with a marker at every boundary that signalled.
+ *
+ * `marks` is optional because not every operation has anything to put there —
+ * a restoring division's lanes do not pass each other a carry, and inventing a
+ * dot to keep the picture uniform would be drawing a signal that is not in the
+ * machine.
+ */
+function LaneStrip({
+  limbs,
+  marks,
+  caption,
+  markCaption,
+}: {
+  limbs: Uint32Array;
+  marks?: Uint8Array | undefined;
+  caption: string;
+  markCaption: string;
+}) {
   const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
-  const gap = 2;
-  const cell = Math.max((width - gap * (LIMBS_PER_VALUE - 1)) / LIMBS_PER_VALUE, 1);
-  const carriedCount = carries.reduce((total, lane) => total + lane, 0);
+  const lanes = limbs.length;
+  const gap = lanes > 32 ? 1 : 2;
+  const cell = Math.max((width - gap * (lanes - 1)) / lanes, 1);
+  const markedCount = marks === undefined ? 0 : marks.reduce((total, lane) => total + lane, 0);
 
   return (
     <div ref={measure}>
@@ -55,15 +82,19 @@ function LaneStrip({ sum, carries }: { sum: Uint32Array; carries: Uint8Array }) 
         viewBox={`0 0 ${width} ${LANE_HEIGHT}`}
         width="100%"
         role="img"
-        aria-label={`Sum lanes: ${carriedCount} of ${LIMBS_PER_VALUE} lanes emitted a carry`}
+        aria-label={
+          marks === undefined
+            ? `${caption}: ${lanes} lanes, nothing passed between them`
+            : `${caption}: ${markedCount} of ${lanes} lanes signalled`
+        }
       >
         <text x={0} y={12} fontSize={LABEL_FONT_SIZE} fill="currentColor" fillOpacity={0.6}>
-          A + B, lane 31 down to lane 0
+          {caption}, lane {lanes - 1} down to lane 0
         </text>
-        {Array.from(sum)
+        {Array.from(limbs)
           .reverse()
           .map((limb, index) => {
-            const lane = LIMBS_PER_VALUE - 1 - index;
+            const lane = lanes - 1 - index;
             const x = index * (cell + gap);
             const active = limb !== 0;
             return (
@@ -79,7 +110,7 @@ function LaneStrip({ sum, carries }: { sum: Uint32Array; carries: Uint8Array }) 
                   stroke="currentColor"
                   strokeOpacity={active ? 0.8 : 0.2}
                 />
-                {carries[lane] === 1 && (
+                {marks?.[lane] === 1 && (
                   // The carry this lane emitted, drawn at the boundary the bit
                   // crossed on its way to lane + 1 — which is this lane's left
                   // edge, since higher lanes sit leftward. Lane 31's carry is
@@ -115,7 +146,7 @@ function LaneStrip({ sum, carries }: { sum: Uint32Array; carries: Uint8Array }) 
           fill="currentColor"
           fillOpacity={0.6}
         >
-          dot: the lane emitted a carry
+          {markCaption}
         </text>
       </svg>
     </div>
@@ -126,18 +157,32 @@ export interface ComputeLanesProps {
   /** Magnitudes, both below 2^1024 — sign belongs to the boundary (§6). */
   readonly a: bigint;
   readonly b: bigint;
+  readonly op: ComputeOp;
+  readonly onOpChange: (op: ComputeOp) => void;
   /** The digit machine's product of the same operands, for the §21 row. */
   readonly digitProduct: bigint;
   readonly digitCycles: number;
   readonly digitBits: number;
 }
 
-export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: ComputeLanesProps) {
+export function ComputeLanes({
+  a,
+  b,
+  op,
+  onOpChange,
+  digitProduct,
+  digitCycles,
+  digitBits,
+}: ComputeLanesProps) {
   const cpu = useMemo(() => {
     const aLimbs = toLimbs(a);
     const bLimbs = toLimbs(b);
     const sum = addLimbs(aLimbs, bLimbs, true);
-    const product = mulLimbs(aLimbs, bLimbs);
+    const difference = subLimbs(aLimbs, bLimbs, true);
+    const product = mulLimbs(aLimbs, bLimbs, true);
+    // A divisor of zero has no quotient. The panel says so rather than throwing
+    // the lens down, the way the division panel already does.
+    const division = fromLimbs(bLimbs) === 0n ? undefined : divRemLimbs(aLimbs, bLimbs);
     // Longest unbroken run of carrying lanes: the §19 "long carry chain",
     // measured on the actual operands. Presentation counting, not arithmetic.
     let longestChain = 0;
@@ -146,7 +191,7 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
       run = lane === 1 ? run + 1 : 0;
       longestChain = Math.max(longestChain, run);
     }
-    return { aLimbs, bLimbs, sum, product, longestChain };
+    return { aLimbs, bLimbs, sum, difference, product, division, longestChain };
   }, [a, b]);
 
   // The verdict is keyed to the operands it was computed for, so a change of
@@ -202,97 +247,270 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
   const sumValue = fromLimbs(cpu.sum.limbs);
   const productsAgree = fromLimbs(cpu.product.limbs) === digitProduct;
 
+  const description = COMPUTE_OP_DESCRIPTIONS[op];
+  // `rowCarryOut[i]` belongs to product limb `i + 32`, so the marks are placed
+  // where the carry landed rather than where the row that produced it started.
+  const productMarks = new Uint8Array(cpu.product.limbs.length);
+  cpu.product.rowCarryOut!.forEach((carry, row) => {
+    productMarks[row + LIMBS_PER_VALUE] = carry === 0 ? 0 : 1;
+  });
+
   return (
     <section className="panel">
       <h3>The same register, as 32 × u32 lanes</h3>
-      <LaneStrip sum={cpu.sum.limbs} carries={cpu.sum.carries!} />
+
+      <div className="field">
+        <label htmlFor="compute-op">Operation</label>
+        <select
+          id="compute-op"
+          value={op}
+          onChange={(event) => onOpChange(event.target.value as ComputeOp)}
+        >
+          {COMPUTE_OPS.map((name) => (
+            <option key={name} value={name}>
+              {COMPUTE_OP_DESCRIPTIONS[name].label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {op === 'add' && (
+        <LaneStrip
+          limbs={cpu.sum.limbs}
+          marks={cpu.sum.carries!}
+          caption="A + B"
+          markCaption="dot: the lane emitted a carry"
+        />
+      )}
+      {op === 'sub' && (
+        <LaneStrip
+          limbs={cpu.difference.limbs}
+          marks={cpu.difference.borrows!}
+          caption="A − B"
+          markCaption="dot: the lane took a borrow"
+        />
+      )}
+      {op === 'mulWide' && (
+        <LaneStrip
+          limbs={cpu.product.limbs}
+          marks={productMarks}
+          caption="A × B"
+          markCaption="dot: a multiply row left a carry here"
+        />
+      )}
+      {op === 'divRem' && cpu.division !== undefined && (
+        <>
+          <LaneStrip
+            limbs={cpu.division.quotient}
+            caption="A ÷ B, quotient"
+            markCaption="nothing passes between these lanes"
+          />
+          <LaneStrip
+            limbs={cpu.division.remainder}
+            caption="remainder"
+            markCaption="nothing passes between these lanes"
+          />
+        </>
+      )}
+      {op === 'divRem' && cpu.division === undefined && (
+        <p className="error">B is zero, so there is no quotient to draw.</p>
+      )}
+
+      <p className="lens-question">
+        {description.result}.{' '}
+        {description.marker === undefined
+          ? description.noMarker
+          : `A dot means ${description.marker}.`}
+      </p>
+
       <table className="readout">
         <tbody>
-          <tr>
-            <th scope="row">A + B</th>
-            <td className="mono">
-              {describeWideLiteral(sumValue)}
-              {cpu.sum.carryOut && (
-                <>
-                  {' '}
-                  <small>wrapped — the carry left the register</small>
-                </>
-              )}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Lanes that carried</th>
-            <td className="mono">
-              {cpu.sum.carries!.reduce((total, lane) => total + lane, 0)} of {LIMBS_PER_VALUE}
-              {cpu.longestChain > 1 && (
-                <>
-                  {' '}
-                  <small>longest chain {cpu.longestChain}</small>
-                </>
-              )}
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">ADD work (§20)</th>
-            <td className="mono">
-              {cpu.sum.metrics.add32} adds · {cpu.sum.metrics.compare32} compares ·{' '}
-              {cpu.sum.metrics.modeledCycles} cycles
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">Same product, two machines</th>
-            <td className="mono">
-              {productsAgree ? (
-                <span className="tag tag-exact">agree bit-for-bit</span>
-              ) : (
-                <span className="error">disagree — one machine is wrong</span>
-              )}
-              <br />
-              <small>
-                limb machine {cpu.product.metrics.mul16} × 16-bit multiplies,{' '}
-                {cpu.product.metrics.modeledCycles} cycles · digit machine at {digitBits}-bit
-                digits, {digitCycles} cycles
-              </small>
-            </td>
-          </tr>
-          <tr>
-            <th scope="row">GPU</th>
-            <td className="mono">
-              {gpu.kind === 'checking' && <small>asking this browser for a device…</small>}
-              {gpu.kind === 'absent' && (
-                <small>
-                  no WebGPU device in this browser — everything above is the CPU simulation, and
-                  nothing on this page has been GPU-verified
-                </small>
-              )}
-              {gpu.kind === 'agrees' && (
-                <>
-                  <span className="tag tag-exact">ADD agrees with the CPU machine</span>{' '}
+          {op === 'add' && (
+            <>
+              <tr>
+                <th scope="row">A + B</th>
+                <td className="mono">
+                  {describeWideLiteral(sumValue)}
+                  {cpu.sum.carryOut && (
+                    <>
+                      {' '}
+                      <small>wrapped — the carry left the register</small>
+                    </>
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Lanes that carried</th>
+                <td className="mono">
+                  {cpu.sum.carries!.reduce((total, lane) => total + lane, 0)} of {LIMBS_PER_VALUE}
+                  {cpu.longestChain > 1 && (
+                    <>
+                      {' '}
+                      <small>longest chain {cpu.longestChain}</small>
+                    </>
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">ADD work (§20)</th>
+                <td className="mono">
+                  {cpu.sum.metrics.add32} adds · {cpu.sum.metrics.compare32} compares ·{' '}
+                  {cpu.sum.metrics.modeledCycles} cycles
+                </td>
+              </tr>
+            </>
+          )}
+          {op === 'sub' && (
+            <>
+              <tr>
+                <th scope="row">A − B</th>
+                <td className="mono">
+                  {describeWideLiteral(fromLimbs(cpu.difference.limbs))}
+                  {cpu.difference.borrowOut && (
+                    <>
+                      {' '}
+                      <small>B was the larger, so this wrapped mod 2^1024</small>
+                    </>
+                  )}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">Lanes that borrowed</th>
+                <td className="mono">
+                  {cpu.difference.borrows!.reduce((total, lane) => total + lane, 0)} of{' '}
+                  {LIMBS_PER_VALUE}
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">SUB work (§20)</th>
+                <td className="mono">
+                  {cpu.difference.metrics.add32} adds · {cpu.difference.metrics.compare32} compares
+                  · {cpu.difference.metrics.modeledCycles} cycles
+                </td>
+              </tr>
+            </>
+          )}
+          {op === 'mulWide' && (
+            <>
+              <tr>
+                <th scope="row">A × B</th>
+                <td className="mono">{describeWideLiteral(fromLimbs(cpu.product.limbs))}</td>
+              </tr>
+              <tr>
+                <th scope="row">Rows that carried out</th>
+                <td className="mono">
+                  {productMarks.reduce((total, lane) => total + lane, 0)} of {LIMBS_PER_VALUE}
+                  <br />
                   <small>
-                    checked bit-for-bit on these operands · {gpu.description}
-                    <br />
-                    all {ADD_ORGANIZATIONS.length} §17 organizations of ADD: one thread owning 32
-                    limbs, 32 lanes owning one each with the carry resolved by a 5-round scan, and 8
-                    lanes of 4 limbs rippling inside and scanning across in 3
+                    each row walks 32 limbs and drops whatever is still carrying into the lane above
+                    them
                   </small>
-                </>
-              )}
-              {gpu.kind === 'disagrees' && (
-                <span className="error">
-                  the GPU and CPU machines disagree on these operands ({gpu.description}) — per §19,
-                  neither is trusted until this is explained
-                </span>
-              )}
-            </td>
-          </tr>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">MUL_WIDE work (§20)</th>
+                <td className="mono">
+                  {cpu.product.metrics.mul16} × 16-bit multiplies · {cpu.product.metrics.add32} adds
+                  · {cpu.product.metrics.modeledCycles} cycles
+                </td>
+              </tr>
+            </>
+          )}
+          {op === 'divRem' && cpu.division !== undefined && (
+            <>
+              <tr>
+                <th scope="row">Quotient</th>
+                <td className="mono">{describeWideLiteral(fromLimbs(cpu.division.quotient))}</td>
+              </tr>
+              <tr>
+                <th scope="row">Remainder</th>
+                <td className="mono">
+                  {describeWideLiteral(fromLimbs(cpu.division.remainder))}
+                  <br />
+                  <small>
+                    A = Q × B + R holds, and R needs no thirty-third limb: it stays below B
+                  </small>
+                </td>
+              </tr>
+              <tr>
+                <th scope="row">DIV_REM work (§20)</th>
+                <td className="mono">
+                  {cpu.division.metrics.add32} adds · {cpu.division.metrics.compare32} compares ·{' '}
+                  {cpu.division.metrics.modeledCycles} cycles
+                </td>
+              </tr>
+            </>
+          )}
+          {/* §21's two-machines cross-check is about the product, so it belongs
+              under the product. It used to sit under every operation, which put
+              a verdict about a multiply beneath a picture of a subtraction —
+              the same mistake the GPU row was written to avoid. */}
+          {op === 'mulWide' && (
+            <tr>
+              <th scope="row">Same product, two machines</th>
+              <td className="mono">
+                {productsAgree ? (
+                  <span className="tag tag-exact">agree bit-for-bit</span>
+                ) : (
+                  <span className="error">disagree — one machine is wrong</span>
+                )}
+                <br />
+                <small>
+                  limb machine {cpu.product.metrics.mul16} × 16-bit multiplies,{' '}
+                  {cpu.product.metrics.modeledCycles} cycles · digit machine at {digitBits}-bit
+                  digits, {digitCycles} cycles
+                </small>
+              </td>
+            </tr>
+          )}
+          {/* Likewise the GPU verdict: the §17 organizations checked here are
+              organizations of ADD, and a claim about them under any other
+              operation would be a claim about something not on screen. */}
+          {op === 'add' && (
+            <tr>
+              <th scope="row">GPU</th>
+              <td className="mono">
+                {gpu.kind === 'checking' && <small>asking this browser for a device…</small>}
+                {gpu.kind === 'absent' && (
+                  <small>
+                    no WebGPU device in this browser — everything above is the CPU simulation, and
+                    nothing on this page has been GPU-verified
+                  </small>
+                )}
+                {gpu.kind === 'agrees' && (
+                  <>
+                    <span className="tag tag-exact">ADD agrees with the CPU machine</span>{' '}
+                    <small>
+                      checked bit-for-bit on these operands · {gpu.description}
+                      <br />
+                      all {ADD_ORGANIZATIONS.length} §17 organizations of ADD: one thread owning 32
+                      limbs, 32 lanes owning one each with the carry resolved by a 5-round scan, and
+                      8 lanes of 4 limbs rippling inside and scanning across in 3
+                    </small>
+                  </>
+                )}
+                {gpu.kind === 'disagrees' && (
+                  <span className="error">
+                    the GPU and CPU machines disagree on these operands ({gpu.description}) — per
+                    §19, neither is trusted until this is explained
+                  </span>
+                )}
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
+      {/* This used to say "the dots are those carries" whatever the selector
+          said, which stopped being true the moment there was a selector. The
+          part about the dialect is true of every op; the part about what the
+          dots are is not. */}
       <p className="lens-question">
         A shader owns this register as <code>array&lt;u32, 32&gt;</code>: no 64-bit integers, so
         even one partial product is four 16-bit multiplies, and no way to ask whether an addition
-        overflowed — a carry is detected by noticing the sum came out smaller than an operand. The
-        dots are those carries, from the kernel&rsquo;s own trace. Everything here is the magnitude
-        |A| + |B|: sign lives at the boundary, not in the lanes (§6).
+        overflowed — a carry is detected by noticing the sum came out smaller than an operand, and a
+        borrow by noticing the difference came out larger. Whatever this operation puts between its
+        lanes comes from the kernel&rsquo;s own trace rather than from a second implementation of
+        the rule here. The lanes hold magnitudes: sign lives at the boundary, not in the lanes (§6).
       </p>
     </section>
   );

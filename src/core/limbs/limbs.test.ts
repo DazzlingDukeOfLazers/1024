@@ -220,6 +220,59 @@ describe('the limb machine agrees with the digit machine', () => {
   });
 });
 
+describe('what each kernel says passed between its lanes', () => {
+  // A view that re-derived these would be a second implementation of the rule,
+  // and two implementations of a carry rule are two things that can be wrong.
+  it('traces borrows the way it traces carries, and only when asked', () => {
+    const a = toLimbs(1n);
+    const b = toLimbs(2n);
+    expect(subLimbs(a, b).borrows).toBeUndefined();
+
+    // 1 − 2 borrows out of every lane: the lowest wraps and the borrow runs all
+    // the way up and off the top.
+    const traced = subLimbs(a, b, true);
+    expect(traced.borrows).toHaveLength(LIMBS_PER_VALUE);
+    expect(Array.from(traced.borrows!).every((lane) => lane === 1)).toBe(true);
+    expect(traced.borrowOut).toBe(true);
+    expect(traced.borrows![LIMBS_PER_VALUE - 1]).toBe(1);
+  });
+
+  it('borrows nowhere when nothing has to be borrowed', () => {
+    // Anti-vacuity: a trace that was all ones whatever the operands would pass
+    // the test above.
+    const traced = subLimbs(toLimbs(2n), toLimbs(1n), true);
+    expect(Array.from(traced.borrows!).every((lane) => lane === 0)).toBe(true);
+    expect(traced.borrowOut).toBe(false);
+  });
+
+  it('traces what each multiply row leaves above itself', () => {
+    expect(mulLimbs(toLimbs(3n), toLimbs(5n)).rowCarryOut).toBeUndefined();
+
+    // Small operands: every row finishes inside its own 32 limbs.
+    const small = mulLimbs(toLimbs(3n), toLimbs(5n), true);
+    expect(small.rowCarryOut).toHaveLength(LIMBS_PER_VALUE);
+    expect(Array.from(small.rowCarryOut!).every((carry) => carry === 0)).toBe(true);
+
+    // The densest operands there are: rows do carry out, and where they land is
+    // limb `row + 32` — which is exactly what the product holds there.
+    const dense = mulLimbs(toLimbs(TOP), toLimbs(TOP), true);
+    expect(Array.from(dense.rowCarryOut!).some((carry) => carry !== 0)).toBe(true);
+    dense.rowCarryOut!.forEach((carry, row) => {
+      expect(dense.limbs[row + LIMBS_PER_VALUE], `row ${row}`).toBe(carry);
+    });
+  });
+
+  it('changes no answer by being traced', () => {
+    // The trace is a diagnostic. If asking for it altered the arithmetic it
+    // would be a different machine from the one the fixtures check.
+    const a = toLimbs(TOP - 12345n);
+    const b = toLimbs(2n ** 700n + 7n);
+    expect(Array.from(subLimbs(a, b, true).limbs)).toEqual(Array.from(subLimbs(a, b).limbs));
+    expect(Array.from(mulLimbs(a, b, true).limbs)).toEqual(Array.from(mulLimbs(a, b).limbs));
+    expect(mulLimbs(a, b, true).metrics).toEqual(mulLimbs(a, b).metrics);
+  });
+});
+
 describe('the work is counted (§20)', () => {
   it('reports the full schoolbook for dense operands', () => {
     const product = mulLimbs(toLimbs(TOP), toLimbs(TOP));

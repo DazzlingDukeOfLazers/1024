@@ -22,6 +22,7 @@ import { Q128_128_PRESETS, type Q128_128PresetName } from '../core/representatio
 import { type DigitWidth } from '../core/wide/digits';
 import { type ScenarioName } from '../core/wide/scenario';
 import { type DivisionAlgorithm } from '../core/wide/divide';
+import { type ComputeOp } from '../features/architecture/computeOps';
 
 export interface RulerState {
   readonly presetId: string;
@@ -82,6 +83,14 @@ export interface ArchitectureState {
   readonly divisionStep: number;
   /** Which of §10's division algorithms the division panel runs. */
   readonly divisionAlgorithm: DivisionAlgorithm;
+  /**
+   * Which operation the §17 lane panel draws.
+   *
+   * Shared for the same reason `divisionAlgorithm` is: it selects what is being
+   * shown rather than how it is formatted, so a link that dropped it would open
+   * on a different claim than the sender made.
+   */
+  readonly computeOp: ComputeOp;
 }
 
 export interface RepresentationState {
@@ -133,6 +142,7 @@ export function defaultAppState(): AppState {
       skipZeroDigits: true,
       divisionStep: 0,
       divisionAlgorithm: 'restoring-radix-2',
+      computeOp: 'add',
     },
     representations: { q128Preset: 'm' },
   };

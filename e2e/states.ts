@@ -56,6 +56,29 @@ export const STATES: AppState[] = [
   },
 ];
 
+for (const computeOp of ['sub', 'mulWide', 'divRem'] as const) {
+  STATES.push({
+    name: `architecture/lanes-${computeOp}`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('Operation').selectOption(computeOp);
+    },
+  });
+}
+
+// The default operands are sparse enough that no multiply row carries out, so
+// the marker channel is dead in `lanes-mulWide`. This is the state where it
+// fires — a picture whose only swept appearance is empty is not swept.
+STATES.push({
+  name: 'architecture/lanes-mulWide-dense',
+  reach: async (page) => {
+    await lens('Architecture Lab')(page);
+    await page.getByLabel('A', { exact: true }).fill('2^1024 - 1');
+    await page.getByLabel('B', { exact: true }).fill('2^1024 - 1');
+    await page.getByLabel('Operation').selectOption('mulWide');
+  },
+});
+
 for (const preset of ['rbc-across-mm', 'coconuts', 'far-origin', 'human-scale'] as const) {
   STATES.push({
     name: `ruler/${preset}`,

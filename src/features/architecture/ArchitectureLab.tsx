@@ -854,6 +854,8 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
           <ComputeLanes
             a={parsed.a! < 0n ? -parsed.a! : parsed.a!}
             b={parsed.b! < 0n ? -parsed.b! : parsed.b!}
+            op={state.computeOp}
+            onOpChange={(computeOp) => onChange((current) => ({ ...current, computeOp }))}
             digitProduct={
               computed.product.value < 0n ? -computed.product.value : computed.product.value
             }

@@ -137,15 +137,23 @@ export interface LimbDifference {
   readonly limbs: Uint32Array;
   /** The subtraction wrapped: the right operand was larger. */
   readonly borrowOut: boolean;
+  /**
+   * `borrows[i] === 1` when lane `i` took a borrow from lane `i + 1`, and
+   * `borrows[31]` is `borrowOut`. Traced here for the same reason the carries
+   * are: a view that re-derived them would be a second implementation of the
+   * borrow rule, and the two could disagree (§18).
+   */
+  readonly borrows?: Uint8Array;
   readonly metrics: LimbMetrics;
 }
 
-export function subLimbs(a: Uint32Array, b: Uint32Array): LimbDifference {
+export function subLimbs(a: Uint32Array, b: Uint32Array, trace = false): LimbDifference {
   if (a.length !== b.length) {
     throw new WideError('SUB operands must have the same width');
   }
   const t = tally();
   const out = new Uint32Array(a.length);
+  const borrows = trace ? new Uint8Array(a.length) : undefined;
   let borrow = 0;
   for (let i = 0; i < a.length; i += 1) {
     // Mirror image of the carry idiom: a wrapped difference is larger than the
@@ -157,10 +165,16 @@ export function subLimbs(a: Uint32Array, b: Uint32Array): LimbDifference {
     const b2 = diff1 < borrow ? 1 : 0;
     out[i] = diff2;
     borrow = b1 + b2;
+    if (borrows !== undefined) borrows[i] = borrow;
     t.add32 += 2;
     t.compare32 += 2;
   }
-  return { limbs: out, borrowOut: borrow === 1, metrics: finish(t) };
+  return {
+    limbs: out,
+    borrowOut: borrow === 1,
+    ...(borrows === undefined ? {} : { borrows }),
+    metrics: finish(t),
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -291,14 +305,25 @@ function mul32(a: number, b: number, t: Tally): HalfProduct {
 export interface LimbProduct {
   /** 64 limbs: 1024 × 1024 → 2048, nothing dropped (§7). */
   readonly limbs: Uint32Array;
+  /**
+   * What each row of the schoolbook multiply left above itself.
+   *
+   * Row `i` walks limbs `i .. i + 31` and drops whatever is still carrying into
+   * limb `i + 32`, so `rowCarryOut[i]` is that value. This is the multiply's
+   * inter-lane traffic, the way `carries` is the addition's — and unlike the
+   * *shape* of the multiply, which is fixed by the widths, it depends on the
+   * operands. Traced rather than re-derived, for the same reason.
+   */
+  readonly rowCarryOut?: Uint32Array;
   readonly metrics: LimbMetrics;
 }
 
-export function mulLimbs(a: Uint32Array, b: Uint32Array): LimbProduct {
+export function mulLimbs(a: Uint32Array, b: Uint32Array, trace = false): LimbProduct {
   requireWidth(a, 'MUL_WIDE left operand');
   requireWidth(b, 'MUL_WIDE right operand');
   const t = tally();
   const out = new Uint32Array(PRODUCT_LIMBS);
+  const rowCarryOut = trace ? new Uint32Array(LIMBS_PER_VALUE) : undefined;
   for (let i = 0; i < LIMBS_PER_VALUE; i += 1) {
     let carry = 0;
     for (let j = 0; j < LIMBS_PER_VALUE; j += 1) {
@@ -318,8 +343,13 @@ export function mulLimbs(a: Uint32Array, b: Uint32Array): LimbProduct {
     // Row i touches limbs i .. i+31, so i+32 is untouched until now and the
     // assignment cannot lose an earlier carry.
     out[i + LIMBS_PER_VALUE] = carry;
+    if (rowCarryOut !== undefined) rowCarryOut[i] = carry;
   }
-  return { limbs: out, metrics: finish(t) };
+  return {
+    limbs: out,
+    ...(rowCarryOut === undefined ? {} : { rowCarryOut }),
+    metrics: finish(t),
+  };
 }
 
 /* -------------------------------------------------------------------------- */

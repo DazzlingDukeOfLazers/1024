@@ -504,6 +504,57 @@ test('rotating a vector drifts it in opposite directions', async ({ page }) => {
   await expect(panel).toContainText('140 digits');
 });
 
+test('the lane panel draws whichever operation is asked for', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Architecture Lab' })
+    .click();
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'The same register, as 32 × u32 lanes' }) });
+
+  // ADD: 32 lanes, carries, and the GPU verdict about ADD's organizations.
+  await expect(panel.getByRole('rowheader', { name: 'Lanes that carried' })).toBeVisible();
+  await expect(panel.getByRole('rowheader', { name: 'GPU' })).toBeVisible();
+
+  // SUB: borrows, from the kernel's trace rather than a re-derivation.
+  await panel.getByLabel('Operation').selectOption('sub');
+  await expect(panel.getByRole('rowheader', { name: 'Lanes that borrowed' })).toBeVisible();
+  await expect(panel).toContainText('took a borrow from the one above it');
+  // And the ADD-only verdict is gone: it was a claim about ADD's organizations.
+  await expect(panel.getByRole('rowheader', { name: 'GPU' })).toHaveCount(0);
+
+  // MUL_WIDE: 64 lanes, nothing dropped.
+  await panel.getByLabel('Operation').selectOption('mulWide');
+  await expect(panel).toContainText('the 64-lane product — nothing dropped');
+  await expect(panel.locator('svg[aria-label*="lane 63 down to lane 0"]')).toHaveCount(0);
+  await expect(panel.getByRole('rowheader', { name: 'Same product, two machines' })).toBeVisible();
+
+  // DIV_REM: two strips and an honest absence rather than an invented dot.
+  await panel.getByLabel('Operation').selectOption('divRem');
+  await expect(panel.locator('svg')).toHaveCount(2);
+  await expect(panel).toContainText('does not pass a carry between lanes');
+  await expect(panel.getByRole('rowheader', { name: 'Remainder' })).toBeVisible();
+  // Anti-vacuity: the product cross-check belongs under the product only.
+  await expect(panel.getByRole('rowheader', { name: 'Same product, two machines' })).toHaveCount(0);
+});
+
+test('the chosen lane operation survives a share link', async ({ page }) => {
+  await page.goto('/');
+  await page
+    .getByRole('navigation', { name: 'Lenses' })
+    .getByRole('button', { name: 'Architecture Lab' })
+    .click();
+  await page.getByLabel('Operation').selectOption('divRem');
+  await page.getByRole('button', { name: 'Share this view' }).click();
+  const url = await page.getByLabel('Share URL').inputValue();
+
+  await page.goto(url);
+  await expect(page.getByLabel('Operation')).toHaveValue('divRem');
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 
@@ -1491,8 +1542,12 @@ test('the compute lanes carry all the way across, and say what was not verified'
   await expect(readoutRow(page, 'Lanes that carried')).toContainText('longest chain 32');
   await expect(readoutRow(page, 'A + B')).toContainText('wrapped');
 
-  // Two machines, one product, in the live app rather than only in a test.
+  // Two machines, one product, in the live app rather than only in a test —
+  // under the product, which is where it moved when the panel gained an op
+  // selector and a verdict about a multiply stopped belonging under a sum.
+  await page.getByLabel('Operation').selectOption('mulWide');
   await expect(readoutRow(page, 'Same product, two machines')).toContainText('agree bit-for-bit');
+  await page.getByLabel('Operation').selectOption('add');
 
   await expect(readoutRow(page, 'GPU')).toContainText('no WebGPU device in this browser');
   await expect(readoutRow(page, 'GPU')).toContainText('nothing on this page has been GPU-verified');

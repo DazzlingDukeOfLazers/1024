@@ -26,6 +26,7 @@ import { type AppState, defaultAppState, isQ128PresetName } from './appState';
 import { DIGIT_WIDTHS, type DigitWidth } from '../core/wide/digits';
 import { SCENARIOS, type ScenarioName } from '../core/wide/scenario';
 import { DIVISION_ALGORITHMS, type DivisionAlgorithm } from '../core/wide/divide';
+import { isComputeOp } from '../features/architecture/computeOps';
 import { ShareEncodingError, decodeBase64Url, encodeBase64Url } from './base64url';
 
 function isDigitWidth(value: unknown): value is DigitWidth {
@@ -86,6 +87,7 @@ interface ShareStateJSON {
     skipZeroDigits: boolean;
     divisionStep?: number;
     divisionAlgorithm?: string;
+    computeOp?: string;
   };
   representations: { q128Preset: string };
 }
@@ -281,6 +283,9 @@ export function stateFromJSON(json: unknown): AppState {
       divisionAlgorithm: isDivisionAlgorithm(record.architecture?.divisionAlgorithm)
         ? record.architecture.divisionAlgorithm
         : defaults.architecture.divisionAlgorithm,
+      computeOp: isComputeOp(record.architecture?.computeOp)
+        ? record.architecture!.computeOp
+        : defaults.architecture.computeOp,
     },
     representations: {
       q128Preset:

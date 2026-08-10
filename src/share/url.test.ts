@@ -156,6 +156,8 @@ describe('everything else in the view', () => {
       skipZeroDigits: false,
       divisionStep: 412,
       divisionAlgorithm: 'restoring-radix-8',
+      // Not the default, or the round trip would pass on a field it dropped.
+      computeOp: 'mulWide',
     },
     representations: { q128Preset: 'mm' },
   };
