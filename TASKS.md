@@ -479,12 +479,30 @@ Discovered while implementing:
       line, which is the Microscope's lattice problem exactly. Nothing is lost:
       the table above already prints every number, and numbers work across 31
       decades where pixel height cannot.
-- [ ] The sparkline's x is checkpoint position, not iteration count, so the
-      million-iteration run's first five checkpoints (iterations 1–5) take the
-      same width as its last five (999,996–1,000,000). The shape is therefore
-      the shape of the *trace*, not of the run, and the caption says so. A log
-      iteration axis would be truer and would need the checkpoint iteration
-      numbers, which the sample carries.
+- [x] The sparkline plots against log iterations where a run has them, which
+      turned an artefact into a measurement. On checkpoint position the
+      million-iteration run's first five checkpoints (iterations 1–5) took the
+      same width as its last five (999,996–1,000,000), and the S-curve that came
+      out was a picture of the sampling schedule rather than of the arithmetic.
+
+      Against log iterations the fixed-point machines are dead straight lines of
+      slope 1, and that line is a fact: every addition adds one quantization
+      error of the same sign, so the drift is exactly proportional to the number
+      of operations. A test asserts the slope segment by segment. binary64 is
+      visibly *not* straight on the same axis, and flips sign partway, which is
+      the contrast worth seeing.
+
+      A checkpoint with no iteration — the `set` step before the run starts — is
+      left off the picture rather than pushed to one end, the same rule the
+      vertical axis follows at exact zero. Runs without iterations spanning a
+      decade keep checkpoint position, and the caption says which axis it drew.
+
+      One mutant survived first time: dropping the horizontal half of that rule.
+      The test that should have caught it used a point off *both* axes, so
+      breaking on the vertical one alone looked correct. A checkpoint with a
+      real divergence and no iteration number — an atomic step between repeats —
+      is the case that separates them, and without the guard its missing
+      coordinate reaches the polyline as `NaN`.
 - [ ] Zoom to Disagreement is a toggle, not a continuous zoom. The spec's
       "centre the local ruler" phrasing suggests handing the camera to the
       Ruler lens instead.

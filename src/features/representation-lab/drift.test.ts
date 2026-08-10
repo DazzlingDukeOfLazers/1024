@@ -157,13 +157,122 @@ describe('drift chart', () => {
     expect(chart.series[0]!.signChanges).toBe(2);
   });
 
-  it('spaces checkpoints evenly, since they are not evenly spaced in iterations', () => {
-    // The million-millimetre run samples at 1, 2, 3, 4, 5, 10, 100, 1000…, so x
-    // is checkpoint position rather than iteration count. The row says which.
+  it('falls back to checkpoint position when there are no iterations to plot against', () => {
     const chart = driftChart([
       { id: 'm', label: 'm', divergences: [at('1e-9'), at('2e-9'), at('3e-9'), at('4e-9')] },
     ])!;
+    expect(chart.xAxis).toBe('checkpoint');
     expect(chart.series[0]!.points.map((point) => point.x)).toEqual([0, 1 / 3, 2 / 3, 1]);
     expect(chart.pointCount).toBe(4);
+  });
+});
+
+describe('what across means', () => {
+  /**
+   * The real million-millimetre trace, trimmed. Divergence is exactly
+   * proportional to the iteration count — every addition adds one quantization
+   * error of the same sign — which is the fact the chart should show and the
+   * first version of it did not.
+   */
+  const ITERATIONS = [undefined, 1, 10, 100, 1000, 10_000, 100_000, 1_000_000];
+  const PROPORTIONAL = [
+    ZERO,
+    at('-4.054e-37'),
+    at('-4.054e-36'),
+    at('-4.054e-35'),
+    at('-4.054e-34'),
+    at('-4.054e-33'),
+    at('-4.054e-32'),
+    at('-4.054e-31'),
+  ];
+
+  it('plots against log iterations when the run has them', () => {
+    const chart = driftChart([{ id: 'm', label: 'm', divergences: PROPORTIONAL }], ITERATIONS)!;
+    expect(chart.xAxis).toBe('iterations');
+    expect(chart.minIteration).toBe(1);
+    expect(chart.maxIteration).toBe(1_000_000);
+  });
+
+  it('draws proportional drift as a straight line, which is the whole point', () => {
+    // On checkpoint position this same data is a curve — an artefact of
+    // sampling at 1, 10, 100 … rather than anything the arithmetic did. On log
+    // iterations it is a line of slope 1, and the line is a measurement: the
+    // error grows in exact proportion to the number of additions.
+    const chart = driftChart([{ id: 'm', label: 'm', divergences: PROPORTIONAL }], ITERATIONS)!;
+    const drawn = chart.series[0]!.points.filter(
+      (point) => point.x !== undefined && point.y !== undefined,
+    );
+    expect(drawn.length).toBe(7);
+
+    for (let i = 1; i < drawn.length; i += 1) {
+      const slope = (drawn[i]!.y! - drawn[i - 1]!.y!) / (drawn[i]!.x! - drawn[i - 1]!.x!);
+      expect(slope, `segment ${i}`).toBeCloseTo(1, 6);
+    }
+  });
+
+  it('leaves the checkpoint taken before the run off the axis', () => {
+    // Iteration 0 has no position on a log axis, the same way exact zero has
+    // none on the vertical one. Pushing it to the left edge would say it
+    // happened at iteration 1.
+    const chart = driftChart([{ id: 'm', label: 'm', divergences: PROPORTIONAL }], ITERATIONS)!;
+    const first = chart.series[0]!.points[0]!;
+    expect(first.x).toBeUndefined();
+    expect(first.y).toBeUndefined();
+    expect(chart.series[0]!.points[1]!.x).toBe(0);
+  });
+
+  it('breaks the line at a point with no horizontal position too', () => {
+    const chart = driftChart([{ id: 'm', label: 'm', divergences: PROPORTIONAL }], ITERATIONS)!;
+    const runs = driftRuns(chart.series[0]!);
+    // One run, starting after the off-axis checkpoint — not a segment reaching
+    // back to a point that is not there.
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.map((point) => point.index)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it('breaks the line for a checkpoint that has a divergence but no iteration', () => {
+    // The case the test above cannot reach: there the pre-run sample is off
+    // *both* axes, so breaking on y alone would look correct. An atomic step
+    // between repeats has a real divergence and still no iteration number, and
+    // without the x guard its missing coordinate reaches the polyline as NaN.
+    const chart = driftChart(
+      [
+        {
+          id: 'm',
+          label: 'm',
+          divergences: [at('-1e-38'), at('-1e-37'), at('-1e-35'), at('-1e-33')],
+        },
+      ],
+      [undefined, 1, 100, 10_000],
+    )!;
+    const points = chart.series[0]!.points;
+    expect(points[0]!.y).toBeDefined();
+    expect(points[0]!.x).toBeUndefined();
+
+    expect(driftRuns(chart.series[0]!).map((run) => run.map((point) => point.index))).toEqual([
+      [1, 2, 3],
+    ]);
+  });
+
+  it('refuses a log axis that would not span a decade', () => {
+    // Iterations 1 to 5 on a log axis is most of the width for the first two
+    // steps. Checkpoint position is the better picture there, and the caption
+    // says which one it drew.
+    const near = driftChart(
+      [{ id: 'm', label: 'm', divergences: [at('1e-9'), at('2e-9'), at('3e-9'), at('4e-9')] }],
+      [1, 2, 3, 4],
+    )!;
+    expect(near.xAxis).toBe('checkpoint');
+    expect(near.series[0]!.points.every((point) => point.x !== undefined)).toBe(true);
+  });
+
+  it('refuses a log axis with too few points on it', () => {
+    // Three checkpoints of which one is the pre-run sample leaves two, and two
+    // points are a straight line whatever the run did.
+    const sparse = driftChart(
+      [{ id: 'm', label: 'm', divergences: [ZERO, at('1e-9'), at('1e-6')] }],
+      [undefined, 1, 1000],
+    )!;
+    expect(sparse.xAxis).toBe('checkpoint');
   });
 });

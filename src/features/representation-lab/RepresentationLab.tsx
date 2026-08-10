@@ -601,14 +601,17 @@ function Sparkline({ series }: { series: DriftSeries }) {
       {driftRuns(series).map((run, index) => (
         <polyline
           key={index}
-          points={run.map((point) => `${toX(point.x)},${toY(point.y!)}`).join(' ')}
+          points={run.map((point) => `${toX(point.x!)},${toY(point.y!)}`).join(' ')}
           fill="none"
           stroke="currentColor"
           strokeWidth={1.5}
         />
       ))}
       {series.points.map((point) =>
-        point.y === undefined ? (
+        // Off the horizontal axis entirely — the checkpoint taken before the
+        // run started, on a log-iteration axis. Drawn nowhere rather than at
+        // an end it does not belong to.
+        point.x === undefined ? null : point.y === undefined ? (
           // Exact. Marked on its own line below the axis rather than at the
           // bottom of it, where it would read as "very small".
           <rect
@@ -657,6 +660,7 @@ function DriftSparklines({ result }: { result: ExperimentResult }) {
       label: machine.label,
       divergences: result.samples.map((sample) => sample.machines[machine.id]?.signedDivergence),
     })),
+    result.samples.map((sample) => sample.iteration),
   );
 
   if (chart === undefined) {
@@ -701,9 +705,25 @@ function DriftSparklines({ result }: { result: ExperimentResult }) {
         whose own error spans half a decade has no shape on an axis that wide. The distance between
         them is in the table above, in numbers, which work at this spread where pixels do not. A
         hollow dot is a negative divergence — signed error can cancel, and plotting magnitude alone
-        would hide a machine crossing back through zero. Across is checkpoint position, not
-        iteration count, because the checkpoints are not evenly spaced. Exact checkpoints are marked
-        below the axis rather than at the bottom of it: zero has no place on a logarithmic scale.
+        would hide a machine crossing back through zero.{' '}
+        {chart.xAxis === 'iterations' ? (
+          <>
+            Across is log10 of the iteration count, from {chart.minIteration!.toLocaleString()} to{' '}
+            {chart.maxIteration!.toLocaleString()} — so a straight line means the error grows in
+            exact proportion to the number of operations, which is what a fixed-point machine adding
+            the same quantum every time should do. Checkpoint position was drawn first and gave the
+            wrong shape: this run samples at 1, 2, 3, 4, 5, 10, 100 … 1,000,000, so spacing the
+            samples evenly makes the last five iterations as wide as the first five.
+          </>
+        ) : (
+          <>
+            Across is checkpoint position: this run has no iteration counts spanning a decade to
+            plot against, and a log axis needs one to be worth having.
+          </>
+        )}{' '}
+        Exact checkpoints are marked below the axis rather than at the bottom of it: zero has no
+        place on a logarithmic scale, and neither does the checkpoint taken before the run started,
+        which is left off the picture rather than pushed to one end.
       </p>
     </>
   );

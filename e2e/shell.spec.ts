@@ -332,6 +332,28 @@ test('the lab charts the shape the timeline can only tabulate', async ({ page })
   // Each row states its own range, because each row is drawn to its own.
   await expect(timeline).toContainText('each row is drawn to its own range');
   await expect(timeline).toContainText(/10\^-36\.\d to 10\^-30\.\d m/);
+
+  // Across is log iterations here, not checkpoint position. On checkpoint
+  // position the same data is an S-curve that is a picture of the sampling
+  // schedule rather than of the arithmetic.
+  await expect(timeline).toContainText(
+    'Across is log10 of the iteration count, from 1 to 1,000,000',
+  );
+  await expect(timeline).not.toContainText('Across is checkpoint position');
+});
+
+test('a run without iterations says which axis it fell back to', async ({ page }) => {
+  await openLab(page);
+  // Four atomic steps, no repeat, so there is nothing to plot against.
+  await page.getByLabel('Experiment').selectOption('thirds');
+
+  const timeline = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Timeline' }) });
+
+  await expect(timeline).toContainText('How the drift accumulated');
+  await expect(timeline).toContainText('Across is checkpoint position');
+  await expect(timeline).not.toContainText('Across is log10 of the iteration count');
 });
 
 test('the lab refuses to chart a run with no shape', async ({ page }) => {

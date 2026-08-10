@@ -43,11 +43,18 @@ import { log10RationalForDisplay } from '../../core/rational/log10';
 /** Fewer than this many checkpoints and there is no shape to draw. */
 export const MINIMUM_POINTS = 3;
 
+export type DriftAxis = 'checkpoint' | 'iterations';
+
 export interface DriftPoint {
   /** Index of the checkpoint this came from. */
   readonly index: number;
-  /** 0 at the first checkpoint, 1 at the last. */
-  readonly x: number;
+  /**
+   * 0 at the left of the axis, 1 at the right — absent when the sample has no
+   * position on it, which on a log-iteration axis means the checkpoint taken
+   * before any iteration ran. The same rule as `y` at exact zero, for the same
+   * reason: a value off a logarithmic axis is not a value at the end of it.
+   */
+  readonly x?: number | undefined;
   /**
    * 0 at the bottom of *this row's* range, 1 at the top — absent when the
    * divergence is exactly zero, which has no position on a logarithmic axis. A
@@ -82,6 +89,11 @@ export interface DriftChart {
   readonly maxLog10: number;
   readonly series: readonly DriftSeries[];
   readonly pointCount: number;
+  /** What across means. The panel has to say which, because they differ. */
+  readonly xAxis: DriftAxis;
+  /** On an iteration axis, the decades it spans. Absent on a checkpoint axis. */
+  readonly minIteration?: number | undefined;
+  readonly maxIteration?: number | undefined;
 }
 
 export interface DriftInput {
@@ -95,7 +107,10 @@ export interface DriftInput {
  * every machine exact at every one of them. A flat line at an invented floor
  * would claim a shape the run does not have.
  */
-export function driftChart(inputs: readonly DriftInput[]): DriftChart | undefined {
+export function driftChart(
+  inputs: readonly DriftInput[],
+  iterations: readonly (number | undefined)[] = [],
+): DriftChart | undefined {
   const pointCount = Math.max(0, ...inputs.map((input) => input.divergences.length));
   if (pointCount < MINIMUM_POINTS) return undefined;
 
@@ -108,8 +123,10 @@ export function driftChart(inputs: readonly DriftInput[]): DriftChart | undefine
   }
   if (magnitudes.length === 0) return undefined;
 
+  const axis = horizontalAxis(iterations, pointCount);
+
   const series = inputs.map((input): DriftSeries => {
-    const x = (index: number): number => (pointCount === 1 ? 0 : index / (pointCount - 1));
+    const x = axis.at;
 
     // Two passes, because a row's own range is what positions its own points,
     // and it is not known until every checkpoint has been read.
@@ -170,6 +187,72 @@ export function driftChart(inputs: readonly DriftInput[]): DriftChart | undefine
     maxLog10: Math.max(...magnitudes),
     series,
     pointCount,
+    xAxis: axis.kind,
+    ...(axis.kind === 'checkpoint'
+      ? {}
+      : { minIteration: axis.minIteration, maxIteration: axis.maxIteration }),
+  };
+}
+
+/**
+ * What across means.
+ *
+ * The first version of this chart always used checkpoint position, and said so.
+ * That is honest and it draws the wrong shape: the million-iteration run keeps
+ * checkpoints at 1, 2, 3, 4, 5, 10, 100, 1000 … 1,000,000, so evenly spacing
+ * them makes the last five iterations take as much width as the first five, and
+ * the S-curve that comes out is a picture of the *trace* rather than of the run.
+ *
+ * Against log iterations the same data is a straight line, and that line is a
+ * fact worth seeing: every addition adds one quantization error of the same
+ * sign, so a fixed-point machine's drift is exactly proportional to the number
+ * of additions. The chart stops being an artefact and starts being a
+ * measurement.
+ *
+ * A checkpoint with no iteration — the `set` step before the run starts — has
+ * no position on a log axis. It is left off rather than pushed to the end, the
+ * same rule `y` follows at exact zero.
+ *
+ * Falls back to checkpoint position when a run has no iterations to speak of,
+ * because four atomic steps on a log axis would be three points and a gap.
+ */
+function horizontalAxis(
+  iterations: readonly (number | undefined)[],
+  pointCount: number,
+): {
+  kind: DriftAxis;
+  at: (index: number) => number | undefined;
+  minIteration: number;
+  maxIteration: number;
+} {
+  const byIndex = iterations.map((value) =>
+    value !== undefined && Number.isFinite(value) && value >= 1 ? value : undefined,
+  );
+  const present = byIndex.filter((value): value is number => value !== undefined);
+  const minIteration = present.length === 0 ? 0 : Math.min(...present);
+  const maxIteration = present.length === 0 ? 0 : Math.max(...present);
+
+  // A log axis needs a decade to be worth having, and enough points on it to
+  // make a shape at all.
+  if (present.length < MINIMUM_POINTS || maxIteration < 10 * minIteration) {
+    return {
+      kind: 'checkpoint',
+      at: (index) => (pointCount === 1 ? 0 : index / (pointCount - 1)),
+      minIteration,
+      maxIteration,
+    };
+  }
+
+  const from = Math.log10(minIteration);
+  const span = Math.log10(maxIteration) - from;
+  return {
+    kind: 'iterations',
+    at: (index) => {
+      const value = byIndex[index];
+      return value === undefined ? undefined : (Math.log10(value) - from) / span;
+    },
+    minIteration,
+    maxIteration,
   };
 }
 
@@ -185,7 +268,9 @@ export function driftRuns(series: DriftSeries): DriftPoint[][] {
   const runs: DriftPoint[][] = [];
   let current: DriftPoint[] = [];
   for (const point of series.points) {
-    if (point.y === undefined) {
+    // Either coordinate missing is the same situation: the point is not on the
+    // axes, so no segment can reach it.
+    if (point.y === undefined || point.x === undefined) {
       if (current.length > 0) runs.push(current);
       current = [];
     } else {
