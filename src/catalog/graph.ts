@@ -197,13 +197,23 @@ export function suggestFrom(catalog: Catalog, id: string, band: ScaleBand): Sugg
 }
 
 /**
- * Objects revealed purely by scale, related or not — the "what else lives at
- * this size" question the Atlas answers as you zoom.
+ * Objects revealed purely by scale — the "what else lives at this size"
+ * question the Atlas answers as you zoom.
+ *
+ * `exclude` is a set rather than the selected id alone because the caller
+ * showing this beside a list of relations must exclude *those* too. An object
+ * named as a relation and then named again under "unrelated" is a duplicate and
+ * a false statement in one row.
  */
-export function revealedIn(catalog: Catalog, band: ScaleBand, exclude?: string): Suggestion[] {
+export function revealedIn(
+  catalog: Catalog,
+  band: ScaleBand,
+  exclude: Iterable<string> = [],
+): Suggestion[] {
+  const excluded = new Set(exclude);
   return catalog
     .byScale()
-    .filter((object) => object.id !== exclude)
+    .filter((object) => !excluded.has(object.id))
     .map((object) => ({ object, log10: log10Of(object) }))
     .filter(({ log10 }) => visibilityIn(band, log10) === 'in-band')
     .map(({ object, log10 }) => ({

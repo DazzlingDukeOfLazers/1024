@@ -71,7 +71,13 @@ export interface SemanticPanelProps {
 export function SemanticPanel({ selectedId, band, onSelect }: SemanticPanelProps) {
   const selected = selectedId === undefined ? undefined : CATALOG.get(selectedId);
   const related = selected === undefined ? [] : suggestFrom(CATALOG, selected.id, band);
-  const nearby = revealedIn(CATALOG, band, selectedId).slice(0, 8);
+  // Everything named above, not just the selection: the table below says these
+  // are unrelated, and it has to be true.
+  const named = [
+    ...(selectedId === undefined ? [] : [selectedId]),
+    ...related.map((suggestion) => suggestion.object.id),
+  ];
+  const nearby = revealedIn(CATALOG, band, named).slice(0, 8);
 
   // A chain worth showing off: the spec's human → hand → finger → cell → DNA,
   // discovered by search rather than written down anywhere.

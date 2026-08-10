@@ -553,8 +553,8 @@ test('the atlas walks the object graph from the selection', async ({ page }) => 
     'Human \u2192 Hand \u2192 Finger \u2192 Skin cell \u2192 DNA double helix',
   );
 
-  // Clicking a related object walks to it. Scoped to the relations table: the
-  // "also at this size" table below can name the same object.
+  // Clicking a related object walks to it. Scoped to the relations table so the
+  // click is unambiguous about which list it came from.
   await panel.locator('table.readout').first().getByRole('button', { name: 'Hand' }).click();
   await expect(page.locator('p.selection-banner')).toContainText('Hand');
   await expect(panel).toContainText('part of');
@@ -613,6 +613,34 @@ test('the atlas reveals what else lives at a size, related or not', async ({ pag
   await expect(panel).toContainText('Skin cell');
   await expect(panel).toContainText('Bacterium');
   await expect(panel).toContainText('Zooming is both metric and ontology navigation');
+});
+
+test('"also at this size" names nothing the relations table already named', async ({ page }) => {
+  await page.goto('/');
+  // The skin cell has the most relations in the catalog, and two of them —
+  // the water molecule and the DNA helix — are close enough in size to appear
+  // in both tables. The caption below says these are unrelated to the
+  // selection, so an object in both would make it false.
+  await page.getByLabel('Object', { exact: true }).selectOption('skin-cell');
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Related at this scale' }) });
+  const tables = panel.locator('table.readout');
+  const names = async (index: number) => tables.nth(index).getByRole('rowheader').allInnerTexts();
+
+  const related = await names(0);
+  const alsoAtThisSize = await names(1);
+
+  // Anti-vacuity: two empty tables share nothing and prove nothing.
+  expect(related.length).toBeGreaterThan(2);
+  expect(alsoAtThisSize.length).toBeGreaterThan(2);
+  expect(related).toContain('Water molecule');
+  expect(related).toContain('DNA double helix');
+
+  expect(alsoAtThisSize.filter((name) => related.includes(name))).toEqual([]);
+  // And neither table names the selection itself.
+  expect([...related, ...alsoAtThisSize]).not.toContain('Skin cell');
 });
 
 test('clicking a marker selects what it stands for', async ({ page }) => {

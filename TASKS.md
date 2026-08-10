@@ -233,8 +233,18 @@ Discovered while implementing:
 - [ ] Only one length per object. A second length (a human's width, say) needs an
       explicit `primary` field rather than `primaryLength`'s current "the one
       length there is".
-- [x] `relations` carries 20 edges across the 28 objects, which is what the
+- [x] `relations` carries 18 edges across the 28 objects, which is what the
       Atlas walks. Progressive semantic detail (milestone 11) filled it.
+- [x] **Two of those edges were authored in both directions**, which the inverse
+      derivation turns into two edges for one fact. `dna-helix contained-by
+      skin-cell` and `skin-cell contains dna-helix` are the same sentence, and
+      the Atlas listed DNA twice under the skin cell. `hydrogen-atom part-of
+      water-molecule` and `water-molecule made-of hydrogen-atom` are worse: the
+      same fact under two different words, so the duplicate does not even look
+      like one. `edgesOf`'s comment had said only one direction is ever written
+      since the graph was built; nothing enforced it. `createCatalog` now
+      refuses a second authored relation between any unordered pair, and a
+      relation from an object to itself.
 
 ## Comparator
 
@@ -371,6 +381,16 @@ Discovered while implementing:
       viewport, "first member" is already stable.
 - [ ] Progressive semantic detail (milestone 11) is the missing half of the
       Atlas: zooming should reveal *related* objects, not just closer ones.
+- [x] **"Also at this size" was captioned "unrelated to the selection" and
+      listed related objects.** The panel asks the graph two questions and shows
+      both answers, but `revealedIn` excluded only the selection itself, so with
+      a skin cell selected the water molecule and the DNA helix appeared in the
+      relations table and then again below it, under a sentence saying they were
+      not related. Both a duplicate and a false claim, one table apart.
+      `revealedIn` takes a set now, and the panel subtracts everything it just
+      printed. Found by screenshotting the densest semantic panel, which is why
+      `atlas/related` is now a swept state — every check before it went through
+      the DOM, where two contradictory tables both look correct.
 - [x] Selection is keyboard-reachable through the object picker, and the axis
       pans and zooms from the keyboard. The markers themselves are still
       pointer-only hit targets, which is why the picker exists.
@@ -764,7 +784,7 @@ found five that were false, some for several milestones:
   `mul` and `div` all are, and `mul` is what `(1/10) × 10` needs. That one
   claimed a CLAUDE.md required experiment could not run, which would have been
   serious had it been true.
-- "`relations` is validated but empty" — 20 edges across 28 objects, which is
+- "`relations` is validated but empty" — 20 edges across 28 objects then, which is
   what the Atlas walks.
 - "The viewport is a fixed 960×260 viewBox" — fixed this week.
 - "No keyboard navigation for selection" — the object picker is exactly that.

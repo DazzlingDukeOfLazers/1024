@@ -75,6 +75,31 @@ Hand-authoring `7.5 µm` as a fraction of metres is a transcription bug waiting 
 
 ## Principles
 
+### Author one direction of a relation, never both
+
+The graph derives the inverse of every authored edge, so `contains` in one
+object implies `contained by` in the other. A fixture that also writes the
+reverse by hand turns one fact into two edges, and every view that lists
+neighbours lists that object twice — under two different words if the two
+directions were given different types, which is what
+`hydrogen-atom part-of water-molecule` and `water-molecule made-of hydrogen-atom`
+did.
+
+`createCatalog` therefore refuses more than **one authored relation per
+unordered pair**, and refuses a relation from an object to itself. The rule is
+deliberately stronger than "not the same type twice": two types between the same
+pair is the worse case, not a lesser one.
+
+The fixture authors 18 relations, of which 18 point from the smaller object to
+the larger — `part-of`, `within`, `orbits`. Before the rule was enforced it was
+18 of 20, and the two exceptions were exactly the two duplicates: in both cases
+the redundant edge was the one pointing from the larger object down. So the
+convention was not invented to resolve them, it was measured and then applied.
+
+A view that lists relations alongside objects found by scale alone must also
+subtract the first list from the second. "Unrelated to the selection" is a
+claim, and an object named in both tables makes it false.
+
 ### Separate identity from visuals
 
 `red-blood-cell` remains the same object if its SVG provider changes.

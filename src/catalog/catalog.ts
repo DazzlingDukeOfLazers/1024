@@ -39,6 +39,15 @@ export function createCatalog(entries: readonly unknown[]): Catalog {
   }
 
   // Relations are part of the graph, so a dangling target is a data error.
+  //
+  // So is authoring both directions of one relationship. `edgesOf` derives the
+  // inverse of every authored edge, so a fixture that also writes the reverse
+  // by hand produces two edges for one fact — the panel then lists the same
+  // neighbour twice, and if the two directions were given different types it
+  // lists it twice under different words. The rule is therefore one authored
+  // relation per unordered pair, which is stronger than "not the same type
+  // twice" and is what makes the derived inverse unambiguous.
+  const pairs = new Map<string, string>();
   for (const object of objects) {
     for (const relation of object.relations) {
       if (!byId.has(relation.targetId)) {
@@ -46,6 +55,18 @@ export function createCatalog(entries: readonly unknown[]): Catalog {
           `${object.id}: relation points at unknown object ${relation.targetId}`,
         );
       }
+      if (relation.targetId === object.id) {
+        throw new CatalogError(`${object.id}: relation points at itself`);
+      }
+      const key = [object.id, relation.targetId].sort().join(' ');
+      const existing = pairs.get(key);
+      if (existing !== undefined) {
+        throw new CatalogError(
+          `${object.id}: ${relation.type} to ${relation.targetId} duplicates ${existing} — ` +
+            `author one direction only; the other is derived`,
+        );
+      }
+      pairs.set(key, `${object.id} ${relation.type} ${relation.targetId}`);
     }
   }
 

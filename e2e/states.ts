@@ -38,6 +38,14 @@ export const STATES: AppState[] = [
       await page.getByRole('button', { name: 'Whole range' }).click();
     },
   },
+  {
+    // The densest semantic panel: the one object with four relations, and the
+    // one whose neighbour list showed the same object twice.
+    name: 'atlas/related',
+    reach: async (page) => {
+      await page.getByLabel('Object', { exact: true }).selectOption('skin-cell');
+    },
+  },
 ];
 
 for (const preset of ['rbc-across-mm', 'coconuts', 'far-origin', 'human-scale'] as const) {

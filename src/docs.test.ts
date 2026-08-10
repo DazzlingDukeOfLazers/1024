@@ -12,6 +12,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CATALOG, requireLength } from './catalog/catalog';
+import { compare as compareQuantities } from './core/quantities/quantity';
 
 const resolve = (path: string): URL => new URL(`../${path}`, import.meta.url);
 const read = (path: string): string => readFileSync(resolve(path), 'utf8');
@@ -132,6 +133,25 @@ describe('docs/DATA_MODEL.md counts what is actually there', () => {
       const claim = row.split('|')[2]?.trim();
       expect(['exact', 'measured', 'representative'], row).toContain(claim);
     }
+  });
+
+  it('states how many relations the fixture authors, and how they point', () => {
+    // Both numbers, because the direction claim is the one that would quietly
+    // become a folk memory of the fixture rather than a fact about it.
+    const authored = CATALOG.objects.flatMap((object) => object.relations.map(() => object));
+    const smallerFirst = CATALOG.objects.flatMap((object) =>
+      object.relations.filter(
+        (relation) =>
+          compareQuantities(
+            requireLength(object).value,
+            requireLength(CATALOG.require(relation.targetId)).value,
+          ) < 0,
+      ),
+    );
+
+    const stated = /authors (\d+) relations, of which (\d+) point from the smaller/.exec(dataModel);
+    expect(Number(stated?.[1])).toBe(authored.length);
+    expect(Number(stated?.[2])).toBe(smallerFirst.length);
   });
 
   it('states how many objects remain unsourced', () => {

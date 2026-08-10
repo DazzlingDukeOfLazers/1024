@@ -191,8 +191,25 @@ describe('what else lives at this size', () => {
   it('can leave the current selection out', () => {
     const band = bandFromExtent(pow10(-6), pow10(-4));
     expect(
-      revealedIn(CATALOG, band, 'red-blood-cell').map((entry) => entry.object.id),
+      revealedIn(CATALOG, band, ['red-blood-cell']).map((entry) => entry.object.id),
     ).not.toContain('red-blood-cell');
+  });
+
+  it('can leave out everything already named elsewhere', () => {
+    // The panel shows this list under "unrelated to the selection", so the
+    // caller has to be able to remove the relations it printed above it.
+    const band = bandFromExtent(pow10(-6), pow10(-4));
+    const everything = revealedIn(CATALOG, band).map((entry) => entry.object.id);
+    expect(everything).toContain('skin-cell');
+    expect(everything).toContain('bacterium');
+
+    const remaining = revealedIn(CATALOG, band, ['skin-cell', 'bacterium']).map(
+      (entry) => entry.object.id,
+    );
+    expect(remaining).not.toContain('skin-cell');
+    expect(remaining).not.toContain('bacterium');
+    // Anti-vacuity: excluding two must not be excluding everything.
+    expect(remaining.length).toBe(everything.length - 2);
   });
 
   it('returns them smallest first', () => {
@@ -204,26 +221,75 @@ describe('what else lives at this size', () => {
 });
 
 describe('the fixture graph is well formed', () => {
+  /** A minimal loadable object, so a relation can be the only thing under test. */
+  const object = (id: string, relations: { type: string; targetId: string }[]) => ({
+    id,
+    name: id,
+    quantities: {
+      length: {
+        dimension: 'length',
+        unit: 'm',
+        representative: '1',
+        approximation: 'exact',
+        source: 'test fixture',
+      },
+    },
+    relations,
+  });
+
   it('has no relation pointing at a missing object', () => {
     // createCatalog enforces it at load; this is the assertion that says so.
+    expect(() => createCatalog([object('x', [{ type: 'part-of', targetId: 'nowhere' }])])).toThrow(
+      /unknown object/,
+    );
+  });
+
+  it('refuses a relation authored in both directions', () => {
+    // The inverse is derived, so authoring it as well makes one fact into two
+    // edges, and the panel lists the same neighbour twice.
     expect(() =>
       createCatalog([
-        {
-          id: 'x',
-          name: 'x',
-          quantities: {
-            length: {
-              dimension: 'length',
-              unit: 'm',
-              representative: '1',
-              approximation: 'exact',
-              source: 'test fixture',
-            },
-          },
-          relations: [{ type: 'part-of', targetId: 'nowhere' }],
-        },
+        object('a', [{ type: 'contains', targetId: 'b' }]),
+        object('b', [{ type: 'contained-by', targetId: 'a' }]),
       ]),
-    ).toThrow(/unknown object/);
+    ).toThrow(/author one direction only/);
+
+    // One direction alone loads, so the rule rejects the duplicate rather than
+    // the relation.
+    expect(() =>
+      createCatalog([object('a', [{ type: 'contains', targetId: 'b' }]), object('b', [])]),
+    ).not.toThrow();
+  });
+
+  it('refuses a second relation between the same pair, whatever it is called', () => {
+    // Two different types are the worse case, not a lesser one: the panel then
+    // names the same object twice under two different words.
+    expect(() =>
+      createCatalog([
+        object('a', [
+          { type: 'part-of', targetId: 'b' },
+          { type: 'within', targetId: 'b' },
+        ]),
+        object('b', []),
+      ]),
+    ).toThrow(/author one direction only/);
+  });
+
+  it('refuses an object related to itself', () => {
+    expect(() => createCatalog([object('a', [{ type: 'part-of', targetId: 'a' }])])).toThrow(
+      /points at itself/,
+    );
+  });
+
+  it('names each neighbour exactly once', () => {
+    let longest = 0;
+    for (const subject of CATALOG.objects) {
+      const seen = edgesOf(CATALOG, subject.id).map((edge) => edge.target.id);
+      expect(new Set(seen).size, `${subject.id} lists ${seen.join(', ')}`).toBe(seen.length);
+      longest = Math.max(longest, seen.length);
+    }
+    // Anti-vacuity: a catalog of one-edge objects could not show a duplicate.
+    expect(longest).toBeGreaterThan(2);
   });
 
   it('connects every authored relation in both directions', () => {

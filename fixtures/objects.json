@@ -619,10 +619,6 @@
     },
     "relations": [
       {
-        "type": "made-of",
-        "targetId": "hydrogen-atom"
-      },
-      {
         "type": "part-of",
         "targetId": "skin-cell"
       }
@@ -652,10 +648,6 @@
       {
         "type": "part-of",
         "targetId": "finger"
-      },
-      {
-        "type": "contains",
-        "targetId": "dna-helix"
       }
     ]
   },
