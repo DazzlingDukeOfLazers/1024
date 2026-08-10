@@ -150,6 +150,108 @@ fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
 }
 `;
 
+/**
+ * ADD a third way: eight lanes, four limbs each — §17's "one thread owns
+ * several limbs".
+ *
+ * The lane-per-limb kernel above replaces a 32-step ripple with 5 rounds of
+ * shared memory. This one is the middle of that trade rather than the far end:
+ * a ripple is cheap *inside* a lane, where the carry never leaves a register,
+ * and expensive only when it has to cross lanes. So each lane ripples its own
+ * four limbs serially and only the eight block-level carries go through the
+ * scan — 3 rounds instead of 5, at the cost of four serial steps per lane.
+ *
+ * The block's generate and propagate are the same two facts one limb higher
+ * up: the block generates if adding its four limbs with no carry in produces a
+ * carry out, and propagates if that sum is all ones in every one of its four
+ * limbs, because only then does an arriving carry come out the other side. The
+ * scan operator is unchanged, which is the point — associativity does not care
+ * how wide the pieces are.
+ *
+ * A carry arriving after the scan is added back with a second short ripple,
+ * bounded by the block width. It cannot generate anything new: a block that
+ * would have carried out on the strength of an incoming carry is exactly a
+ * block that propagates, and the scan already counted that.
+ *
+ * One mutant survives here and should: testing `sum1` instead of `sum2` for the
+ * all-ones flag is an equivalent change, and the proof is short. A limb's sum
+ * is all ones only if `a + b` did not wrap — the largest wrapped sum is
+ * 2^32 − 2, never 2^32 − 1 — so an all-ones limb passes no carry to the next
+ * one. Inductively, a block whose every limb is all ones never carried
+ * internally at all, and `sum1 == sum2` throughout it. The two tests can only
+ * differ on blocks that do not propagate, where the flag is 0 either way. The
+ * later value is kept because it is the block sum, which is what the flag is
+ * about.
+ */
+export const ADD_BLOCKS_WGSL = /* wgsl */ `${COMMON}
+const BLOCK: u32 = 4u;
+const LANES: u32 = 8u;
+
+@group(0) @binding(0) var<storage, read> a: array<u32, 32>;
+@group(0) @binding(1) var<storage, read> b: array<u32, 32>;
+@group(0) @binding(2) var<storage, read_write> out: array<u32, 33>;
+
+var<workgroup> block_gen: array<u32, 8>;
+var<workgroup> block_prop: array<u32, 8>;
+var<workgroup> partial: array<u32, 32>;
+
+@compute @workgroup_size(8)
+fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
+  let lane = lid.x;
+  let base = lane * BLOCK;
+
+  // Serial inside the lane, where a carry costs nothing to keep.
+  var carry: u32 = 0u;
+  var all_ones: u32 = 1u;
+  for (var k: u32 = 0u; k < BLOCK; k = k + 1u) {
+    let i = base + k;
+    let sum1 = a[i] + b[i];
+    let c1 = select(0u, 1u, sum1 < a[i]);
+    let sum2 = sum1 + carry;
+    let c2 = select(0u, 1u, sum2 < sum1);
+    partial[i] = sum2;
+    carry = c1 + c2;
+    if (sum2 != 0xffffffffu) {
+      all_ones = 0u;
+    }
+  }
+  block_gen[lane] = carry;
+  block_prop[lane] = all_ones;
+  workgroupBarrier();
+
+  for (var offset: u32 = 1u; offset < LANES; offset = offset << 1u) {
+    var g = block_gen[lane];
+    var p = block_prop[lane];
+    if (lane >= offset) {
+      let g_low = block_gen[lane - offset];
+      let p_low = block_prop[lane - offset];
+      g = g | (p & g_low);
+      p = p & p_low;
+    }
+    workgroupBarrier();
+    block_gen[lane] = g;
+    block_prop[lane] = p;
+    workgroupBarrier();
+  }
+
+  var carry_in: u32 = 0u;
+  if (lane > 0u) {
+    carry_in = block_gen[lane - 1u];
+  }
+
+  for (var k: u32 = 0u; k < BLOCK; k = k + 1u) {
+    let i = base + k;
+    let value = partial[i] + carry_in;
+    carry_in = select(0u, 1u, value < partial[i]);
+    out[i] = value;
+  }
+
+  if (lane == LANES - 1u) {
+    out[32] = block_gen[lane];
+  }
+}
+`;
+
 /** SUB: out[0..31] wraps mod 2^1024, out[32] is the borrow. */
 export const SUB_WGSL = /* wgsl */ `${COMMON}
 @group(0) @binding(0) var<storage, read> a: array<u32, 32>;

@@ -16,6 +16,7 @@
 
 import { LIMBS_PER_VALUE } from '../core/limbs/limbs';
 import {
+  ADD_BLOCKS_WGSL,
   ADD_LANES_WGSL,
   ADD_WGSL,
   BITLEN_WGSL,
@@ -31,12 +32,17 @@ export type LimbOp = 'add' | 'sub' | 'bitlen' | 'shl' | 'shr' | 'mulWide' | 'div
 /**
  * A second organization for the same operation, not a second operation.
  *
- * §17 lists several ways to map one wide scalar onto a GPU. `addLanes` is one
- * lane per limb with a parallel carry scan; `add` is one thread owning all
- * thirty-two. They must agree bit for bit on every input, and neither is the
+ * §17 lists several ways to map one wide scalar onto a GPU, and three of them
+ * are here:
+ *
+ *   add         one thread owning all thirty-two limbs, ripple carry
+ *   addLanes    one lane per limb, carry by a 5-round scan
+ *   addBlocks   eight lanes of four limbs, ripple inside, 3-round scan across
+ *
+ * They must agree bit for bit on every input, and none of them is the
  * reference — the CPU machine is (§19).
  */
-export type LimbOrganization = 'add' | 'addLanes';
+export type LimbOrganization = 'add' | 'addLanes' | 'addBlocks';
 
 interface OpShape {
   readonly source: string;
@@ -51,6 +57,7 @@ interface OpShape {
 const SHAPES: Record<LimbOp | LimbOrganization, OpShape> = {
   add: { source: ADD_WGSL, takesB: true, takesShift: false, outWords: 33 },
   addLanes: { source: ADD_LANES_WGSL, takesB: true, takesShift: false, outWords: 33 },
+  addBlocks: { source: ADD_BLOCKS_WGSL, takesB: true, takesShift: false, outWords: 33 },
   sub: { source: SUB_WGSL, takesB: true, takesShift: false, outWords: 33 },
   bitlen: { source: BITLEN_WGSL, takesB: false, takesShift: false, outWords: 1 },
   shl: { source: SHL_WGSL, takesB: false, takesShift: true, outWords: 32 },

@@ -1531,9 +1531,31 @@ Follow-ups deliberately not taken:
       memory traffic to replace a 32-iteration loop is unlikely to win at this
       width, nothing here times anything, and a timing number from one machine
       would not be evidence anyway.
-- [ ] The other two §17 organizations — one subgroup per wide scalar, one thread
-      owning several limbs — and the same treatment for SUB, whose borrow scan
-      is the same shape. ADD was the one where the difficulty lives.
+- [x] §17's third organization, "one thread owns several limbs": eight lanes of
+      four. It is the middle of the trade rather than the far end of it — a
+      ripple is cheap *inside* a lane, where the carry never leaves a register,
+      and expensive only crossing lanes, so each lane ripples its own four limbs
+      and only the eight block carries go through the scan. Three rounds instead
+      of five, four serial steps instead of one.
+
+      The scan operator is unchanged, which is the interesting part:
+      associativity does not care how wide the pieces are, so a block's generate
+      and propagate are the same two facts one level up. All 40 fixtures agree
+      bit-for-bit with both other organizations and with the CPU machine.
+
+      Four mutants killed. **A fifth survives and should**: reading the all-ones
+      flag from the sum before the local carry rather than after is an
+      equivalent change. A limb is all ones only if `a + b` did not wrap — the
+      largest wrapped sum is 2^32 − 2 — so an all-ones limb passes no carry on,
+      and inductively a block whose every limb is all ones never carried
+      internally, making the two sums identical throughout it. The tests can
+      only differ where the flag is 0 either way. Proof is in the kernel comment
+      rather than a test, because there is nothing there to catch.
+- [ ] §17's remaining organization is one subgroup per wide scalar, which needs
+      WGSL subgroup intrinsics — an optional feature, so it also needs the
+      absence path the rest of this track already has. And SUB could take the
+      same treatment, its borrow scan being the same shape; ADD was the one
+      where the difficulty lives.
 - [ ] The panel visualizes ADD only. Op selector (SUB/MUL/DIV_REM views) is a
       question for Daniel in PLAN.md.
 - [ ] Zero-limb skipping in mulLimbs, to mirror §4 at limb level. The dense

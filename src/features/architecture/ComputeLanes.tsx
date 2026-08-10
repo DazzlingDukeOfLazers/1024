@@ -17,9 +17,16 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { LIMBS_PER_VALUE, addLimbs, fromLimbs, mulLimbs, toLimbs } from '../../core/limbs/limbs';
-import { createGpuLimbMachine } from '../../gpu/harness';
+import { type LimbOrganization, createGpuLimbMachine } from '../../gpu/harness';
 import { describeWideLiteral } from '../../core/wide/parse';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
+
+/**
+ * Every §17 organization, checked on the operands on screen. Listed here rather
+ * than written into the check so the sentence below and the work done cannot
+ * drift apart — the panel names three, so three run.
+ */
+const ORGANIZATIONS: readonly LimbOrganization[] = ['add', 'addLanes', 'addBlocks'];
 
 const NOMINAL_WIDTH = 820;
 const LANE_HEIGHT = 84;
@@ -162,17 +169,17 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
       try {
         // Both §17 organizations, against the CPU machine — never against each
         // other. Two shaders agreeing is two shaders agreeing.
-        const matches = async (organization: 'add' | 'addLanes'): Promise<boolean> => {
+        const matches = async (organization: LimbOrganization): Promise<boolean> => {
           const out = await machine.run(organization, cpu.aLimbs, cpu.bLimbs);
           return (
             cpu.sum.limbs.every((limb, index) => out[index] === limb) &&
             (out[32] === 1) === cpu.sum.carryOut
           );
         };
-        const serial = await matches('add');
-        const lanes = await matches('addLanes');
+        const verdicts = [];
+        for (const organization of ORGANIZATIONS) verdicts.push(await matches(organization));
         conclude(
-          serial && lanes
+          verdicts.every(Boolean)
             ? { kind: 'agrees', description: machine.description }
             : { kind: 'disagrees', description: machine.description },
         );
@@ -260,8 +267,9 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
                   <small>
                     checked bit-for-bit on these operands · {gpu.description}
                     <br />
-                    both §17 organizations: one thread owning all 32 limbs, and 32 lanes owning one
-                    limb each with the carry resolved by a parallel scan
+                    all {ORGANIZATIONS.length} §17 organizations: one thread owning 32 limbs, 32
+                    lanes owning one each with the carry resolved by a 5-round scan, and 8 lanes of
+                    4 limbs rippling inside and scanning across in 3
                   </small>
                 </>
               )}
