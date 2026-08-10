@@ -66,12 +66,15 @@ Decisions Daniel made when this plan was written (2026-08-09):
   - `semanticDetail` declared a camera resolution and was read as an object
     size (`9d244e1`). Renamed to `minMeters`/`maxMeters`; still set by no
     fixture, deliberately.
-- 884 unit tests, 134 Playwright, full gate green.
+  - The Ruler uses the graph (`78a4c8c`): it still chooses what to draw by
+    size, and now says which of those objects are related to each other and
+    which are there by coincidence of magnitude. Its empty-state message was
+    false at the far-origin preset — two reasons, one sentence.
+- 888 unit tests, 136 Playwright, full gate green.
 - Next action: pick from the TASKS backlog. The largest open items are §17's
-  cooperating-lane GPU organizations, the Ruler not using the relation graph
-  (it still picks neighbours by size alone), `how-many-fit` by volume (wants a
-  real packing model), and the search index. Keep the same disciplines. One
-  question is open for Daniel below.
+  cooperating-lane GPU organizations, `how-many-fit` by volume (wants a real
+  packing model), the search index, and the Lab's per-representation divergence
+  sparkline. Keep the same disciplines. One question is open for Daniel below.
 
 ## Session protocol
 
