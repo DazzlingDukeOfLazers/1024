@@ -47,6 +47,24 @@ export function createCatalog(entries: readonly unknown[]): Catalog {
   // lists it twice under different words. The rule is therefore one authored
   // relation per unordered pair, which is stronger than "not the same type
   // twice" and is what makes the derived inverse unambiguous.
+  // Which length an object *is* has to be a decision someone made. With one
+  // there is nothing to choose; with two, `primaryLength` used to return
+  // whichever key `Object.values` came to first, and three lenses present that
+  // number as the size of the thing.
+  for (const object of objects) {
+    const lengths = Object.values(object.quantities).filter(
+      (quantity) => quantity.dimension === 'length',
+    );
+    const declared = lengths.filter((quantity) => quantity.primary === true);
+    if (lengths.length > 1 && declared.length !== 1) {
+      throw new CatalogError(
+        `${object.id}: ${lengths.length} lengths (${lengths.map((one) => one.key).join(', ')}) ` +
+          `and ${declared.length} marked primary — mark exactly one, since the atlas positions ` +
+          `this object by it`,
+      );
+    }
+  }
+
   const pairs = new Map<string, string>();
   for (const object of objects) {
     for (const relation of object.relations) {

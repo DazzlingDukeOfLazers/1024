@@ -640,6 +640,23 @@ test('the ruler gives the right reason for an empty picture', async ({ page }) =
   await expect(panel).not.toContainText('between two pixels and a full view wide');
 });
 
+test('an object with two lengths says which one placed it', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('Object', { exact: true }).selectOption('door');
+
+  // The axis places an object at one number. With two lengths, which one is a
+  // decision — and it used to be whichever the fixture author typed first.
+  const size = readoutRow(page, 'Size');
+  await expect(size).toContainText('2 m');
+  await expect(size).toContainText('placed by its height');
+  await expect(size).toContainText('width 800 mm');
+
+  // Anti-vacuity: the line must appear only where there is a second length,
+  // or it is noise on twenty-seven objects out of twenty-eight.
+  await page.getByLabel('Object', { exact: true }).selectOption('coconut');
+  await expect(readoutRow(page, 'Size')).not.toContainText('placed by its');
+});
+
 test('the atlas walks the object graph from the selection', async ({ page }) => {
   await page.goto('/');
 

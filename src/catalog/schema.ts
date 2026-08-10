@@ -91,6 +91,17 @@ export interface CatalogQuantity {
   readonly declaredUnit: string;
   readonly note?: string;
   readonly source?: string;
+  /**
+   * The one this object *is*, when it has more than one length.
+   *
+   * The Atlas positions an object by a single number, the Ruler draws it to
+   * scale, and the Comparator compares it. With one length there is nothing to
+   * choose. With two there is, and the choice was being made by JSON key order
+   * — the first `length` `Object.values` happened to return — which is a
+   * decision nobody made about a number three lenses present as the size of the
+   * thing. `createCatalog` refuses the ambiguity rather than resolving it.
+   */
+  readonly primary?: boolean;
 }
 
 export interface ObjectRelation {
@@ -241,6 +252,7 @@ function parseQuantity(key: string, raw: unknown, objectId: string): CatalogQuan
     ...(range === undefined ? {} : { range }),
     ...(typeof raw.note === 'string' ? { note: raw.note } : {}),
     ...(source === undefined ? {} : { source }),
+    ...(raw.primary === true ? { primary: true } : {}),
   };
   return Object.freeze(quantity);
 }
@@ -354,5 +366,21 @@ export function provenanceSummary(quantity: {
  * true this needs an explicit `primary` field rather than a guess.
  */
 export function primaryLength(object: ScaleObject): CatalogQuantity | undefined {
-  return Object.values(object.quantities).find((quantity) => quantity.dimension === 'length');
+  const lengths = Object.values(object.quantities).filter(
+    (quantity) => quantity.dimension === 'length',
+  );
+  if (lengths.length <= 1) return lengths[0];
+  // With several, only a declared one will do. `createCatalog` refuses an
+  // object that has several and declares none, so this cannot silently fall
+  // back to whichever key came first — which is what it used to do.
+  return lengths.find((quantity) => quantity.primary === true);
+}
+
+/** Every length an object carries, primary first. For views that show them all. */
+export function allLengths(object: ScaleObject): CatalogQuantity[] {
+  const lengths = Object.values(object.quantities).filter(
+    (quantity) => quantity.dimension === 'length',
+  );
+  const primary = primaryLength(object);
+  return primary === undefined ? lengths : [primary, ...lengths.filter((one) => one !== primary)];
 }

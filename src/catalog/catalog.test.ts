@@ -3,6 +3,7 @@ import rawSample from '../../fixtures/objects.sample.json';
 import { CATALOG, createCatalog, requireLength } from './catalog';
 import {
   CatalogError,
+  allLengths,
   isExactQuantity,
   parseScaleObject,
   primaryLength,
@@ -428,6 +429,75 @@ describe('schema validation', () => {
       },
     });
     expect(primaryLength(asString)?.value).toEqual(primaryLength(asFraction)?.value);
+  });
+});
+
+describe('which length an object is', () => {
+  /** Two lengths, `width` written first, `height` optionally declared primary. */
+  const twoLengths = (primaryKey?: 'width' | 'height') => [
+    {
+      id: 'x',
+      name: 'x',
+      quantities: {
+        width: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '0.8',
+          approximation: 'representative',
+          ...(primaryKey === 'width' ? { primary: true } : {}),
+        },
+        height: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '2',
+          approximation: 'representative',
+          ...(primaryKey === 'height' ? { primary: true } : {}),
+        },
+      },
+    },
+  ];
+
+  it('is the declared one, not the one written first', () => {
+    // The defect this closes: `primaryLength` returned whatever `Object.values`
+    // came to first, so the atlas positioned an object by whichever length its
+    // author happened to type above the other.
+    const [object] = createCatalog(twoLengths('height')).objects;
+    expect(Object.keys(object!.quantities)[0]).toBe('width');
+    expect(primaryLength(object!)?.key).toBe('height');
+    expect(toUnit(primaryLength(object!)!.value, 'm')).toEqual(rational(2n));
+  });
+
+  it('refuses two lengths with none declared', () => {
+    expect(() => createCatalog(twoLengths())).toThrow(/mark exactly one/);
+  });
+
+  it('refuses two lengths with both declared', () => {
+    const both = twoLengths('height');
+    (both[0]!.quantities.width as Record<string, unknown>)['primary'] = true;
+    expect(() => createCatalog(both)).toThrow(/2 marked primary/);
+  });
+
+  it('needs no declaration when there is only one length', () => {
+    // Twenty-seven of the twenty-eight objects, and the rule must not make
+    // every one of them carry a flag that decides nothing.
+    const single = CATALOG.objects.filter(
+      (object) =>
+        Object.values(object.quantities).filter((q) => q.dimension === 'length').length === 1,
+    );
+    expect(single.length).toBeGreaterThan(20);
+    for (const object of single) {
+      expect(primaryLength(object)?.primary, object.id).toBeUndefined();
+      expect(primaryLength(object), object.id).toBeDefined();
+    }
+  });
+
+  it('positions the door by its height, and remembers its width', () => {
+    const door = CATALOG.require('door');
+    expect(primaryLength(door)?.key).toBe('height');
+    expect(allLengths(door).map((one) => one.key)).toEqual(['height', 'width']);
+    // Anti-vacuity for the rule above: if nothing in the fixture had two
+    // lengths, none of this would be exercised by the real catalog at all.
+    expect(allLengths(door)).toHaveLength(2);
   });
 });
 

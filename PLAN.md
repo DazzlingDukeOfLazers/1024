@@ -91,7 +91,9 @@ Decisions Daniel made when this plan was written (2026-08-09):
     recorded in a different section from the entry asking for it — including
     two phases finished *here*, in this file. **Closing a phase here is not
     closing the TASKS entry**, and TASKS is what the next session reads.
-- 916 unit tests, 141 Playwright, 315 GPU checks, full gate green.
+  - An object with two lengths now declares which one it *is*; `primaryLength`
+    was returning whichever JSON key came first. The door has a width.
+- 921 unit tests, 142 Playwright, 315 GPU checks, full gate green.
 - Next action: pick from the TASKS backlog. Open items now: §17's subgroup
   organization (optional WGSL feature *and* hardware-dependent subgroup size,
   so it would be a weaker claim than the rest of this track — decide before

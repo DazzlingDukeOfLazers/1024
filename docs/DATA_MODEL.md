@@ -38,6 +38,8 @@ interface QuantityValue {
   approximation: "exact" | "measured" | "representative" | "estimated";
   note?: string;
   source?: string;
+  /** Required when an object has more than one length. See below. */
+  primary?: boolean;
 }
 
 interface VisualAsset {
@@ -91,6 +93,25 @@ decades either side of the object's own size — is where a thing is neither a d
 nor larger than the view, and the progressive-detail panel does better still by
 taking the band from the camera rather than from any declaration. The field
 exists for an editorial opinion nobody has yet had.
+
+### An object with two lengths must say which one it *is*
+
+The Atlas places an object at a single position, the Ruler draws it to scale and
+the Comparator compares it, and all three ask for one number. With one length
+there is nothing to choose. With two there is, and it was being chosen by JSON
+key order — `primaryLength` returned whatever `Object.values` came to first — so
+the size three lenses present as the size of the thing would have been decided
+by which key its author happened to type above the other.
+
+Mark exactly one length `primary: true`. `createCatalog` refuses an object with
+several lengths and none marked, or with more than one marked, at load: the app
+does not start rather than start with a number nobody chose. Objects with a
+single length need no flag, which is twenty-seven of the twenty-eight.
+
+A view that shows the primary length should say it is the primary one when
+there are others. The Atlas's selection panel reads `placed by its height; also
+width 800 mm` — the marker stands at one number and the object is not only that
+number.
 
 ### Author one direction of a relation, never both
 

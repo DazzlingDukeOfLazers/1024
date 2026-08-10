@@ -46,6 +46,14 @@ export const STATES: AppState[] = [
       await page.getByLabel('Object', { exact: true }).selectOption('skin-cell');
     },
   },
+  {
+    // The only object with two lengths, so the only state where the axis has to
+    // say which of them it placed the marker by.
+    name: 'atlas/two-lengths',
+    reach: async (page) => {
+      await page.getByLabel('Object', { exact: true }).selectOption('door');
+    },
+  },
 ];
 
 for (const preset of ['rbc-across-mm', 'coconuts', 'far-origin', 'human-scale'] as const) {

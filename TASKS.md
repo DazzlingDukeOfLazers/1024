@@ -230,9 +230,25 @@ Discovered while implementing:
         the hydrogen atom, but the conventions disagree — van der Waals against
         kinetic diameter — and I could not establish which the stored figure is.
 
-- [ ] Only one length per object. A second length (a human's width, say) needs an
-      explicit `primary` field rather than `primaryLength`'s current "the one
-      length there is".
+- [x] Only one length per object, and `primaryLength` was "the one length there
+      is" — which with two would have been "whichever key `Object.values` came
+      to first". The Atlas positions an object by that number, the Ruler draws
+      it to scale and the Comparator compares it, so the size three lenses
+      present as the size of the thing would have been decided by which key its
+      author typed above the other. A latent defect, closed before the data grew
+      into it rather than after.
+
+      `primary: true` on exactly one length, refused at load if an object has
+      several and marks none or marks two. The door is the case that exercises
+      it — height 2 m and width 800 mm, both obvious, neither derived — and the
+      selection panel says `placed by its height; also width 800 mm`, because a
+      marker standing at one number should not imply the object is only that
+      number.
+
+      Five mutants killed. The sharpest is the flag never being parsed: the
+      whole test file fails to *collect*, because `CATALOG` is built at import
+      and the real fixture stops loading. The app would not start, which is the
+      strongest form the guard could take.
 - [x] `relations` carries 18 edges across the 28 objects, which is what the
       Atlas walks. Progressive semantic detail (milestone 11) filled it.
 - [x] **Two of those edges were authored in both directions**, which the inverse
@@ -426,6 +442,20 @@ Discovered while implementing:
       is still 28 markers ordered by magnitude and nothing else. An arc from the
       selection to its neighbours would put the ontology in the picture rather
       than in a table next to it.
+
+      Measured before building it, and the measurement says wait. At the landing
+      zoom the catalog makes 21 clusters, and **seven of the nineteen relations
+      join two objects that share a marker** — a hydrogen atom and a water
+      molecule, a finger and a hand, the Moon and the Earth. Those arcs would
+      start and end at the same dot. Several more land on a cluster whose label
+      names a *different* member, so the arc would appear to relate the
+      selection to the wrong object. Zooming separates them, but the landing
+      state is the one everybody sees, and it is the state where the feature is
+      emptiest.
+
+      Worth building with the degenerate cases handled — an arc suppressed when
+      both ends share a marker, and the panel saying why — rather than by
+      drawing arcs and discovering this on screen.
 - [x] **"Also at this size" was captioned "unrelated to the selection" and
       listed related objects.** The panel asks the graph two questions and shows
       both answers, but `revealedIn` excluded only the selection itself, so with

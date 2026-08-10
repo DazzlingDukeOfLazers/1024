@@ -22,7 +22,7 @@ import {
   zoomLogAt,
 } from '../../camera/logCamera';
 import { CATALOG } from '../../catalog/catalog';
-import { primaryLength, provenanceSummary } from '../../catalog/schema';
+import { allLengths, primaryLength, provenanceSummary } from '../../catalog/schema';
 import { type AtlasState } from '../../share/appState';
 import { KEYBOARD_HINT, commandForKey } from '../../camera/keyboard';
 import { type Pinch, pinchOf, pinchScale } from '../../camera/pinch';
@@ -118,6 +118,8 @@ export function AtlasView({
   const clusters = declutter(ENTRIES, camera, VIEWPORT);
   const selected = selectedId === undefined ? undefined : CATALOG.get(selectedId);
   const selectedLength = selected === undefined ? undefined : primaryLength(selected);
+  const otherLengths =
+    selected === undefined ? [] : allLengths(selected).filter((one) => one !== selectedLength);
   const selectedEntry = ENTRIES.find((entry) => entry.object.id === selectedId);
 
   const localX = (element: Element, clientX: number): number => {
@@ -386,6 +388,22 @@ export function AtlasView({
                         <small>
                           ranges {formatEngineering(selectedLength.range.min).text} to{' '}
                           {formatEngineering(selectedLength.range.max).text}
+                        </small>
+                      </>
+                    )}
+                    {/* The axis places an object at one number, so an object
+                        with two lengths is drawn by one of them and silent
+                        about the other. Naming both, and which one the marker
+                        stands at, is the difference between a choice and an
+                        accident. */}
+                    {otherLengths.length > 0 && (
+                      <>
+                        <br />
+                        <small>
+                          placed by its {selectedLength?.key}; also{' '}
+                          {otherLengths
+                            .map((one) => `${one.key} ${formatEngineering(one.value).text}`)
+                            .join(', ')}
                         </small>
                       </>
                     )}
