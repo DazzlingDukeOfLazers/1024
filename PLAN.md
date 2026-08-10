@@ -70,11 +70,16 @@ Decisions Daniel made when this plan was written (2026-08-09):
     size, and now says which of those objects are related to each other and
     which are there by coincidence of magnitude. Its empty-state message was
     false at the far-origin preset — two reasons, one sentence.
-- 888 unit tests, 136 Playwright, full gate green.
+  - The Lab charts drift (`9af389d`): log10 magnitude per row, sign as a
+    hollow dot, exact checkpoints off the axis. A shared axis was written,
+    screenshotted, and abandoned — every row was a horizontal line. Also found
+    that every sweep had been evaluating the million-iteration run mid-flight.
+- 899 unit tests, 138 Playwright, full gate green.
 - Next action: pick from the TASKS backlog. The largest open items are §17's
   cooperating-lane GPU organizations, `how-many-fit` by volume (wants a real
-  packing model), the search index, and the Lab's per-representation divergence
-  sparkline. Keep the same disciplines. One question is open for Daniel below.
+  packing model), the search index, and the sparkline's checkpoint-position x
+  axis (a log iteration axis would be truer). Keep the same disciplines. One
+  question is open for Daniel below.
 
 ## Session protocol
 
