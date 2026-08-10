@@ -85,6 +85,7 @@ export function exposeComputeBridge(): void {
         case 'addBlocks':
           return { sum: fromLimbs(low(out, 0, 32)).toString(), carryOut: out[32] === 1 };
         case 'sub':
+        case 'subLanes':
           return { difference: fromLimbs(low(out, 0, 32)).toString(), borrowOut: out[32] === 1 };
         case 'bitlen':
           return { bitLength: out[0]! };

@@ -145,7 +145,7 @@ test('the compute panel reports agreement where a device exists', async ({ page 
   await expect(gpuRow).toContainText('ADD agrees with the CPU machine', { timeout: 20000 });
   await expect(gpuRow).toContainText('checked bit-for-bit on these operands');
   // §17: the panel claims three organizations, so three have to have run.
-  await expect(gpuRow).toContainText('all 3 §17 organizations');
+  await expect(gpuRow).toContainText('all 3 §17 organizations of ADD');
   await expect(gpuRow).toContainText('32 lanes owning one each');
   await expect(gpuRow).toContainText('8 lanes of 4 limbs');
   if (process.env['SHOTS'] !== undefined) {
@@ -246,6 +246,25 @@ test('every limb fixture passes on the actual GPU (§18, §19)', async ({ page }
       difference: entry.difference,
       borrowOut: entry.borrowOut,
     });
+    checked += 1;
+  });
+
+  // The same lane scan carrying a borrow. It shares the network with the ADD
+  // kernel, so a fault in the scan shows up in two places at once — but only if
+  // both are swept.
+  const borrowScan = await runBatch(
+    'subLanes',
+    limbs.sub.map((entry) => ({ a: entry.a, b: entry.b })),
+  );
+  limbs.sub.forEach((entry, index) => {
+    expect(borrowScan[index], `subLanes ${entry.a} − ${entry.b}`).toEqual({
+      difference: entry.difference,
+      borrowOut: entry.borrowOut,
+    });
+    expect(
+      borrowScan[index],
+      `subLanes disagrees with the serial kernel on ${entry.a} − ${entry.b}`,
+    ).toEqual(subtractions[index]);
     checked += 1;
   });
 

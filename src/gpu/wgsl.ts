@@ -51,6 +51,55 @@ fn mul32(a: u32, b: u32) -> vec2<u32> {
 }
 `;
 
+/**
+ * The lane-cooperating carry network, shared by the ADD and SUB lane kernels.
+ *
+ * It composes one-bit flags and never looks at an operand, which is why one
+ * copy serves both: a borrow is a carry with the signs turned round, and a
+ * lookahead network does not care what it is carrying. Two copies would be two
+ * things to get right.
+ *
+ * `scan_lanes` expects `gen` and `prop` already filled for this lane and leaves
+ * `gen[i]` holding the combined generate flag for limbs 0 through i — so the
+ * carry *into* limb i is `gen[i - 1]`, which `carry_below` reads with the
+ * lane-0 case handled, because `gen[0u - 1u]` would wrap to index 4294967295.
+ *
+ * Both barriers are needed and both sit in uniform control flow: the first
+ * stops a lane overwriting a neighbour's value before that neighbour has read
+ * it, the second makes the new values visible before the next round. The
+ * function is only ever called unconditionally from `main`, which is what keeps
+ * the barriers inside it uniform.
+ */
+const LANE_SCAN = /* wgsl */ `
+var<workgroup> gen: array<u32, 32>;
+var<workgroup> prop: array<u32, 32>;
+
+fn scan_lanes(i: u32) {
+  workgroupBarrier();
+  for (var offset: u32 = 1u; offset < LIMBS; offset = offset << 1u) {
+    var g = gen[i];
+    var p = prop[i];
+    if (i >= offset) {
+      let g_low = gen[i - offset];
+      let p_low = prop[i - offset];
+      g = g | (p & g_low);
+      p = p & p_low;
+    }
+    workgroupBarrier();
+    gen[i] = g;
+    prop[i] = p;
+    workgroupBarrier();
+  }
+}
+
+fn carry_below(i: u32) -> u32 {
+  if (i == 0u) {
+    return 0u;
+  }
+  return gen[i - 1u];
+}
+`;
+
 /** ADD: out[0..31] is the wrapped sum, out[32] the carry out of the register. */
 export const ADD_WGSL = /* wgsl */ `${COMMON}
 @group(0) @binding(0) var<storage, read> a: array<u32, 32>;
@@ -106,13 +155,10 @@ fn main() {
  * organization actually built and checked bit-for-bit against the serial
  * kernel and the CPU machine on every committed ADD fixture (§19).
  */
-export const ADD_LANES_WGSL = /* wgsl */ `${COMMON}
+export const ADD_LANES_WGSL = /* wgsl */ `${COMMON}${LANE_SCAN}
 @group(0) @binding(0) var<storage, read> a: array<u32, 32>;
 @group(0) @binding(1) var<storage, read> b: array<u32, 32>;
 @group(0) @binding(2) var<storage, read_write> out: array<u32, 33>;
-
-var<workgroup> gen: array<u32, 32>;
-var<workgroup> prop: array<u32, 32>;
 
 @compute @workgroup_size(32)
 fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
@@ -120,30 +166,53 @@ fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
   let sum = a[i] + b[i];
   gen[i] = select(0u, 1u, sum < a[i]);
   prop[i] = select(0u, 1u, sum == 0xffffffffu);
-  workgroupBarrier();
 
-  for (var offset: u32 = 1u; offset < LIMBS; offset = offset << 1u) {
-    var g = gen[i];
-    var p = prop[i];
-    if (i >= offset) {
-      let g_low = gen[i - offset];
-      let p_low = prop[i - offset];
-      g = g | (p & g_low);
-      p = p & p_low;
-    }
-    workgroupBarrier();
-    gen[i] = g;
-    prop[i] = p;
-    workgroupBarrier();
-  }
+  scan_lanes(i);
 
-  // The carry into limb i is what everything below it generated. Lane 0 has
-  // nothing below it, and reading gen[0u - 1u] would be a wrap to 4294967295.
-  var carry_in: u32 = 0u;
-  if (i > 0u) {
-    carry_in = gen[i - 1u];
+  out[i] = sum + carry_below(i);
+  if (i == LIMBS - 1u) {
+    out[32] = gen[i];
   }
-  out[i] = sum + carry_in;
+}
+`;
+
+/**
+ * SUB with one lane per limb, on the same scan.
+ *
+ * A borrow is a carry with the signs turned round, and the scan does not need
+ * to know which it is carrying — it composes one-bit generate and propagate
+ * flags and never looks at the operands. Only the two predicates differ, and
+ * they differ in an instructive way:
+ *
+ *   ADD  generates when the sum wrapped;  propagates when the sum is all ones
+ *   SUB  generates when a < b;            propagates when the difference is 0
+ *
+ * The two propagate conditions are opposite poles — every bit set against every
+ * bit clear — because a borrow arriving at a zero limb turns it into all ones
+ * and leaves again, while a carry arriving at an all-ones limb turns it into
+ * zero and leaves again. And the exclusion holds on this side too: `a < b`
+ * makes the difference non-zero, so generate and propagate can no more both
+ * fire here than there.
+ *
+ * Sharing the scan rather than writing it twice is not tidiness. Two copies of
+ * a carry-lookahead network are two things to get right, and the mutants that
+ * killed the ADD version now stand in front of this one as well.
+ */
+export const SUB_LANES_WGSL = /* wgsl */ `${COMMON}${LANE_SCAN}
+@group(0) @binding(0) var<storage, read> a: array<u32, 32>;
+@group(0) @binding(1) var<storage, read> b: array<u32, 32>;
+@group(0) @binding(2) var<storage, read_write> out: array<u32, 33>;
+
+@compute @workgroup_size(32)
+fn main(@builtin(local_invocation_id) lid: vec3<u32>) {
+  let i = lid.x;
+  let diff = a[i] - b[i];
+  gen[i] = select(0u, 1u, a[i] < b[i]);
+  prop[i] = select(0u, 1u, diff == 0u);
+
+  scan_lanes(i);
+
+  out[i] = diff - carry_below(i);
   if (i == LIMBS - 1u) {
     out[32] = gen[i];
   }

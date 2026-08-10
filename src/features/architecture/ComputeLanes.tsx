@@ -22,11 +22,15 @@ import { describeWideLiteral } from '../../core/wide/parse';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
 
 /**
- * Every §17 organization, checked on the operands on screen. Listed here rather
- * than written into the check so the sentence below and the work done cannot
- * drift apart — the panel names three, so three run.
+ * Every §17 organization *of ADD*, checked on the operands on screen. Listed
+ * here rather than written into the check so the sentence below and the work
+ * done cannot drift apart — the panel names three, so three run.
+ *
+ * SUB has a lane organization too, but this panel draws an addition, and a
+ * verdict about a subtraction it is not showing would be a claim about
+ * something else.
  */
-const ORGANIZATIONS: readonly LimbOrganization[] = ['add', 'addLanes', 'addBlocks'];
+const ADD_ORGANIZATIONS: readonly LimbOrganization[] = ['add', 'addLanes', 'addBlocks'];
 
 const NOMINAL_WIDTH = 820;
 const LANE_HEIGHT = 84;
@@ -177,7 +181,7 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
           );
         };
         const verdicts = [];
-        for (const organization of ORGANIZATIONS) verdicts.push(await matches(organization));
+        for (const organization of ADD_ORGANIZATIONS) verdicts.push(await matches(organization));
         conclude(
           verdicts.every(Boolean)
             ? { kind: 'agrees', description: machine.description }
@@ -267,9 +271,9 @@ export function ComputeLanes({ a, b, digitProduct, digitCycles, digitBits }: Com
                   <small>
                     checked bit-for-bit on these operands · {gpu.description}
                     <br />
-                    all {ORGANIZATIONS.length} §17 organizations: one thread owning 32 limbs, 32
-                    lanes owning one each with the carry resolved by a 5-round scan, and 8 lanes of
-                    4 limbs rippling inside and scanning across in 3
+                    all {ADD_ORGANIZATIONS.length} §17 organizations of ADD: one thread owning 32
+                    limbs, 32 lanes owning one each with the carry resolved by a 5-round scan, and 8
+                    lanes of 4 limbs rippling inside and scanning across in 3
                   </small>
                 </>
               )}

@@ -1551,11 +1551,33 @@ Follow-ups deliberately not taken:
       internally, making the two sums identical throughout it. The tests can
       only differ where the flag is 0 either way. Proof is in the kernel comment
       rather than a test, because there is nothing there to catch.
+- [x] SUB on the same lane scan, which turned out to be worth more than a second
+      copy of a technique. A borrow is a carry with the signs turned round, and
+      a lookahead network composes one-bit flags without ever looking at an
+      operand — so one scan serves both and only the two predicates differ:
+
+          ADD  generates when the sum wrapped;  propagates when the sum is all ones
+          SUB  generates when a < b;            propagates when the difference is 0
+
+      The propagate conditions are opposite poles, every bit set against every
+      bit clear, because a borrow arriving at a zero limb turns it into all ones
+      and leaves again while a carry arriving at an all-ones limb turns it into
+      zero and leaves again. The generate/propagate exclusion holds on both
+      sides for the matching reason.
+
+      Sharing the scan is not tidiness: two copies of a carry-lookahead network
+      are two things to get right, and the mutants that killed the ADD version
+      now stand in front of the borrow one too. Five more killed, including the
+      copy-paste the sharing invites — a borrow propagating on ADD's all-ones
+      condition. 315 GPU checks.
 - [ ] §17's remaining organization is one subgroup per wide scalar, which needs
-      WGSL subgroup intrinsics — an optional feature, so it also needs the
-      absence path the rest of this track already has. And SUB could take the
-      same treatment, its borrow scan being the same shape; ADD was the one
-      where the difficulty lives.
+      WGSL subgroup intrinsics. Two things to face rather than discover: they
+      are an optional feature, so it needs the absence path the rest of this
+      track already has, and subgroup *size* is hardware-dependent — RDNA-3 is
+      wave32 or wave64 — so a 32-lane scan written against `subgroupShuffleUp`
+      would be verified here and unverified everywhere else. That is a weaker
+      claim than the rest of this track makes, and worth deciding about before
+      writing it rather than after.
 - [ ] The panel visualizes ADD only. Op selector (SUB/MUL/DIV_REM views) is a
       question for Daniel in PLAN.md.
 - [ ] Zero-limb skipping in mulLimbs, to mirror §4 at limb level. The dense
