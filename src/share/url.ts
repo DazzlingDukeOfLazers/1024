@@ -79,6 +79,7 @@ interface ShareStateJSON {
     digitBits: number;
     scenario: string;
     skipZeroDigits: boolean;
+    divisionStep?: number;
   };
   representations: { q128Preset: string };
 }
@@ -264,6 +265,13 @@ export function stateFromJSON(json: unknown): AppState {
         typeof record.architecture?.skipZeroDigits === 'boolean'
           ? record.architecture.skipZeroDigits
           : defaults.architecture.skipZeroDigits,
+      // How many steps exist depends on the operands, so a shared position can
+      // be past the end of the division it lands in. The panel clamps; the
+      // decoder only guarantees a non-negative whole number.
+      divisionStep: Math.max(
+        0,
+        Math.floor(requireFiniteNumber(record.architecture?.divisionStep, 0)),
+      ),
     },
     representations: {
       q128Preset:

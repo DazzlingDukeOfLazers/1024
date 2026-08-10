@@ -1071,3 +1071,80 @@ test('the Planck grid states that it is a thought experiment', async ({ page }) 
   await expect(planck).toContainText('CODATA 2018');
   await expect(planck.getByRole('rowheader', { name: 'This value' })).toBeVisible();
 });
+
+test('the division identity holds at every step, and says so', async ({ page }) => {
+  // §22 asks for `A = Q x B + R` to be displayed continuously. The panel does
+  // not assert that from a comment: it recomputes the identity from the state it
+  // is drawing and reports the verdict, so a trace that drifted from the machine
+  // would show here rather than looking plausible.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+
+  const slider = page.getByLabel('Quotient digit');
+  const verdict = readoutRow(page, 'A = Q × B + R');
+  const tape = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'One quotient digit at a time' }) })
+    .locator('svg');
+
+  await expect(verdict).toContainText('holds');
+
+  const max = Number(await slider.getAttribute('max'));
+  expect(max).toBeGreaterThan(100);
+
+  for (const position of [1, 7, Math.floor(max / 2), max - 1, max]) {
+    await slider.fill(String(position));
+    await expect(verdict, `step ${position}`).toContainText('holds');
+    await expect(tape, `step ${position}`).toContainText(`step ${position} of ${max}`);
+  }
+});
+
+test('the tape actually fills in as the quotient is produced', async ({ page }) => {
+  // Anti-vacuity for the drawing. An empty strip and a broken strip look
+  // identical, and the default operands genuinely produce nothing but zeros for
+  // three hundred steps: the first set quotient bit cannot appear until the part
+  // of the dividend read so far exceeds B, which is about 2^300.
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  const tape = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'One quotient digit at a time' }) })
+    .locator('svg');
+
+  const setBits = async () =>
+    tape.evaluate(
+      (svg) =>
+        Array.from(svg.querySelectorAll('rect'))
+          .slice(0, 48)
+          .filter((cell) => cell.getAttribute('fill-opacity') === '0.6').length,
+    );
+
+  await expect(page.getByLabel('Quotient digit')).toHaveValue('0');
+  expect(await setBits(), 'before the machine starts').toBe(0);
+
+  await page.getByLabel('Quotient digit').fill('400');
+  expect(await setBits(), 'well into the quotient').toBe(48);
+});
+
+test('a divisor of zero has no quotient and does not take the lens down', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('B', { exact: true }).fill('0');
+
+  await expect(page.getByText('DIV_REM by zero has no quotient')).toBeVisible();
+  // The rest of the lab is unaffected, which is the difference between a value
+  // the machine refuses and a lens that broke.
+  await expect(page.getByRole('heading', { name: 'The same arithmetic, four ways' })).toBeVisible();
+  await expect(page.locator('[data-lens-failed]')).toHaveCount(0);
+});
+
+test('a shared link carries the division position', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Architecture Lab' }).click();
+  await page.getByLabel('Quotient digit').fill('412');
+  await page.getByRole('button', { name: 'Share this view' }).click();
+  const url = await page.getByLabel('Share URL').inputValue();
+
+  await page.goto(url);
+  await expect(page.getByLabel('Quotient digit')).toHaveValue('412');
+});

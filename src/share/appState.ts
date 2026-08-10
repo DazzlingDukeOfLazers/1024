@@ -73,6 +73,12 @@ export interface ArchitectureState {
   readonly digitBits: DigitWidth;
   readonly scenario: ScenarioName;
   readonly skipZeroDigits: boolean;
+  /**
+   * How many quotient digits of `A / B` the division panel has produced. Zero is
+   * the machine before it starts, which is a real state and not an empty one:
+   * `0 = 0 x B + 0` is the identity holding before any work has been done.
+   */
+  readonly divisionStep: number;
 }
 
 export interface RepresentationState {
@@ -122,6 +128,7 @@ export function defaultAppState(): AppState {
       digitBits: 64,
       scenario: 'round',
       skipZeroDigits: true,
+      divisionStep: 0,
     },
     representations: { q128Preset: 'm' },
   };

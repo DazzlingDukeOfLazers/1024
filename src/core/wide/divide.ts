@@ -47,6 +47,52 @@ export interface DivRemRequest extends DivisionCosts {
    */
   readonly fractionBits?: number;
   readonly algorithm?: DivisionAlgorithm;
+  /**
+   * Record the state after every quotient bit. §22 asks for the quotient digits
+   * and the remainder to be animated, which needs the intermediate states rather
+   * than the answer, and off by default because a 1024-bit division has a
+   * thousand of them and almost every caller wants none.
+   */
+  readonly trace?: boolean;
+}
+
+/**
+ * One quotient bit, and what the machine held after producing it.
+ *
+ * The loop invariant is the headline identity narrowed to the part of the
+ * dividend seen so far: `consumed = quotient × divisor + remainder`. §22 asks
+ * for `A = Q × B + R` to be displayed continuously, and this is what makes that
+ * a true statement at every frame rather than only at the end.
+ */
+export interface DivisionStep {
+  /** Bit position of the scaled dividend consumed by this step. */
+  readonly index: number;
+  /** The quotient bits the machine has actually recorded. */
+  readonly quotient: bigint;
+  /**
+   * The quotient value the identity holds for: `consumed = quotientSoFar ×
+   * divisor + remainder`.
+   *
+   * Under restoring division this is the recorded bits, unchanged. Under
+   * non-restoring it is not, and the difference is worth stating rather than
+   * papering over. Non-restoring records bit `k` from the sign of `R_k`, so the
+   * bits lag the signed digits `±1` by one step; the identity holds for the
+   * signed-digit accumulation, which is why the algorithm needs a correction at
+   * the end and the restoring one does not. Displaying `quotient` against the
+   * identity would show it broken at every intermediate step of a correct
+   * division.
+   */
+  readonly quotientSoFar: bigint;
+  /**
+   * Remainder held after this step. Non-negative under restoring division;
+   * under non-restoring it is allowed to go negative, which is the whole point
+   * of the algorithm and is visible here rather than hidden.
+   */
+  readonly remainder: bigint;
+  /** The high bits of the scaled dividend consumed so far. */
+  readonly consumed: bigint;
+  /** Whether this step's quotient bit came out as a one. */
+  readonly bit: boolean;
 }
 
 /** §20, for division. */
@@ -72,6 +118,8 @@ export interface DivRemResult {
   readonly exact: boolean;
   readonly fractionBits: number;
   readonly metrics: DivisionMetrics;
+  /** Present only when the request asked for it. */
+  readonly steps?: readonly DivisionStep[];
   /** Enough to continue from, per §12. */
   readonly state: DivisionState;
 }
@@ -114,18 +162,31 @@ interface Digits {
  * Bring down one bit, compare, subtract if it fits, and put it back if it does
  * not. The SHIFT / COMPARE / SUBTRACT loop §10 describes, in its plainest form.
  */
-function restoring(scaled: bigint, divisor: bigint, bits: number): Digits {
+function restoring(scaled: bigint, divisor: bigint, bits: number, trace?: DivisionStep[]): Digits {
   let remainder = 0n;
   let quotient = 0n;
+  let consumed = 0n;
   let subtracts = 0;
 
   for (let index = bits - 1; index >= 0; index -= 1) {
-    remainder = (remainder << 1n) | ((scaled >> BigInt(index)) & 1n);
+    const bit = (scaled >> BigInt(index)) & 1n;
+    remainder = (remainder << 1n) | bit;
     quotient <<= 1n;
     if (remainder >= divisor) {
       remainder -= divisor;
       quotient |= 1n;
       subtracts += 1;
+    }
+    if (trace !== undefined) {
+      consumed = (consumed << 1n) | bit;
+      trace.push({
+        index,
+        quotient,
+        quotientSoFar: quotient,
+        remainder,
+        consumed,
+        bit: (quotient & 1n) === 1n,
+      });
     }
   }
   return { remainder, quotient, shifts: bits, compares: bits, subtracts };
@@ -141,19 +202,42 @@ function restoring(scaled: bigint, divisor: bigint, bits: number): Digits {
  * what a comparison costs relative to an addition, which is why both are here
  * and why the costs are parameters.
  */
-function nonRestoring(scaled: bigint, divisor: bigint, bits: number): Digits {
+function nonRestoring(
+  scaled: bigint,
+  divisor: bigint,
+  bits: number,
+  trace?: DivisionStep[],
+): Digits {
   let remainder = 0n;
   let quotient = 0n;
+  let consumed = 0n;
+  // The signed-digit quotient the loop invariant is stated over: one ±1 digit
+  // per step, chosen by the sign of the *previous* remainder. Only tracked when
+  // someone is watching, since nothing but the trace needs it.
+  let signed = 0n;
   let addsAndSubtracts = 0;
 
   for (let index = bits - 1; index >= 0; index -= 1) {
     const negative = remainder < 0n;
-    remainder = (remainder << 1n) | ((scaled >> BigInt(index)) & 1n);
+    const bit = (scaled >> BigInt(index)) & 1n;
+    remainder = (remainder << 1n) | bit;
     remainder = negative ? remainder + divisor : remainder - divisor;
     addsAndSubtracts += 1;
 
     quotient <<= 1n;
     if (remainder >= 0n) quotient |= 1n;
+    if (trace !== undefined) {
+      consumed = (consumed << 1n) | bit;
+      signed = signed * 2n + (negative ? -1n : 1n);
+      trace.push({
+        index,
+        quotient,
+        quotientSoFar: signed,
+        remainder,
+        consumed,
+        bit: (quotient & 1n) === 1n,
+      });
+    }
   }
 
   // The correction that pays for never having restored.
@@ -161,6 +245,15 @@ function nonRestoring(scaled: bigint, divisor: bigint, bits: number): Digits {
   if (remainder < 0n) {
     remainder += divisor;
     corrections = 1;
+    if (trace !== undefined) {
+      const last = trace[trace.length - 1];
+      if (last !== undefined) {
+        // Adding the divisor back moves one unit out of the quotient and into
+        // the remainder, so the identity survives the correction: it is the same
+        // equation with `Q − 1` and `R + B`.
+        trace.push({ ...last, index: -1, remainder, quotientSoFar: last.quotientSoFar - 1n });
+      }
+    }
   }
 
   return {
@@ -179,6 +272,7 @@ export function divRem(request: DivRemRequest): DivRemResult {
     divisor,
     fractionBits = 0,
     algorithm = 'restoring-radix-2',
+    trace: wantTrace = false,
     ...costOverrides
   } = request;
 
@@ -194,10 +288,11 @@ export function divRem(request: DivRemRequest): DivRemResult {
   const divisorMagnitude = divisor < 0n ? -divisor : divisor;
 
   const bits = bitLength(scaled);
+  const steps = wantTrace ? [] : undefined;
   const { remainder, quotient, shifts, compares, subtracts } =
     algorithm === 'restoring-radix-2'
-      ? restoring(scaled, divisorMagnitude, bits)
-      : nonRestoring(scaled, divisorMagnitude, bits);
+      ? restoring(scaled, divisorMagnitude, bits, steps)
+      : nonRestoring(scaled, divisorMagnitude, bits, steps);
 
   const partial = {
     algorithm,
@@ -216,6 +311,7 @@ export function divRem(request: DivRemRequest): DivRemResult {
     exact: remainder === 0n,
     fractionBits,
     metrics,
+    ...(steps === undefined ? {} : { steps }),
     state: {
       quotientMagnitude: quotient,
       remainderMagnitude: remainder,

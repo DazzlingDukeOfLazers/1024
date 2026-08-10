@@ -154,6 +154,7 @@ describe('everything else in the view', () => {
       digitBits: 32,
       scenario: 'preserve',
       skipZeroDigits: false,
+      divisionStep: 412,
     },
     representations: { q128Preset: 'mm' },
   };
@@ -164,6 +165,24 @@ describe('everything else in the view', () => {
 
   it('carries the architecture lab settings', () => {
     expect(roundTrip(state).architecture).toEqual(state.architecture);
+  });
+
+  it('takes a division position written before the panel existed as the start', () => {
+    // Same rule one field down: a link shared when the lab had no division
+    // panel is still a valid link, and lands at step zero rather than failing.
+    const withoutStep = {
+      ...state,
+      architecture: { ...state.architecture, divisionStep: undefined },
+    } as unknown as AppState;
+    expect(roundTrip(withoutStep).architecture.divisionStep).toBe(0);
+  });
+
+  it('refuses to restore a nonsense division position', () => {
+    const negative = {
+      ...state,
+      architecture: { ...state.architecture, divisionStep: -7.5 },
+    } as unknown as AppState;
+    expect(roundTrip(negative).architecture.divisionStep).toBe(0);
   });
 
   it('restores a link written before the architecture lens existed', () => {

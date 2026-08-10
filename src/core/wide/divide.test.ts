@@ -283,3 +283,88 @@ describe('division and narrowing are different decisions', () => {
     expect(refined.quotient & 1n).toBe(0n);
   });
 });
+
+describe('the identity holds at every step, not only at the end (§22)', () => {
+  // §22 asks for `A = Q × B + R` to be displayed continuously while the quotient
+  // digits appear. That is only worth drawing if it is true at every frame, so
+  // the trace is checked against the loop invariant it claims to expose:
+  //
+  //     consumed = quotient × divisor + remainder
+  //
+  // where `consumed` is the part of the scaled dividend the machine has read so
+  // far. The end-of-run identity is a special case, which is the point.
+  const CASES = [
+    { dividend: (1n << 512n) + 12345n, divisor: 7n, fractionBits: 0 },
+    { dividend: 1n, divisor: 3n, fractionBits: 24 },
+    { dividend: -1000n, divisor: 7n, fractionBits: 8 },
+    { dividend: 1000n, divisor: -7n, fractionBits: 8 },
+    { dividend: 0n, divisor: 5n, fractionBits: 4 },
+    { dividend: 255n, divisor: 256n, fractionBits: 0 },
+  ] as const;
+
+  for (const algorithm of DIVISION_ALGORITHMS) {
+    it(`holds under ${algorithm}`, () => {
+      let stepsSeen = 0;
+      for (const { dividend, divisor, fractionBits } of CASES) {
+        const result = divRem({ dividend, divisor, fractionBits, algorithm, trace: true });
+        const magnitude = divisor < 0n ? -divisor : divisor;
+        const steps = result.steps!;
+        stepsSeen += steps.length;
+
+        for (const step of steps) {
+          expect(step.consumed, `${dividend}/${divisor} at bit ${step.index}`).toBe(
+            step.quotientSoFar * magnitude + step.remainder,
+          );
+        }
+      }
+      // Anti-vacuity: a zero dividend produces no steps at all, and a suite of
+      // those would satisfy the loop above without examining anything.
+      expect(stepsSeen, 'steps examined').toBeGreaterThan(500);
+    });
+  }
+
+  it('leaves the remainder non-negative at every restoring step', () => {
+    const result = divRem({ dividend: 1n, divisor: 3n, fractionBits: 32, trace: true });
+    for (const step of result.steps!) expect(step.remainder >= 0n).toBe(true);
+  });
+
+  it('lets the remainder go negative under non-restoring, which is the algorithm', () => {
+    // Not a defect to be smoothed over: subtracting unconditionally is exactly
+    // what buys the missing comparison, and a trace that hid it would be drawing
+    // a restoring division under a non-restoring label.
+    const result = divRem({
+      dividend: 1n,
+      divisor: 3n,
+      fractionBits: 32,
+      algorithm: 'non-restoring-radix-2',
+      trace: true,
+    });
+    expect(result.steps!.some((step) => step.remainder < 0n)).toBe(true);
+  });
+
+  it('ends where the untraced division ends', () => {
+    // The trace must be a record of the run, not a second run beside it.
+    for (const algorithm of DIVISION_ALGORITHMS) {
+      const request = { dividend: (1n << 200n) + 7n, divisor: 11n, fractionBits: 16, algorithm };
+      const plain = divRem(request);
+      const traced = divRem({ ...request, trace: true });
+      expect(traced.quotient, algorithm).toBe(plain.quotient);
+      expect(traced.remainder, algorithm).toBe(plain.remainder);
+      expect(traced.metrics, algorithm).toEqual(plain.metrics);
+      const last = traced.steps![traced.steps!.length - 1]!;
+      const magnitude = plain.quotient < 0n ? -plain.quotient : plain.quotient;
+      expect(last.quotient, algorithm).toBe(magnitude);
+      // And the two accounts of the quotient agree once the run is over, which
+      // is what makes the signed-digit column a different route to the same
+      // number rather than a different number.
+      expect(last.quotientSoFar, algorithm).toBe(magnitude);
+      expect(last.remainder, algorithm).toBe(
+        plain.remainder < 0n ? -plain.remainder : plain.remainder,
+      );
+    }
+  });
+
+  it('costs nothing when it is not asked for', () => {
+    expect(divRem({ dividend: 100n, divisor: 7n }).steps).toBeUndefined();
+  });
+});

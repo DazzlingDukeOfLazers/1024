@@ -109,6 +109,25 @@ for (const digitBits of ['8', '128'] as const) {
   });
 }
 
+// The division panel: the start, somewhere in the middle, and a divisor of zero,
+// which has no quotient and no remainder and must say so rather than taking the
+// lens down with it.
+for (const [name, position, b] of [
+  ['division-start', '0', '2^300 + 1'],
+  ['division-midway', '300', '2^300 + 1'],
+  ['division-by-zero', '0', '0'],
+] as const) {
+  STATES.push({
+    name: `architecture/${name}`,
+    reach: async (page) => {
+      await lens('Architecture Lab')(page);
+      await page.getByLabel('B', { exact: true }).fill(b);
+      const slider = page.getByLabel('Quotient digit');
+      if ((await slider.count()) > 0) await slider.fill(position);
+    },
+  });
+}
+
 // The scenario selector governs the comparison panel as well as the narrowing
 // readout, and `Trap on any inexact result` is the state where a row has no
 // markers to draw and falls back to text. That is a first-run path, which is

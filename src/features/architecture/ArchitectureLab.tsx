@@ -32,6 +32,7 @@ import {
   type RepresentationRun,
   compareRepresentations,
 } from '../../core/wide/comparison';
+import { type DivisionStep, divRem } from '../../core/wide/divide';
 import { describeWideLiteral, parseWideLiteral } from '../../core/wide/parse';
 import { isZero } from '../../core/rational/rational';
 import { log10RationalForDisplay } from '../../core/rational/log10';
@@ -389,6 +390,139 @@ function NarrowBands({ fullBits, destinationBits }: { fullBits: number; destinat
 }
 
 /* -------------------------------------------------------------------------- */
+/* §22: division, one quotient digit at a time                                  */
+/* -------------------------------------------------------------------------- */
+
+/** Fraction bits the division panel asks for. §11's scaling, at a legible size. */
+const DIVISION_FRACTION_BITS = 16;
+/** How many quotient bits are shown around the current one. */
+const TAPE_WINDOW = 48;
+const TAPE_HEIGHT = 108;
+
+/**
+ * The tape head. A digit-serial divider produces one bit per step, and a strip
+ * of seven hundred 1.6-pixel cells is a texture rather than a diagram — so this
+ * shows the window of bits ending at the current step, the way you would watch
+ * the machine, with an overview bar saying where in the run that window is.
+ */
+function QuotientTape({
+  steps,
+  position,
+  divisor,
+}: {
+  steps: readonly DivisionStep[];
+  position: number;
+  divisor: bigint;
+}) {
+  const [width, measure] = useMeasuredWidth(NOMINAL_WIDTH);
+  const shown = steps.slice(Math.max(0, position - TAPE_WINDOW), position);
+  const gap = 2;
+  const cell = Math.max((width - gap * (TAPE_WINDOW - 1)) / TAPE_WINDOW, 1);
+  const current = position === 0 ? undefined : steps[position - 1];
+
+  // The remainder as a fraction of the divisor. Restoring division keeps it in
+  // [0, B), so the bar is the standing proof of that: a bar past the line would
+  // mean a quotient digit that should have been produced and was not. Under
+  // non-restoring it may go negative, and the bar shows that rather than
+  // clamping it away.
+  const ratio =
+    current === undefined || divisor === 0n
+      ? 0
+      : Number((current.remainder * 1000n) / divisor) / 1000;
+  const barLeft = width / 2;
+  const barSpan = width / 2 - 4;
+
+  return (
+    <div ref={measure}>
+      <svg
+        viewBox={`0 0 ${width} ${TAPE_HEIGHT}`}
+        width="100%"
+        role="img"
+        aria-label={`Quotient bits ${Math.max(0, position - TAPE_WINDOW)} to ${position} of ${steps.length}, with the remainder held after the last of them`}
+      >
+        <text x={0} y={12} fontSize={LABEL_FONT_SIZE} fill="currentColor" fillOpacity={0.6}>
+          quotient bits, most recent on the right
+        </text>
+        {shown.map((step, index) => {
+          const x = (TAPE_WINDOW - shown.length + index) * (cell + gap);
+          const last = index === shown.length - 1;
+          return (
+            <rect
+              key={step.index}
+              x={x}
+              y={20}
+              width={cell}
+              height={26}
+              rx={2}
+              fill="currentColor"
+              fillOpacity={step.bit ? 0.6 : 0.08}
+              stroke="currentColor"
+              strokeOpacity={last ? 0.95 : step.bit ? 0.5 : 0.18}
+              strokeWidth={last ? 2 : 1}
+            />
+          );
+        })}
+
+        {/* Where the window sits in the whole run. */}
+        <rect x={0} y={54} width={width} height={4} rx={2} fill="currentColor" fillOpacity={0.08} />
+        {steps.length > 0 && (
+          <rect
+            x={(Math.max(0, position - TAPE_WINDOW) / steps.length) * width}
+            y={54}
+            width={Math.max(2, (shown.length / steps.length) * width)}
+            height={4}
+            rx={2}
+            fill="currentColor"
+            fillOpacity={0.55}
+          />
+        )}
+        <text x={0} y={76} fontSize={LABEL_FONT_SIZE} fill="currentColor" fillOpacity={0.6}>
+          step {position} of {steps.length}
+        </text>
+
+        <text
+          x={barLeft}
+          y={76}
+          fontSize={LABEL_FONT_SIZE}
+          fill="currentColor"
+          fillOpacity={0.6}
+          textAnchor="start"
+        >
+          remainder ÷ divisor
+        </text>
+        <line
+          x1={barLeft}
+          y1={96}
+          x2={barLeft + barSpan}
+          y2={96}
+          stroke="currentColor"
+          strokeOpacity={0.15}
+        />
+        <rect
+          x={ratio < 0 ? barLeft + barSpan * Math.max(ratio, -1) : barLeft}
+          y={84}
+          width={Math.max(1, barSpan * Math.min(Math.abs(ratio), 1))}
+          height={12}
+          rx={2}
+          fill="currentColor"
+          fillOpacity={ratio < 0 ? 0.3 : 0.55}
+        />
+        <text
+          x={barLeft + barSpan}
+          y={80}
+          fontSize={LABEL_FONT_SIZE}
+          textAnchor="end"
+          fill="currentColor"
+          fillOpacity={0.6}
+        >
+          1
+        </text>
+      </svg>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /* The lens                                                                    */
 /* -------------------------------------------------------------------------- */
 
@@ -462,6 +596,32 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
     }
     return { profileA, profileB, product, narrowed, refusal };
   }, [parsed, state.digitBits, state.skipZeroDigits, scenario]);
+
+  /**
+   * §22's division: `A / B`, with every intermediate state kept.
+   *
+   * Dividing by zero has no quotient and no remainder, and the machine says so
+   * by throwing. That is correct, and letting it out of here would put the whole
+   * lens behind an apology for a value the user is allowed to type — the same
+   * mistake the trap scenario made one panel over.
+   */
+  const division = useMemo(() => {
+    if (parsed.a === undefined || parsed.b === undefined) return undefined;
+    try {
+      return {
+        result: divRem({
+          dividend: parsed.a,
+          divisor: parsed.b,
+          fractionBits: DIVISION_FRACTION_BITS,
+          trace: true,
+        }),
+        error: undefined,
+      };
+    } catch (error) {
+      if (!(error instanceof WideError)) throw error;
+      return { result: undefined, error: error.message };
+    }
+  }, [parsed]);
 
   /**
    * §21's comparison, under whichever scenario is selected. The two workloads
@@ -697,6 +857,87 @@ export function ArchitectureLab({ state, onChange }: ArchitectureLabProps) {
             </p>
           </section>
         </>
+      )}
+
+      {division !== undefined && (
+        <section className="panel">
+          <h3>One quotient digit at a time</h3>
+          {division.error !== undefined && <p className="error">{division.error}</p>}
+          {division.result !== undefined &&
+            (() => {
+              const steps = division.result.steps ?? [];
+              // A shared link can carry a position from a different pair of
+              // operands, so the stored step is a request rather than a fact.
+              const position = Math.min(state.divisionStep, steps.length);
+              const current = position === 0 ? undefined : steps[position - 1];
+              const divisorMagnitude =
+                parsed.b === undefined ? 0n : parsed.b < 0n ? -parsed.b : parsed.b;
+              const consumed = current?.consumed ?? 0n;
+              const quotient = current?.quotientSoFar ?? 0n;
+              const remainder = current?.remainder ?? 0n;
+              const holds = consumed === quotient * divisorMagnitude + remainder;
+
+              return (
+                <>
+                  <div className="field">
+                    <label htmlFor="wide-division-step">Quotient digit</label>
+                    <input
+                      id="wide-division-step"
+                      type="range"
+                      min={0}
+                      max={steps.length}
+                      value={position}
+                      onChange={(event) => {
+                        const divisionStep = Number(event.target.value);
+                        onChange((currentState) => ({ ...currentState, divisionStep }));
+                      }}
+                    />
+                  </div>
+                  <QuotientTape steps={steps} position={position} divisor={divisorMagnitude} />
+                  <table className="readout">
+                    <tbody>
+                      <tr>
+                        <th scope="row">Read so far</th>
+                        <td className="mono">{describeWideLiteral(consumed)}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Quotient × divisor</th>
+                        <td className="mono">
+                          {describeWideLiteral(quotient)} × {describeWideLiteral(divisorMagnitude)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Remainder</th>
+                        <td className="mono">{describeWideLiteral(remainder)}</td>
+                      </tr>
+                      <tr>
+                        <th scope="row">A = Q × B + R</th>
+                        <td className="mono">
+                          {holds ? (
+                            <span className="tag tag-exact">holds</span>
+                          ) : (
+                            <span className="error">does not hold at this step</span>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th scope="row">Modeled cycles</th>
+                        <td className="mono">{division.result.metrics.modeledCycles}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p className="lens-question">
+                    Shift a bit down, compare, subtract if it fits. The identity is not something
+                    the division arrives at when it finishes — it is true after every single digit,
+                    with the remainder holding exactly what has not been accounted for yet. Step
+                    zero is the machine before it starts, where <code>0 = 0 × B + 0</code>. The
+                    numerator is scaled by 2<sup>{DIVISION_FRACTION_BITS}</sup> first (§11), so the
+                    last {DIVISION_FRACTION_BITS} digits are the fraction.
+                  </p>
+                </>
+              );
+            })()}
+        </section>
       )}
 
       <section className="panel">

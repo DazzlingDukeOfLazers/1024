@@ -1141,6 +1141,29 @@ the *default* — the value every other test in the file actually runs at — wa
 still unpinned. Fixing the case in front of me and missing the one beside it,
 again, at the level of the test rather than the code.
 
+## The identity that was only true at the end
+
+§22 asks for `A = Q x B + R` to be displayed continuously while the quotient
+digits appear. Writing the trace found that the identity is not true at every
+step of *both* algorithms, in a way worth keeping rather than smoothing over.
+
+Restoring division satisfies `consumed = quotient x divisor + remainder` after
+every single bit. Non-restoring does not, because it records bit `k` from the
+sign of `R_k` — so the recorded bits lag the signed digits by one step, and the
+identity holds for the signed-digit accumulation instead. That lag is exactly
+why the algorithm needs a final correction and the restoring one does not. The
+trace carries both: `quotient` is what the machine recorded, `quotientSoFar` is
+what the identity holds for, and the test asserts they agree once the run ends.
+
+The first version of the test asserted the identity against `quotient` for both,
+and failed at the first bit of the first case. The failure was the useful part.
+
+- [ ] Radix-2^N and reciprocal-based division (§10) still open. The trace shape
+      should hold either, but neither has been tried against it.
+- [ ] The quotient tape shows a 48-bit window. A run of 717 steps at 1.6 px a
+      cell is a texture rather than a diagram, and the window is the fix; an
+      autoplay control over it is not built.
+
 ## Hardening
 
 - [x] Playwright critical path.
