@@ -260,6 +260,17 @@ export interface ResolutionProfile {
   readonly label: string;
   readonly constant: boolean;
   readonly samples: readonly ResolutionSample[];
+  /**
+   * What the legend says about this line, when "constant" or "grows" is not
+   * what this chart shows.
+   *
+   * `constant` is a property of the machine across every magnitude; a legend is
+   * a claim about the picture under it. The subnormal inset caught the
+   * difference — binary64 is drawn there precisely because it *stops* growing,
+   * and the legend read "(grows)" over a line that is flat for most of its
+   * width.
+   */
+  readonly behaviour?: string | undefined;
 }
 
 /** The local spacing a representation offers at a given magnitude. */
@@ -296,6 +307,18 @@ export function resolutionProfile(
   }
   return { id, label, constant, samples };
 }
+
+/**
+ * The domain of the subnormal inset, straddling the smallest normal.
+ *
+ * 2^-1022 is about 10^-307.65, so this puts the knee a little past the middle:
+ * flat to the left of it, climbing to the right. Both halves have to be in the
+ * picture or the inset shows a straight line and says "here is where it bends".
+ * A mutant that narrowed this to the flat side alone survived every text
+ * assertion, which is why the shape is now a property with a test rather than a
+ * pair of numbers at a call site.
+ */
+export const SUBNORMAL_INSET_DOMAIN = { from: -325, to: -295 } as const;
 
 /** The profiles the microscope charts by default. */
 export function defaultProfiles(

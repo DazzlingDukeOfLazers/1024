@@ -397,6 +397,44 @@ test('the planck grid shows what it is conditioned on', async ({ page }) => {
   await expect(panel).toContainText('the 2022 adjustment publishes the identical Planck length');
 });
 
+test('the resolution chart shows where binary64 stops climbing', async ({ page }) => {
+  await openMicroscope(page);
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Local resolution against magnitude' }) });
+
+  // Two charts: the one about metres, and the one 270 decades to its left —
+  // and they have to announce themselves differently. When they did not, a
+  // listener would have been told the same six words twice with no way to tell
+  // which decades each covered.
+  const charts = panel.locator('svg[aria-label]');
+  await expect(charts).toHaveCount(2);
+  const names = await charts.evaluateAll((nodes) =>
+    nodes.map((node) => node.getAttribute('aria-label')),
+  );
+  expect(new Set(names).size).toBe(2);
+  expect(names[1]).toContain('below the smallest normal');
+  // And neither name contains the other: accessible-name lookup is by
+  // substring in most tooling, so a name that merely extends another is still
+  // ambiguous. This broke a second time after the labels were first made
+  // distinct, which is why it is asserted rather than eyeballed.
+  expect(names[1]!.includes(names[0]!)).toBe(false);
+  expect(names[0]!.includes(names[1]!)).toBe(false);
+  await expect(panel).toContainText('where it stops climbing');
+  await expect(panel).toContainText('down here binary64 is a fixed-point machine');
+
+  // The inset's legend describes the picture, not the machine. binary64
+  // "grows" everywhere else and does not on the left half of this one.
+  await expect(panel).toContainText('binary64 (grows)');
+  await expect(panel).toContainText('binary64 (flat, then grows)');
+
+  // And it says why the other two machines are absent rather than leaving a
+  // one-line chart to look like an oversight.
+  await expect(panel).toContainText('Only binary64 is drawn');
+  await expect(panel).toContainText('285 decades coarser');
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 

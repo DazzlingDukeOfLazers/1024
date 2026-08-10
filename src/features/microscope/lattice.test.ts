@@ -9,6 +9,7 @@ import {
   planckLatticeReport,
   q128LatticeReport,
   representabilityAtBaseUnit,
+  SUBNORMAL_INSET_DOMAIN,
 } from './lattice';
 import {
   ONE,
@@ -332,6 +333,54 @@ describe('the resolution profile', () => {
     const atMm = defaultProfiles('mm', -10, 0).find((entry) => entry.id === 'q128.128@mm')!;
     const atKm = defaultProfiles('km', -10, 0).find((entry) => entry.id === 'q128.128@km')!;
     expect(atMm.samples[0]!.log10Gap!).toBeLessThan(atKm.samples[0]!.log10Gap!);
+  });
+});
+
+describe('the subnormal inset', () => {
+  const binary64Over = (from: number, to: number) =>
+    defaultProfiles('m', from, to)
+      .find((profile) => profile.id === 'binary64')!
+      .samples.map((sample) => sample.log10Gap!);
+
+  const shape = (gaps: readonly number[]) => {
+    const flat = gaps.filter((gap, index) => index === 0 || gap === gaps[0]).length;
+    const rising = gaps.filter((gap, index) => index > 0 && gap > gaps[index - 1]!).length;
+    return { flat, rising };
+  };
+
+  it('contains both halves of the knee, which is why it exists', () => {
+    // The picture claims "here is where binary64 stops climbing". A domain
+    // entirely on one side of 2^-1022 would be a straight line under that
+    // sentence, and a mutant that narrowed it to the flat side survived every
+    // assertion about the words.
+    const { flat, rising } = shape(
+      binary64Over(SUBNORMAL_INSET_DOMAIN.from, SUBNORMAL_INSET_DOMAIN.to),
+    );
+    expect(flat, 'samples at the subnormal quantum').toBeGreaterThan(4);
+    expect(rising, 'samples after the smallest normal').toBeGreaterThan(4);
+  });
+
+  it('straddles the smallest normal rather than sitting beside it', () => {
+    // 2^-1022 is 10^-307.65. Both ends have to be past it in opposite
+    // directions or "straddles" is a word rather than a fact.
+    const smallestNormalLog10 = -1022 * Math.log10(2);
+    expect(SUBNORMAL_INSET_DOMAIN.from).toBeLessThan(smallestNormalLog10);
+    expect(SUBNORMAL_INSET_DOMAIN.to).toBeGreaterThan(smallestNormalLog10);
+  });
+
+  it('is flat all the way across on the subnormal side alone', () => {
+    // The anti-vacuity half: the assertion above only means something if a
+    // domain that misses the knee really does look different.
+    const { rising } = shape(binary64Over(-325, -310));
+    expect(rising).toBe(0);
+  });
+
+  it('is the machine that changes character, not the chart', () => {
+    // Everything below the smallest normal is a multiple of one quantum, so
+    // every sample there reports the identical gap — 2^-1074.
+    const gaps = binary64Over(-325, -312);
+    expect(new Set(gaps).size).toBe(1);
+    expect(gaps[0]).toBeCloseTo(Math.log10(2 ** -1074), 6);
   });
 });
 

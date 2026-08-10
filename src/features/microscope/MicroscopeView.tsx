@@ -27,6 +27,7 @@ import {
   planckLatticeReport,
   q128LatticeReport,
   representabilityAtBaseUnit,
+  SUBNORMAL_INSET_DOMAIN,
 } from './lattice';
 import { PickYourRuler } from './PickYourRuler';
 import { useMeasuredWidth } from '../../ui/useMeasuredWidth';
@@ -218,9 +219,18 @@ const LEGEND_FONT_SIZE = 11;
 function ResolutionChart({
   profiles,
   referenceLog10,
+  label,
 }: {
   profiles: readonly ResolutionProfile[];
   referenceLog10: number | undefined;
+  /**
+   * The accessible name. Required rather than defaulted, because the moment
+   * there were two of these charts they announced themselves identically —
+   * a listener would have been told "Local resolution against magnitude" twice
+   * and given no way to tell which decades each covered. Two Playwright
+   * selectors broke on the duplicate before anyone could have heard it.
+   */
+  label: string;
 }) {
   // Measured, for the same reason as the lattices: the legend and the axis
   // labels have to be readable at whatever width the chart is given.
@@ -255,7 +265,8 @@ function ResolutionChart({
       .map((sample) => ({ x: x(sample.log10Magnitude), y: y(sample.log10Gap!) })),
   );
   const legendLabels = profiles.map(
-    (profile) => `${profile.label}${profile.constant ? ' (constant)' : ' (grows)'}`,
+    (profile) =>
+      `${profile.label} (${profile.behaviour ?? (profile.constant ? 'constant' : 'grows')})`,
   );
   const legendWidth =
     Math.max(...legendLabels.map((label) => estimateTextWidth(label, LEGEND_FONT_SIZE))) + 8;
@@ -289,7 +300,7 @@ function ResolutionChart({
         viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
         width="100%"
         role="img"
-        aria-label="Local resolution against magnitude"
+        aria-label={label}
       >
         <line
           x1={CHART_PAD}
@@ -420,6 +431,18 @@ export function MicroscopeView({
   const preset: Q128_128PresetName = representations.q128Preset;
   const reference = parsed.value;
   const profiles = defaultProfiles(preset);
+  // The subnormal inset. binary64 only, and the domain straddles the smallest
+  // normal at 10^-307.65 so the knee sits well inside the picture rather than
+  // against an edge: flat for the left 58% of it, climbing after.
+  const subnormalProfiles = defaultProfiles(
+    preset,
+    SUBNORMAL_INSET_DOMAIN.from,
+    SUBNORMAL_INSET_DOMAIN.to,
+  )
+    .filter((profile) => profile.id === 'binary64')
+    // "grows" is true of binary64 everywhere else and false of the left half of
+    // this picture, which is the only reason the picture is here.
+    .map((profile) => ({ ...profile, behaviour: 'flat, then grows' }));
   const referenceLog10 =
     reference === undefined || isZero(reference) || reference.numerator < 0n
       ? undefined
@@ -575,12 +598,49 @@ export function MicroscopeView({
 
           <section className="panel">
             <h3>Local resolution against magnitude</h3>
-            <ResolutionChart profiles={profiles} referenceLog10={referenceLog10} />
+            <ResolutionChart
+              profiles={profiles}
+              referenceLog10={referenceLog10}
+              label="Local resolution against magnitude"
+            />
             <p className="lens-question">
               binary64&rsquo;s spacing climbs a decade for every decade of magnitude; a fixed-point
               machine&rsquo;s does not move. Where the lines cross is worth noticing — far below a
               zeptometre, the float is the finer of the two. Neither representation is simply
               better; each one chooses which numbers are convenient.
+            </p>
+
+            {/* The chart above runs to 10^-40, and the most interesting thing
+                binary64 does is 268 decades further left. Widening the main
+                domain to reach it would squash the part that is about metres
+                into a few pixels, so it gets its own axes instead. */}
+            <h4>…and 270 decades further left, where it stops climbing</h4>
+            <ResolutionChart
+              profiles={subnormalProfiles}
+              referenceLog10={undefined}
+              // Deliberately not "Local resolution against magnitude, below
+              // …". Accessible-name matching is by substring in most tooling,
+              // so a name that starts with the other chart's name is still
+              // ambiguous to anything looking one up — which is exactly how
+              // this broke a second time after the labels were made distinct.
+              label={
+                `Resolution below the smallest normal, ` +
+                `10^${SUBNORMAL_INSET_DOMAIN.from} to 10^${SUBNORMAL_INSET_DOMAIN.to} metres`
+              }
+            />
+            <p className="lens-question">
+              Below 2^-1022 — about 10^-308 m — binary64&rsquo;s exponent has bottomed out. The
+              significand shrinks on its own, every remaining value is a multiple of one fixed
+              quantum, and the line goes flat:{' '}
+              <strong>down here binary64 is a fixed-point machine</strong>, which is the thing this
+              lens once claimed the opposite of. The knee is the smallest normal.
+            </p>
+            <p className="lens-question">
+              Only binary64 is drawn. The fixed-point machines are flat here too, at 10^-38.5 m and
+              10^-34.8 m — roughly 285 decades coarser than the line shown — so drawing them would
+              compress this whole picture into the bottom ninth of the box and hide the one shape it
+              exists for. They are stated instead, which is the same choice the drift sparklines
+              make: numbers carry a comparison across 285 decades, and pixels do not.
             </p>
           </section>
         </>

@@ -97,7 +97,11 @@ Decisions Daniel made when this plan was written (2026-08-09):
     watchable rather than asserted. **Contains a citation check for review**:
     CODATA 2022 publishes the identical Planck length, so the second set is
     derived from the published uncertainty instead.
-- 928 unit tests, 143 Playwright, 315 GPU checks, full gate green.
+  - The Microscope has a subnormal inset, so binary64 going flat below
+    2^-1022 is on screen rather than only in prose. Two charts announcing
+    themselves identically was an accessibility defect two Playwright
+    selectors caught.
+- 932 unit tests, 144 Playwright, 315 GPU checks, full gate green.
 - Next action: pick from the TASKS backlog. Open items now: §17's subgroup
   organization (optional WGSL feature *and* hardware-dependent subgroup size,
   so it would be a weaker claim than the rest of this track — decide before

@@ -624,11 +624,28 @@ Discovered while implementing:
       boundary whose neighbours are equidistant — the subnormal grid below
       already has that spacing. Every other power of two has a gap below half
       its gap above, and the lens said so without noticing the exception.
-- [ ] The resolution chart runs 10^-40 to 10^30, so the subnormal floor —
-      binary64's line going flat below 10^-308 while every other machine's
-      stays flat throughout — is off the left edge. Widening the domain by
-      270 decades to show it would squash the part of the chart that is about
-      metres. It probably wants its own inset rather than a wider axis.
+- [x] The subnormal floor has its own inset, which is what this entry guessed it
+      would want. Widening the main domain by 270 decades would have squashed
+      the part that is about metres into a few pixels; a second chart with its
+      own axes costs nothing, because `defaultProfiles` already took a domain.
+
+      binary64 alone is drawn. The fixed-point machines are flat there too, at
+      10^-38.5 m and 10^-34.8 m — about 285 decades coarser than the line shown
+      — so drawing them would compress the whole picture into the bottom ninth
+      of the box and hide the one shape it exists for. Stated in words instead,
+      which is the same call the drift sparklines make.
+
+      Two defects found by looking at it, both in the words rather than the
+      arithmetic. The legend read `binary64 (grows)` over a line that is flat
+      for most of its width: `constant` is a property of the machine at every
+      magnitude, and a legend is a claim about the picture underneath it, so
+      profiles can now override what the legend says about them. And the domain
+      was two numbers at a call site with nothing checking the picture had a
+      knee in it — a mutant that narrowed it to the flat side alone passed every
+      assertion about the text. It is `SUBNORMAL_INSET_DOMAIN` now, with tests
+      that it straddles 2^-1022 and that both halves of the shape are present,
+      plus the anti-vacuity half showing a domain that misses the knee really
+      does look different.
 - [x] Author relations in the catalog fixture.
 - [x] Derive inverse relations rather than authoring both directions.
 - [x] Relation path search (graph traversal, not a hard-coded tree).
