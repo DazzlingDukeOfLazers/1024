@@ -91,10 +91,11 @@ sitting 10^20 m from zero. The atlas positions magnitudes through an exact-safe
 log10, so it places 10^-35 and 10^27 on one axis — and would place 10^400, which
 has no `double` at all.
 
-The 28 catalog objects span about 10^-35 m to 10^27 m. Nine are cited — two IAU
+The 28 catalog objects span about 10^-35 m to 10^27 m. Eleven are cited — two IAU
 definitions, CODATA figures for the Planck length, the proton and the hydrogen
 atom, WGS 84 for the Earth, NASA for the Moon, IAU for the Sun, and the project
-spec for the coconut. The other 19 are
+spec for the coconut, NASA for Neptune's orbit, and fibre diffraction for the
+DNA helix. The other 17 are
 plausible round numbers with no source, and every lens that shows one says so in
 the same words — the Atlas under the selection, the Comparator beside each
 subject, the Ruler beside the object it is drawing to scale. A value may only

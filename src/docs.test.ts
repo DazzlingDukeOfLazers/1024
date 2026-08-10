@@ -27,6 +27,9 @@ const NUMBER_WORDS: Record<number, string> = {
   8: 'Eight',
   9: 'Nine',
   10: 'Ten',
+  11: 'Eleven',
+  12: 'Twelve',
+  13: 'Thirteen',
 };
 
 const cited = CATALOG.objects.filter((object) => requireLength(object).source !== undefined);

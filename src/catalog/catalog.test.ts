@@ -8,7 +8,7 @@ import {
   primaryLength,
   provenanceSummary,
 } from './schema';
-import { ONE, equals, gt, lt, pow10, rational } from '../core/rational/rational';
+import { ONE, equals, gt, lt, mul, pow10, rational } from '../core/rational/rational';
 import { parseDecimalExact } from '../core/rational/parse';
 import { toUnit } from '../core/quantities/quantity';
 import { formatEngineering } from '../core/units/format';
@@ -436,5 +436,75 @@ describe('objects are frozen', () => {
     const coconut = CATALOG.require('coconut');
     expect(Object.isFrozen(coconut)).toBe(true);
     expect(Object.isFrozen(coconut.quantities)).toBe(true);
+  });
+});
+
+describe('a citation and the number under it agree', () => {
+  // The failure this guards is the one the schema cannot catch: a source string
+  // that is a real reference, attached to a number the reference does not
+  // support. `solar-system` was 60.2 au while its stated derivation — twice
+  // Neptune's semi-major axis of 30.07 au — gives 60.14. A reader who checked
+  // would have found it off, which is worse than no citation at all.
+  it('derives the Solar System width from the semi-major axis it cites', () => {
+    const length = requireLength(CATALOG.require('solar-system'));
+    expect(length.source, 'no longer cites a semi-major axis').toContain('30.07 au');
+    // The stored value is in metres, so the derivation is checked in metres:
+    // twice 30.07 au, at the IAU's exact 149 597 870 700 m per au.
+    const au = rational(149597870700n);
+    expect(length.value.value).toEqual(mul(parseDecimalExact('30.07'), mul(rational(2n), au)));
+  });
+
+  it('keeps the conventional figures representative, reference or not', () => {
+    // An atom, a helix and a solar system have no edge. Their sources name the
+    // convention the number comes from; they do not assert a measured boundary,
+    // and the claim must stay `representative` to say so.
+    for (const id of ['hydrogen-atom', 'dna-helix', 'solar-system']) {
+      const length = requireLength(CATALOG.require(id));
+      expect(length.source, `${id} lost its source`).toBeDefined();
+      expect(length.approximation, `${id} now claims more than a convention`).toBe(
+        'representative',
+      );
+    }
+  });
+});
+
+describe('a source has to name something checkable', () => {
+  // Mutation testing found this gap. The whole-string placeholder set catches
+  // `source: "TBD"`, and the test above catches a source that *starts* with
+  // one — but neither caught a real citation wearing a vague qualifier, which
+  // is the shape TASKS names: "typical of virology texts" is a claim nobody
+  // can go and check, and it reads like provenance in every table.
+  const withSource = (source: string) => () =>
+    parseScaleObject({
+      id: 'probe',
+      name: 'Probe',
+      categories: ['test'],
+      quantities: {
+        length: {
+          dimension: 'length',
+          unit: 'm',
+          representative: '1',
+          approximation: 'representative',
+          source,
+        },
+      },
+    });
+
+  it('rejects a consensus dressed as a reference, even beside a real one', () => {
+    expect(withSource('typical of structural biology texts; Arnott & Hukins 1972')).toThrow(
+      /typical of/,
+    );
+    expect(withSource('Commonly cited in the literature')).toThrow(/commonly cited/);
+    expect(withSource('various sources')).toThrow(/various sources/);
+  });
+
+  it('still accepts the citations the catalog actually carries', () => {
+    // Anti-vacuity, and a guard against over-rejecting: every source in the
+    // fixture must survive the rule that was just added.
+    for (const object of CATALOG.objects) {
+      const source = requireLength(object).source;
+      if (source === undefined) continue;
+      expect(withSource(source), `${object.id}: ${source}`).not.toThrow();
+    }
   });
 });

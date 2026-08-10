@@ -35,6 +35,28 @@ const UNSOURCED_PLACEHOLDERS = new Set([
   'n/a',
 ]);
 
+/**
+ * Phrases that describe a *consensus* rather than name a source.
+ *
+ * The whole-string set above catches `source: "TBD"`. It does not catch
+ * `"typical of structural biology texts; Arnott & Hukins 1972…"`, where a real
+ * citation is wearing a vague qualifier — and TASKS names that exact shape as
+ * the thing to reject, because "typical of the literature" is a claim nobody
+ * can go and check. Matched anywhere in the string, since the padding can sit
+ * on either side of a genuine reference.
+ */
+const VAGUE_ATTRIBUTIONS = [
+  'typical of',
+  'commonly cited',
+  'commonly quoted',
+  'widely cited',
+  'widely quoted',
+  'generally accepted',
+  'textbook value',
+  'common knowledge',
+  'various sources',
+];
+
 export const VISUAL_PROVIDERS = [
   'bundled',
   'noun-project',
@@ -168,6 +190,15 @@ function parseQuantity(key: string, raw: unknown, objectId: string): CatalogQuan
       `${context}: "${source}" is a provenance status, not a source. Leave source out; ` +
         `the approximation kind already says the value is not traceable to a citation.`,
     );
+  }
+  if (source !== undefined) {
+    const vague = VAGUE_ATTRIBUTIONS.find((phrase) => source.toLowerCase().includes(phrase));
+    if (vague !== undefined) {
+      throw new CatalogError(
+        `${context}: "${vague}" describes a consensus, not a source. Name the reference on ` +
+          `its own, or leave source out — a reader cannot go and check "${vague}".`,
+      );
+    }
   }
   if ((approximation === 'exact' || approximation === 'measured') && source === undefined) {
     throw new CatalogError(

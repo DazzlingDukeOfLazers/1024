@@ -55,13 +55,12 @@ Decisions Daniel made when this plan was written (2026-08-09):
   `role="application"` reconsideration.
 - **Phase 4 complete** except the 1e20 m grid labels, which are queued as a
   question for Daniel rather than guessed at. 853 unit tests, 130 Playwright.
-- Next action: Phase 5 — catalog citations, marked for Daniel's review, with
-  sources quoted in the commit message. After that the plan's numbered phases
-  are done; pick from the TASKS backlog and keep the same disciplines.
-  **Note:** any intended visual change from here needs
-  `npx playwright test e2e/visual --update-snapshots` plus a look at the diff
-  images before committing. The tolerance is now 0 — measured, three runs
-  differ by zero pixels — because 0.002 hid two real changes.
+- **All five plan phases are complete.** 866 unit tests, 131 Playwright.
+- Next action: no numbered phase remains. Pick from the TASKS backlog — the
+  largest open items are §17's cooperating-lane GPU organizations, the
+  Comparator's area/volume operations, and progressive semantic detail
+  (milestone 11) — and keep the same disciplines. One question is open for
+  Daniel below.
 
 ## Session protocol
 
@@ -197,7 +196,7 @@ oracle first, CPU simulation second, the real thing third, UI last.
 
 ## Phase 5 — citations (allowed unattended, marked for review)
 
-- [ ] The task as rewritten in TASKS (~line 203): cite the four or five
+- [x] The task as rewritten in TASKS: cite the four or five
   catalog objects that are genuinely citable (CODATA/IAU-class sources), fix
   any value the source contradicts, and mark the commit `citations — for
   Daniel's review` with the sources quoted in the message. No invented

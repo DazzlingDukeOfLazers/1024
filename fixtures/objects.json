@@ -95,7 +95,8 @@
         "unit": "nm",
         "representative": "2",
         "approximation": "representative",
-        "note": "Width of the B-form helix."
+        "source": "Arnott & Hukins 1972, optimised B-DNA fibre-diffraction parameters; 20.4 Å as recorded by BioNumbers BNID 105243",
+        "note": "Width of the B-form helix. A helix has no edge any more than an atom does — the figure depends on where the surface of the phosphate backbone is taken to be. 2 nm is the rounded conventional value; the fibre-diffraction figure the source records is 20.4 Å. Left representative rather than measured because the rounding, not the diffraction, is what this number is."
       }
     },
     "relations": [
@@ -520,9 +521,10 @@
       "diameter": {
         "dimension": "length",
         "unit": "au",
-        "representative": "60.2",
+        "representative": "60.14",
         "approximation": "representative",
-        "note": "Where the Solar System ends depends on what you count; this uses Neptune's orbit."
+        "source": "Twice Neptune's semi-major axis, 30.07 au (NASA planetary fact sheet; 30.0699 au in the Princeton planetary-systems tables)",
+        "note": "Where the Solar System ends depends on what you count; this uses Neptune's orbit. Twice the semi-major axis rather than a measured width — the orbit is eccentric, so the Solar System is not this wide in every direction. Was 60.2 until the source was attached, which is not twice 30.07 and would not have survived a reader checking it."
       }
     },
     "relations": [

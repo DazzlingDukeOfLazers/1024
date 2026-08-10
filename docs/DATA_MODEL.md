@@ -202,7 +202,7 @@ The first objective is to prove navigation and comparison behavior.
 
 `fixtures/objects.json` holds 28 objects spanning ~10^-35 m to ~10^27 m.
 
-Nine are backed by a citation:
+Eleven are backed by a citation:
 
 | object | claim | source |
 | --- | --- | --- |
@@ -215,10 +215,12 @@ Nine are backed by a citation:
 | Sun | measured | IAU 2015 Resolution B3 nominal solar radius 6.957e8 m, doubled |
 | hydrogen atom | representative | twice the Bohr radius (CODATA 2018), with the Bondi van der Waals diameter as the upper bound |
 | coconut | representative | PROJECT_SPEC.md section 16 |
+| DNA double helix | representative | Arnott & Hukins 1972 B-DNA fibre-diffraction parameters; 20.4 Å via BioNumbers BNID 105243 |
+| Solar System | representative | twice Neptune's semi-major axis, 30.07 au (NASA planetary fact sheet) |
 
-The last two are `representative` and did not need a source; having one is better than not, and says where a chosen number was chosen from.
+The last four are `representative` and did not need a source; having one is better than not, and says where a chosen number was chosen from. Note what those sources do and do not claim: an atom, a helix and a solar system all have no edge, so the citation names the *convention* — twice the Bohr radius, the fibre-diffraction width, twice Neptune's semi-major axis — rather than asserting a measured boundary. That is why they stay `representative` while carrying a reference.
 
-The remaining 19 are `representative` or `estimated` **with no source**, which is what they are: curated, plausible, deliberately round, and not traceable to a citation. Every lens that shows one says so, in the same words.
+The remaining 17 are `representative` or `estimated` **with no source**, which is what they are: curated, plausible, deliberately round, and not traceable to a citation. Every lens that shows one says so, in the same words.
 
 Four of the nine — the proton, the Moon, the Earth and the Sun — previously claimed `approximation: "measured"` while carrying `source: "demonstration value"`. That is a contradiction, because a measurement with no citation is not a measurement. The schema now rejects the combination outright, so the fixture cannot drift back into it.
 

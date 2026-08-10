@@ -200,26 +200,36 @@ Discovered while implementing:
       `CatalogQuantity`, so a comparator subject built from a unit literal gets
       the same sentence from the same code — and says "Exactly defined." with no
       caveat, because a millimetre is a definition, not a plausible round number.
-- [ ] **"Source the remaining 19 objects" is the wrong task, and I have deferred
-      it four times without saying why.** Most of the nineteen are
-      `representative` or `estimated`: a virus is not 100 nm, viruses are around
-      that size, and there is no measurement to cite because the value is a
-      choice about what stands in for a range. Attaching "typical of virology
-      texts" to it would be a status wearing a citation's clothes — the exact
-      thing the schema now rejects — and the app already says, in every lens,
-      that the number is a plausible figure rather than a traceable one.
+- [x] **"Source the remaining 19 objects" was the wrong task**, and the version
+      of it that was right — "cite the four or five that are citable" — is done.
+      The research answered it more sharply than expected: **two** are citable,
+      not four or five, and finding that out was the work.
 
-      The actionable subset is small and specific: values that are genuinely
-      measurements of a definite thing, where a real reference exists and the
-      figure is not convention-dependent. The B-form DNA helix diameter is one.
-      A red blood cell's 6.2–8.2 µm range is another, being a published
-      haematology reference interval rather than a chosen round number, which
-      would make it `measured` rather than `representative`.
+      - **DNA double helix.** Arnott & Hukins 1972, optimised B-DNA
+        fibre-diffraction parameters; 20.4 Å as recorded by BioNumbers BNID
+        105243. Kept `representative` at 2 nm rather than promoted to
+        `measured`: a helix has no edge any more than an atom does, the figure
+        depends where the backbone surface is taken to be, and 20.4 Å is only in
+        the curated database — I could not check it against the primary paper.
+        The source names the convention, which is what the hydrogen atom's
+        already does.
+      - **Solar System.** Twice Neptune's semi-major axis, 30.07 au (NASA
+        planetary fact sheet; 30.0699 au in the Princeton tables). The stored
+        value was 60.2, which is not twice 30.07 — corrected to 60.14, and a
+        test now derives it from the figure the source names, so the citation
+        and the number cannot drift apart.
 
-      Doing those needs real references rather than recollection, so it stays
-      open — but as "cite the four or five that are citable", not as a
-      nineteen-object chore whose completion would make the catalog less honest
-      rather than more.
+      Investigated and deliberately **not** cited:
+
+      - **Red blood cell.** The 6.2–8.2 µm range is real but traceable only to
+        secondary sources, and it is preparation-dependent — it is the interval
+        for stained, dried smears, while fresh cells measure larger. Citing it
+        would attach a reference to a number whose conditions the reference does
+        not state.
+      - **Water molecule.** 0.28 nm is convention-dependent in the same way as
+        the hydrogen atom, but the conventions disagree — van der Waals against
+        kinetic diameter — and I could not establish which the stored figure is.
+
 - [ ] Only one length per object. A second length (a human's width, say) needs an
       explicit `primary` field rather than `primaryLength`'s current "the one
       length there is".
@@ -1374,6 +1384,19 @@ hide two real ones.
 - [ ] If these baselines ever move to a machine whose text rendering is not
       deterministic, the fix is a per-run noise measurement and a tolerance set
       from it — not a number that looks small.
+
+## A source that names a consensus is not a source
+
+Mutation testing the new citations found a gap between what the schema rejected
+and what TASKS said it rejected. The whole-string placeholder set catches
+`source: "TBD"`. It did not catch `"typical of structural biology texts; Arnott
+& Hukins 1972…"` — a real reference wearing a vague qualifier, which is the
+exact shape the note warned about, since "typical of the literature" is a claim
+nobody can go and check.
+
+The schema rejects a short list of consensus phrases anywhere in the string now,
+with a test that every source already in the fixture still passes — a rule that
+over-rejects would be as bad as one that under-rejects.
 
 ## Hardening
 
