@@ -474,6 +474,36 @@ test('the exact decimal worth reading is not folded away', async ({ page }) => {
   await expect(binary64.locator('details')).toHaveCount(0);
 });
 
+test('rotating a vector drifts it in opposite directions', async ({ page }) => {
+  await openLab(page);
+
+  const panel = page
+    .locator('section.panel')
+    .filter({ has: page.getByRole('heading', { name: 'Turning a vector 200 times' }) });
+  const rows = panel.locator('tbody tr');
+
+  // Three machines × two modes, plus the exact reference.
+  await expect(rows).toHaveCount(7);
+
+  // The finding: same machine, same vector, opposite drift, depending only on
+  // whether the arithmetic rounds or just the storage does.
+  await expect(rows.nth(0)).toContainText('registers only');
+  await expect(rows.nth(0)).toContainText('shrank');
+  await expect(rows.nth(1)).toContainText('arithmetic too');
+  await expect(rows.nth(1)).toContainText('grew');
+  await expect(panel).toContainText('binary64 drifts in opposite directions');
+
+  // And it is not sold as a law: the other machines shrink either way.
+  await expect(rows.nth(2)).toContainText('shrank');
+  await expect(rows.nth(3)).toContainText('shrank');
+  await expect(panel).toContainText('rather than a law about finite arithmetic');
+
+  // The unbounded row never leaves the circle, and says what that costs.
+  await expect(rows.nth(6)).toContainText('unbounded rationals');
+  await expect(rows.nth(6)).toContainText('on the circle at every step');
+  await expect(panel).toContainText('140 digits');
+});
+
 test('a long experiment runs off the main thread', async ({ page }) => {
   await openLab(page);
 

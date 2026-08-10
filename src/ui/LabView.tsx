@@ -14,6 +14,7 @@ import { FiniteMachinesPanel } from './FiniteMachinesPanel';
 import { Binary64Panel } from './Binary64Panel';
 import { RepresentationLab } from '../features/representation-lab/RepresentationLab';
 import { FloatingOriginPanel } from '../features/representation-lab/FloatingOriginPanel';
+import { RotationPanel } from '../features/representation-lab/RotationPanel';
 import { type LabState, type RepresentationState } from '../share/appState';
 
 const UNIT_CHOICES = [
@@ -74,6 +75,8 @@ export function LabView({
       />
 
       <FloatingOriginPanel />
+
+      <RotationPanel />
 
       <section className="panel">
         <div className="field">

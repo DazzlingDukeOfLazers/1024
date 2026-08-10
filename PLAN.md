@@ -31,15 +31,13 @@ Decisions Daniel made when this was written:
 
 Blocks, in order. Each ends with a commit and a Position update.
 
-- [ ] **0. Look at the whole app** (~30 min). Ten commits landed on 2026-08-10
-  and four moved visual baselines; the last systematic screenshot review of
-  every swept state at both widths predates all of them. This half hour has
-  found four defects twice before.
-- [ ] **1. Rotation drift** (~3–4 h). §7's repeated rotations. Use an exact
-  *rational* rotation — a Pythagorean-triple matrix such as (3/5, 4/5) — so the
-  reference stays exactly on the unit circle while each finite machine spirals.
-  `spacetime.ts` already has four-register X/Y/Z/T frames, so this needs no
-  change to the scalar experiment runner. Norm drift is the headline.
+- [x] **0. Look at the whole app** (~35 min). Two defects: a subnormal's
+  1,076-character exact decimal buried the Regime row that explains it, and
+  "1 whole items". `fdf8187`.
+- [x] **1. Rotation drift.** Done, and the finding was better than expected:
+  the same machine drifts *both ways* depending on whether only the storage
+  rounds or the arithmetic does too — §7's two error categories as a change of
+  sign. Velocity integration, §7's third, is left open in TASKS.
 - [ ] **2. Compute panel op selector** (~2 h). Now an answered request rather
   than a queued question, so it outranks the rest.
 - [ ] **3. Small closures** (~2 h), as many as fit: the `how-many-fit-volume`

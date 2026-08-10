@@ -181,9 +181,55 @@ Discovered while implementing:
       case sets `absoluteRoundingIsLowerBound` and the UI says so.
 - [x] `decompositionResidual` is asserted on every accounted step; the runner
       throws rather than recording a decomposition that does not balance.
-- [ ] Only `set`/`add`/`sub`/`mul`/`div` exist. Repeated rotations, velocity
-      integration and subtraction of nearly equal numbers (PROJECT_SPEC §7) need
-      more ops and probably a vector state.
+- [x] **Repeated rotations (PROJECT_SPEC §7).** Subtraction of nearly equal
+      numbers was already a fixture; this is the other one, and it needed no
+      change to the scalar runner after all — a rotation is its own small
+      experiment with its own conserved quantity, so it gets a module and a
+      panel rather than a step type.
+
+      Every other experiment here drifts a *value*. This one drifts a **shape**:
+      a rotation must not change a length, so the length is something the
+      machine is supposed to preserve and cannot, and the error has somewhere to
+      show up that has nothing to do with the numbers being large or small.
+
+      The angle is the 3-4-5 one — `cos θ = 3/5`, `sin θ = 4/5`, about 53.13°.
+      A rotation by 1° cannot be the reference here, because `cos 1°` is
+      irrational and the exact answer would itself be an approximation, which is
+      rule 1 exactly. `3² + 4² = 5²` makes the matrix exactly orthogonal, and θ
+      is not a rational multiple of a turn, so the orbit never closes and a long
+      run never gets a free ride from returning to the start.
+
+      **The finding, measured before anything was written.** Rounding only what
+      is *stored* and rounding every *operation* are `docs/NUMERICS.md` §7's two
+      error categories, and over 200 rotations they send binary64's vector in
+      opposite directions: 36 checkpoints above the circle and 164 below when
+      only the registers are finite, 170 above and 30 below when the arithmetic
+      is finite too. It shrinks one way and grows the other. Not merely a
+      difference of size — a difference of sign.
+
+      Q128.128 and the Planck grid shrink under both modes, and the panel says
+      so: the reversal is a fact about binary64, not a law about finite
+      arithmetic, and a demonstration that only ever showed the machine it works
+      for would be a trick.
+
+      **And the exact column is not free.** The denominator is 5^n exactly, so
+      after 200 rotations the exact coordinates need 140 digits — about 0.7 more
+      every turn, for ever. The finite machines have the opposite problem: they
+      always fit and they always drift. This project spends most of its time on
+      what a finite representation loses and rather less on what exactness
+      charges, and now there is one table with both.
+
+      Seven mutants killed. Two defects of my own on the way: `drift{' '}{...}`
+      rendered "binary64 drift s" — a pluralization bug written the same day as
+      the fix for "1 whole items", which argues for building the whole word
+      rather than gluing a suffix on. And the exact row was headed "exact
+      reference", which the conformance sweep correctly objected to: a header
+      claiming exactness must have the verified value in the cell beside it, and
+      that cell was prose about registers. The row is named for the machine now
+      and the claim is made once, where the verdict is.
+- [ ] Velocity integration, the third of §7's three. Rotation covered the
+      conserved-quantity shape; integration is the one where the *step size*
+      is the variable and the error is a function of it.
 - [x] Moved into a Web Worker. The runner itself needed **no changes** — the
       "worker-ready" claim held. A million steps is now a progress count rather
       than a frozen tab, and an e2e test proves it by clicking the nav mid-run.
