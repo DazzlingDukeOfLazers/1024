@@ -17,6 +17,48 @@ Decisions Daniel made when this plan was written (2026-08-09):
 - If GPU verification had been impossible: CPU limb machine + unverified WGSL.
   (Moot — see Environment facts: GPU verification **works** here.)
 
+## Today's plan (2026-08-10, ~8–10 hours)
+
+Decisions Daniel made when this was written:
+
+- **Block 1 is the rotation drift experiment** (PROJECT_SPEC §7), not the
+  Ruler's second axis.
+- **The compute panel gets an op selector** — the question queued on 2026-08-09
+  is answered. SUB, MUL and DIV_REM get views alongside ADD.
+- Daniel is **around intermittently**: work autonomously, ask when a decision
+  would change the shape of the work rather than queueing it, check in between
+  blocks.
+
+Blocks, in order. Each ends with a commit and a Position update.
+
+- [ ] **0. Look at the whole app** (~30 min). Ten commits landed on 2026-08-10
+  and four moved visual baselines; the last systematic screenshot review of
+  every swept state at both widths predates all of them. This half hour has
+  found four defects twice before.
+- [ ] **1. Rotation drift** (~3–4 h). §7's repeated rotations. Use an exact
+  *rational* rotation — a Pythagorean-triple matrix such as (3/5, 4/5) — so the
+  reference stays exactly on the unit circle while each finite machine spirals.
+  `spacetime.ts` already has four-register X/Y/Z/T frames, so this needs no
+  change to the scalar experiment runner. Norm drift is the headline.
+- [ ] **2. Compute panel op selector** (~2 h). Now an answered request rather
+  than a queued question, so it outranks the rest.
+- [ ] **3. Small closures** (~2 h), as many as fit: the `how-many-fit-volume`
+  bulk condition; the lattice zoom control (a UI_SPEC gap); the resolution
+  chart's power-of-two staircase (measure first — likely sub-pixel, and closing
+  it with the measurement is the honest outcome); Atlas relation arcs with the
+  degenerate cases already measured.
+- [ ] **4. Handoff** (~1 h). Rewrite this file for the next unattended stretch,
+  tidy TASKS, re-verify the README counts.
+
+Deliberately **not** in today's plan, and why, so a later session does not
+re-litigate it: twelve backlog items are measured deferrals whose reasons still
+hold (search index, Ruler's six-object cap, share compression, `replaceState`
+history, overflow-policy oracle, zero-limb skipping, and six more) — reopening
+one needs a new reason, not spare time. Seven more need a person or a device
+this machine does not have. The mass dimension is out by CLAUDE.md's own
+instruction. User-authored experiments in the share payload are blocked on an
+authoring UI that does not exist.
+
 ## Position
 
 > Update this section at the end of every session. Keep it to a few lines;
@@ -263,6 +305,12 @@ bumps. If one of these becomes necessary, write up why and stop that thread.
 - ~~The far-origin ruler's grid labels~~ — **answered: option 1, offset
   notation.** Shipped: `+1 × 10^23 mm` stated once, ticks labelled −6 … 5,
   reconstruction asserted exactly.
+
+- ~~**Compute panel scope**~~ — **answered 2026-08-10: add an op selector.**
+  SUB, MUL and DIV_REM get views alongside ADD. The A/B lane rows were not
+  chosen; leave the strip as the sum alone unless the op views want them.
+
+  Original question, kept for the reasoning:
 
 - **Compute panel scope (2026-08-09, phase 1.4).** The lane panel visualizes
   ADD only — the §18 first op, where carry propagation is the story. Worth
