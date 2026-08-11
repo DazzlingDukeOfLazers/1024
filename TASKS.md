@@ -427,12 +427,34 @@ Discovered while implementing:
 - [x] Three assumptions do not fit in a sentence. Joined with "and" the packing
       citation ran straight into the wall condition and the row was unreadable;
       each assumption can be rejected on its own, so each gets a line.
-- [ ] `how-many-fit-volume` states the bulk condition rather than enforcing it.
-      Ask how many coconuts fit inside a slightly larger coconut and the
-      arithmetic answers "about one" while the packing model is entitled to
-      answer nothing, because 0.6366 is a property of an arrangement far from
-      any wall. No threshold is invented — that would be a third guess — but a
-      real container model would have one.
+- [x] `how-many-fit-volume` enforced the bulk condition at the one end where it
+      can be. There is still no honest threshold for "far larger" — that was
+      always the reason the condition was stated in words — but there is an
+      exact boundary at the other end, and below it the model is not imprecise,
+      it is silent: **if the container is smaller than the item, none fit.**
+
+      Asking how many kilometres fit inside a millimetre answered
+      6.366 × 10^-19, which is the packing fraction applied to a volume ratio
+      far outside anything it describes. Not a fraction of an item, because a
+      fraction of an item is not a thing, and not a ratio either, because
+      multiplying by 0.6366 stopped it being one. The answer is zero, it needs
+      no model to reach, and the model is no longer cited under it — a citation
+      beneath an answer it played no part in is the same defect as a source
+      attached to a number it does not support.
+
+      The boundary is "smaller than", not "not larger than": at exactly equal
+      sizes one fits, so the model is still consulted. Three mutants killed,
+      including the off-by-one at that boundary and the packing model being
+      cited where it was not used. Found by the whole-app look rather than by
+      reasoning about the code.
+- [ ] The other end of the bulk condition is still only stated. A container a
+      few item-widths across is where the wall effect is largest, and 0.6366 is
+      wrong there in a way no exact boundary catches. A real container model
+      would have a threshold; this still has a sentence.
+- [ ] The "What this assumes" row ends with "The catalog knows one length per
+      object and nothing about its shape", which is a general explanation and
+      not always about the subjects on screen — with two unit literals there is
+      no catalog object involved at all. Not false, just not about them.
 
 ## Ruler
 

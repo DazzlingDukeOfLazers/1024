@@ -383,6 +383,43 @@ describe('how many fit inside, where spheres do not tile', () => {
     expect(howManyFitByVolume(coconut, house).assumes).toHaveLength(3);
   });
 
+  it('answers none when the item is larger than the container', () => {
+    // This used to answer 6.366 × 10^-19 for "how many kilometres fit inside a
+    // millimetre" — the packing fraction applied to a volume ratio nowhere near
+    // anything it describes. Not a fraction of an item, because a fraction of
+    // an item is not a thing, and not a ratio either, because multiplying by
+    // 0.6366 stopped it being one. It is zero, and it needs no model.
+    const result = howManyFitByVolume(tenMetres, oneMetre);
+    expect(result.value).toEqual(rational(0n));
+    expect('range' in result).toBe(false);
+  });
+
+  it('does not consult the packing model when nothing fits', () => {
+    // The model is for many items far from a wall. Citing it under an answer it
+    // played no part in would be the same defect as a source attached to a
+    // number it does not support.
+    const result = howManyFitByVolume(tenMetres, oneMetre);
+    expect(result.assumes).toHaveLength(2);
+    expect(result.assumes?.[0]).toBe('both objects have the same shape, at different sizes');
+    expect(result.assumes?.[1]).toContain('the packing model is not used');
+    expect(result.assumes?.some((one) => one.includes('Scott'))).toBe(false);
+    expect(result.assumes?.some((one) => one.includes('walls do not dominate'))).toBe(false);
+  });
+
+  it('still consults it the moment something does fit', () => {
+    // Anti-vacuity for the two above: the boundary is exact and one side of it
+    // has to behave differently from the other, or the guard does nothing.
+    const justFits = howManyFitByVolume(oneMetre, tenMetres);
+    expect(lt(rational(0n), justFits.value)).toBe(true);
+    expect(justFits.assumes).toHaveLength(3);
+
+    // And at exactly equal sizes one fits, so the model is still consulted:
+    // the boundary is "smaller than", not "not larger than".
+    const equal = howManyFitByVolume(oneMetre, subjectFromQuantity('another metre', metres(1n)));
+    expect(equal.assumes).toHaveLength(3);
+    expect(lt(rational(0n), equal.value)).toBe(true);
+  });
+
   it('refuses a zero item, like every other ratio here', () => {
     const zero = subjectFromQuantity('zero', zeroQuantity('length'));
     expect(() => howManyFitByVolume(zero, tenMetres)).toThrow(ComparisonError);

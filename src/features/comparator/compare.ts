@@ -13,6 +13,7 @@
 
 import {
   type Rational,
+  ZERO,
   abs,
   div,
   isZero,
@@ -21,6 +22,7 @@ import {
 } from '../../core/rational/rational';
 import {
   type Quantity,
+  compare as compareQuantity,
   ratio as quantityRatio,
   scale,
   sub as subQuantity,
@@ -330,6 +332,33 @@ const BULK =
   'the container is far larger than the item, so the walls do not dominate the arrangement';
 
 /**
+ * The one place the bulk condition can be *enforced* rather than stated.
+ *
+ * There is no honest threshold for "far larger" — that was the reason this
+ * operation shipped with the condition in words. But there is an exact
+ * boundary at the other end, and below it the model is not imprecise, it is
+ * silent: **if the container is smaller than the item, none fit.**
+ *
+ * Asking how many kilometres fit inside a millimetre used to answer
+ * 6.366 × 10^-19, which is the packing fraction applied to a volume ratio far
+ * outside anything it describes. It is not a fraction of an item — a fraction
+ * of an item is not a thing — and it is not a ratio either, because multiplying
+ * by 0.6366 stopped it being one. The answer is zero, it needs no packing model
+ * to reach, and the model is not consulted for it.
+ *
+ * Comparing lengths rather than volumes is the same comparison under
+ * similarity, and similarity is assumed either way.
+ */
+function containerHoldsNothing(item: Subject, container: Subject): boolean {
+  return compareQuantity(container.value, item.value) < 0;
+}
+
+/** What is left to say when the packing model is not consulted at all. */
+const NOTHING_FITS =
+  'nothing else — the item is larger than the container, so none fit and the packing model ' +
+  'is not used; this answer is a comparison of two lengths and not a model of anything';
+
+/**
  * How many of `a` fit inside `b`, by volume.
  *
  * `b / a` cubed, times the packing fraction. The count is exact rational
@@ -340,6 +369,22 @@ const BULK =
 export function howManyFitByVolume(a: Subject, b: Subject): CountResult {
   const volumes = poweredRatio(b, a, 3, 'volume-ratio');
   const fraction = RANDOM_CLOSE_PACKING.nominal;
+
+  if (containerHoldsNothing(a, b)) {
+    // Exactly none, and the packing model is not asked. Only the similarity
+    // assumption survives, because it is what lets one length stand for the
+    // whole shape when deciding that the item is the larger of the two.
+    const none: CountResult = {
+      ...volumes,
+      operation: 'how-many-fit-volume',
+      a,
+      b,
+      value: ZERO,
+      assumes: [SIMILARITY, NOTHING_FITS],
+    };
+    delete none.range;
+    return none;
+  }
 
   const base: CountResult = {
     ...volumes,

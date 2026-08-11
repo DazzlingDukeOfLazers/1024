@@ -1805,6 +1805,28 @@ test('fitting things inside names the packing model and cites it', async ({ page
   await expect(page.getByText('the input to the answer')).toBeVisible();
 });
 
+test('nothing fits inside something smaller, and the model is not asked', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Comparator' }).click();
+  await page.getByLabel('A', { exact: true }).selectOption('unit:km');
+  await page.getByLabel('B', { exact: true }).selectOption('unit:mm');
+  await page.getByLabel('Operation').selectOption('how-many-fit-volume');
+
+  // This answered 6.366 × 10^-19 — the packing fraction applied to a volume
+  // ratio nowhere near anything it describes. Zero kilometres fit inside a
+  // millimetre, and reaching that needs no model at all.
+  await expect(page.locator('p.answer')).toContainText('0');
+  await expect(page.locator('p.answer')).not.toContainText('10^-');
+
+  const assumed = readoutRow(page, 'What this assumes');
+  await expect(assumed.locator('ul.assumes li')).toHaveCount(2);
+  await expect(assumed).toContainText('the packing model is not used');
+  // A citation under an answer it played no part in is the same defect as a
+  // source attached to a number it does not support.
+  await expect(assumed).not.toContainText('Scott');
+  await expect(assumed).not.toContainText('walls do not dominate');
+});
+
 test('the volume ratio no longer reads as a picture of itself', async ({ page }) => {
   // This shipped without the note: a headline of about 2,370,000 sitting above
   // a strip captioned "133 shown", with nothing saying they answer different

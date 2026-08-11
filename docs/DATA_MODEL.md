@@ -217,6 +217,12 @@ What does not cancel is the similarity itself, and the catalog does not know it.
 
 The fraction is a declared constant with provenance, in the shape `src/core/representations/constants.ts` uses and deliberately outside `CODATA_2018` — that set is what a simulated machine's grid is conditioned on, and a packing fraction has nothing to do with a register. Its own ±0.0005 stays out of the result's `range`, which carries uncertainty in the *inputs*; uncertainty in the model belongs with the assumption that names it.
 
+The bulk condition is enforced at the one end where an exact boundary exists:
+**if the container is smaller than the item, none fit**, the count is zero, and
+the packing model is not consulted or cited. There is still no honest threshold
+for "far larger", so that half of the condition remains a stated assumption. The
+boundary is *smaller than*, not *not larger than* — at equal sizes one fits.
+
 Three assumptions is more than one, so the view lists them rather than joining them into a sentence — each can be rejected on its own, and joined with "and" the citation ran straight into the wall condition.
 
 A view that draws a comparison must also say when the picture is not the answer. The strip compares *lengths*, because a length is the one dimension the catalog holds, so for the three operations that raise that comparison to a power the picture and the headline are different numbers — 133 across a millimetre, 2,370,000 through it. A reader is entitled to assume the picture is the answer unless told otherwise.
