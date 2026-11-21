@@ -1,0 +1,22 @@
+; Engine configuration file.
+; Godot 4.3 or newer. Open this folder in the Godot editor and press F5.
+
+config_version=5
+
+[application]
+
+config/name="1024 — Scale Viewer"
+config/description="Zoom from the Planck length to the observable universe, and from the Planck time to the age of the universe."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=760
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.06, 0.07, 0.09, 1)
