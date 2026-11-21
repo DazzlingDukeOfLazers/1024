@@ -1941,3 +1941,23 @@ over-rejects would be as bad as one that under-rejects.
       and pixels only add the *unintended* change. Windows-rendered, so it
       skips on CI; procedure and sensitivity evidence in
       `docs/TEST_STRATEGY.md`.
+
+## Godot scale viewer (MVP)
+
+Started 2026-11-21 at Daniel's request: a Godot 4 app under `godot/` with a
+log-scale zoom slider along the bottom, the catalog in size order on the right,
+and objects drawn as circles with text labels, in a Length mode (Planck length
+to observable universe) and a Time mode (Planck time to the age of the
+universe).
+
+- [x] Catalog loader in GDScript: same schema, units and primary-length rule
+      as `src/catalog/schema.ts`, log10 computed from the decimal string
+      without forming the value.
+- [x] `godot/data/objects.json` kept equal to `fixtures/objects.json`, and the
+      Godot-only extras run through `createCatalog`, by
+      `src/catalog/godot.test.ts`. The fixture cap of 20–30 objects is why the
+      extras live in their own file rather than in `fixtures/`.
+- [ ] Run it in the Godot editor and look at it. The session that wrote it
+      could not run Godot, so the scripts have been reviewed but not executed.
+- [ ] Draw ranges, not just representative values.
+- [ ] Export presets.

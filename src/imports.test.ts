@@ -20,9 +20,11 @@ const ROOT = new URL('../', import.meta.url);
  * Where imports may point. `fixtures` is here because the catalog and the
  * experiment definitions are imported as JSON from `src`, and leaving it out
  * made the first run report three false failures — the checker has to know the
- * whole of what it is checking against.
+ * whole of what it is checking against. `godot/data` is here for the same
+ * reason: the Godot viewer's catalog copy is checked against fixtures from
+ * `src/catalog/godot.test.ts`.
  */
-const SOURCE_DIRECTORIES = ['src', 'e2e', 'fixtures'];
+const SOURCE_DIRECTORIES = ['src', 'e2e', 'fixtures', 'godot/data'];
 const CANDIDATE_SUFFIXES = ['', '.ts', '.tsx', '.json', '.css', '/index.ts', '/index.tsx'];
 const IMPORT = /(?:from|import)\s+['"](\.[^'"]+)['"]/g;
 

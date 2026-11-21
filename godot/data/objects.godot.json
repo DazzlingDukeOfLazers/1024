@@ -1,0 +1,735 @@
+[
+  {
+    "id": "quark",
+    "name": "Quark",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "8.6e-19",
+        "approximation": "estimated",
+        "source": "ZEUS Collaboration, Phys. Lett. B 757 (2016) 468: quark radius below 0.43 × 10^-18 m at 95% CL",
+        "note": "No quark has a measured size. This is twice the experimental upper bound on the radius, so the real circle is this big or (probably much) smaller."
+      }
+    }
+  },
+  {
+    "id": "uranium-nucleus",
+    "name": "Uranium-238 nucleus",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "fm",
+        "representative": "14.9",
+        "range": {
+          "min": "14",
+          "max": "16"
+        },
+        "approximation": "estimated",
+        "note": "From the empirical nuclear radius R ≈ 1.2 fm × A^(1/3) with A = 238, doubled."
+      }
+    }
+  },
+  {
+    "id": "carbon-atom",
+    "name": "Carbon atom",
+    "categories": ["chemistry", "atomic"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "pm",
+        "representative": "340",
+        "approximation": "representative",
+        "note": "Twice the van der Waals radius of 170 pm. Like hydrogen, the atom has no edge; this is one convention."
+      }
+    }
+  },
+  {
+    "id": "glucose-molecule",
+    "name": "Glucose molecule",
+    "categories": ["chemistry", "molecular"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "nm",
+        "representative": "1",
+        "range": {
+          "min": "0.7",
+          "max": "1.0"
+        },
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "ribosome",
+    "name": "Ribosome",
+    "categories": ["biology", "molecular"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "nm",
+        "representative": "25",
+        "range": {
+          "min": "20",
+          "max": "30"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "cell-nucleus",
+    "name": "Cell nucleus",
+    "categories": ["biology", "cellular"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "µm",
+        "representative": "6",
+        "range": {
+          "min": "2",
+          "max": "10"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "car",
+    "name": "Car",
+    "categories": ["vehicles", "human"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "4.5",
+        "range": {
+          "min": "3.5",
+          "max": "5.5"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "bus",
+    "name": "Bus",
+    "categories": ["vehicles", "human"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "12",
+        "range": {
+          "min": "10",
+          "max": "18"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "blue-whale",
+    "name": "Blue whale",
+    "categories": ["biology", "animals"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "25",
+        "range": {
+          "min": "20",
+          "max": "30"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "jumbo-jet",
+    "name": "Jumbo jet (747-400)",
+    "categories": ["vehicles", "human"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "70.7",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "container-ship",
+    "name": "Container ship",
+    "categories": ["vehicles", "human"],
+    "quantities": {
+      "length": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "400",
+        "range": {
+          "min": "300",
+          "max": "400"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "mount-everest",
+    "name": "Mount Everest (height)",
+    "categories": ["geography"],
+    "quantities": {
+      "height": {
+        "dimension": "length",
+        "unit": "m",
+        "representative": "8848.86",
+        "approximation": "measured",
+        "source": "China–Nepal joint survey, announced 2020"
+      }
+    }
+  },
+  {
+    "id": "neutron-star",
+    "name": "Neutron star",
+    "categories": ["astronomy", "stars"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "24",
+        "range": {
+          "min": "20",
+          "max": "28"
+        },
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "phobos",
+    "name": "Phobos (moon of Mars)",
+    "categories": ["astronomy", "moons"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "22.5",
+        "approximation": "representative",
+        "note": "Phobos is lumpy (27 × 22 × 18 km); this is a mean."
+      }
+    }
+  },
+  {
+    "id": "ganymede",
+    "name": "Ganymede (moon of Jupiter)",
+    "categories": ["astronomy", "moons"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "5268",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "mars",
+    "name": "Mars",
+    "categories": ["astronomy", "planets"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "6779",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "jupiter",
+    "name": "Jupiter",
+    "categories": ["astronomy", "planets"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "139820",
+        "approximation": "representative",
+        "note": "Mean diameter; the equator is 142,984 km because Jupiter spins fast enough to bulge."
+      }
+    }
+  },
+  {
+    "id": "earth-moon-distance",
+    "name": "Earth–Moon distance",
+    "categories": ["astronomy", "distances"],
+    "quantities": {
+      "distance": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "384400",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "betelgeuse",
+    "name": "Betelgeuse",
+    "categories": ["astronomy", "stars"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "km",
+        "representative": "1.06e9",
+        "range": {
+          "min": "8.9e8",
+          "max": "1.42e9"
+        },
+        "approximation": "estimated",
+        "note": "A red supergiant with a fuzzy edge; published radius estimates run from about 640 to 1,020 solar radii."
+      }
+    }
+  },
+  {
+    "id": "proxima-distance",
+    "name": "Distance to Proxima Centauri",
+    "categories": ["astronomy", "distances"],
+    "quantities": {
+      "distance": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "4.2465",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "andromeda",
+    "name": "Andromeda galaxy",
+    "categories": ["astronomy", "galaxies"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "152000",
+        "range": {
+          "min": "110000",
+          "max": "220000"
+        },
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "andromeda-distance",
+    "name": "Distance to Andromeda",
+    "categories": ["astronomy", "distances"],
+    "quantities": {
+      "distance": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "2.5e6",
+        "range": {
+          "min": "2.4e6",
+          "max": "2.6e6"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "local-group",
+    "name": "Local Group of galaxies",
+    "categories": ["astronomy", "galaxies"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "10e6",
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "laniakea",
+    "name": "Laniakea Supercluster",
+    "categories": ["astronomy", "galaxies"],
+    "quantities": {
+      "diameter": {
+        "dimension": "length",
+        "unit": "ly",
+        "representative": "520e6",
+        "approximation": "estimated",
+        "source": "Tully, Courtois, Hoffman & Pomarède, Nature 513 (2014) 71"
+      }
+    }
+  },
+  {
+    "id": "planck-time",
+    "name": "Planck time",
+    "categories": ["physics", "reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "s",
+        "representative": "5.391247e-44",
+        "range": {
+          "min": "5.391187e-44",
+          "max": "5.391307e-44"
+        },
+        "approximation": "measured",
+        "source": "CODATA 2018"
+      }
+    }
+  },
+  {
+    "id": "top-quark-lifetime",
+    "name": "Top quark lifetime",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "s",
+        "representative": "5e-25",
+        "approximation": "estimated",
+        "note": "From the measured decay width of about 1.4 GeV. The top quark decays before it can form a hadron."
+      }
+    }
+  },
+  {
+    "id": "light-across-proton",
+    "name": "Light crossing a proton",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "ys",
+        "representative": "5.6",
+        "approximation": "representative",
+        "note": "The proton's 1.6828 fm diameter divided by the speed of light."
+      }
+    }
+  },
+  {
+    "id": "bohr-orbit",
+    "name": "Electron orbit in hydrogen (Bohr model)",
+    "categories": ["physics", "atomic"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "as",
+        "representative": "152",
+        "approximation": "representative",
+        "note": "2π atomic units of time. Real electrons do not orbit; this is the classical period of the Bohr model."
+      }
+    }
+  },
+  {
+    "id": "green-light-wave",
+    "name": "One wave of green light",
+    "categories": ["physics"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "fs",
+        "representative": "1.8",
+        "approximation": "representative",
+        "note": "Period of 550 nm light: wavelength divided by c."
+      }
+    }
+  },
+  {
+    "id": "cpu-cycle",
+    "name": "CPU clock cycle (3 GHz)",
+    "categories": ["technology"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "ns",
+        "representative": "0.33",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "light-one-metre",
+    "name": "Light travelling 1 m",
+    "categories": ["physics"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "ns",
+        "representative": "3.33564",
+        "approximation": "representative",
+        "note": "1/299 792 458 s exactly, by the definition of the metre; shown here to six figures."
+      }
+    }
+  },
+  {
+    "id": "muon-lifetime",
+    "name": "Muon lifetime",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "µs",
+        "representative": "2.1969811",
+        "approximation": "measured",
+        "source": "Particle Data Group, Review of Particle Physics (2022)"
+      }
+    }
+  },
+  {
+    "id": "camera-flash",
+    "name": "Camera flash",
+    "categories": ["human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "ms",
+        "representative": "1",
+        "range": {
+          "min": "0.1",
+          "max": "5"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "hummingbird-wingbeat",
+    "name": "Hummingbird wingbeat",
+    "categories": ["biology", "animals"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "ms",
+        "representative": "20",
+        "range": {
+          "min": "12",
+          "max": "80"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "eye-blink",
+    "name": "Blink of an eye",
+    "categories": ["biology", "human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "s",
+        "representative": "0.3",
+        "range": {
+          "min": "0.1",
+          "max": "0.4"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "heartbeat",
+    "name": "Heartbeat",
+    "categories": ["biology", "human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "s",
+        "representative": "0.8",
+        "range": {
+          "min": "0.5",
+          "max": "1.2"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "minute",
+    "name": "One minute",
+    "categories": ["reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "min",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "SI Brochure, 9th edition (2019), Table 8"
+      }
+    }
+  },
+  {
+    "id": "neutron-lifetime",
+    "name": "Free neutron lifetime",
+    "categories": ["physics", "subatomic"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "s",
+        "representative": "878.4",
+        "approximation": "measured",
+        "source": "Particle Data Group, Review of Particle Physics (2022)",
+        "note": "Beam and bottle experiments still disagree by about 9 s; this is the PDG average."
+      }
+    }
+  },
+  {
+    "id": "hour",
+    "name": "One hour",
+    "categories": ["reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "h",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "SI Brochure, 9th edition (2019), Table 8"
+      }
+    }
+  },
+  {
+    "id": "day",
+    "name": "One day",
+    "categories": ["reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "d",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "SI Brochure, 9th edition (2019), Table 8"
+      }
+    }
+  },
+  {
+    "id": "moon-orbit",
+    "name": "Moon's orbit (sidereal month)",
+    "categories": ["astronomy"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "d",
+        "representative": "27.32",
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "year",
+    "name": "One year (Julian)",
+    "categories": ["reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "1",
+        "approximation": "exact",
+        "source": "IAU: the Julian year is exactly 365.25 days"
+      }
+    }
+  },
+  {
+    "id": "human-lifespan",
+    "name": "Human life expectancy",
+    "categories": ["biology", "human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "73",
+        "range": {
+          "min": "50",
+          "max": "85"
+        },
+        "approximation": "representative"
+      }
+    }
+  },
+  {
+    "id": "recorded-history",
+    "name": "Recorded history",
+    "categories": ["human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "5200",
+        "approximation": "estimated",
+        "note": "Since the earliest writing in Mesopotamia, around 3200 BCE."
+      }
+    }
+  },
+  {
+    "id": "homo-sapiens",
+    "name": "Homo sapiens so far",
+    "categories": ["biology", "human"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "300e3",
+        "range": {
+          "min": "200e3",
+          "max": "350e3"
+        },
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "since-dinosaurs",
+    "name": "Since the dinosaurs died out",
+    "categories": ["geology"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "66e6",
+        "approximation": "representative",
+        "note": "The Cretaceous–Paleogene boundary."
+      }
+    }
+  },
+  {
+    "id": "age-of-earth",
+    "name": "Age of the Earth",
+    "categories": ["geology", "astronomy"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "4.54e9",
+        "range": {
+          "min": "4.49e9",
+          "max": "4.59e9"
+        },
+        "approximation": "estimated"
+      }
+    }
+  },
+  {
+    "id": "age-of-universe",
+    "name": "Age of the universe",
+    "categories": ["astronomy", "reference"],
+    "quantities": {
+      "duration": {
+        "dimension": "time",
+        "unit": "a",
+        "representative": "13.787e9",
+        "range": {
+          "min": "13.767e9",
+          "max": "13.807e9"
+        },
+        "approximation": "measured",
+        "source": "Planck Collaboration, Planck 2018 results VI, A&A 641 (2020) A6"
+      }
+    }
+  }
+]

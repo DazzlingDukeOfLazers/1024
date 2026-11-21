@@ -311,7 +311,7 @@ Until the v0 numerical and SVG ruler behavior is stable, do not spend time on:
 - cloud backend;
 - databases requiring a server;
 - multiplayer;
-- Godot integration;
+- Godot integration beyond the `godot/` viewer (a log-space catalog consumer, started at Daniel's request on 2026-11-21; see `godot/README.md`);
 - elaborate Three.js scenes;
 - mass/momentum physics;
 - relativity simulation;
